@@ -1,0 +1,49 @@
+# Baseline: keyterms off, agent_context off, balanced turn-taking.
+# mode and interruption_delay are sent. prompt is sent because it is non-empty.
+# min_turn_silence / max_turn_silence / vad_threshold are left unset so the
+# mode preset supplies them (balanced: 128 ms / 1280 ms / vad 0.2).
+
+target_language: es
+
+stt:
+  speech_model: universal-3-6-pro
+  language_detection: true
+  language_codes: []
+  prompt: >-
+    A language learner asking how to say words and phrases in another language.
+    Speech mixes their own language and the target. The learner may mispronounce
+    words or make grammar mistakes.
+  keyterms_prompt: []
+  agent_context: ""
+  agent_context_enabled: false
+  mode: balanced
+  min_turn_silence: null
+  max_turn_silence: null
+  interruption_delay: 500
+  vad_threshold: null
+
+llm:
+  model: gemini-2.5-flash-lite
+  temperature: 0.2
+  max_tokens: 500
+  stream: true
+  timeout_s: 30
+
+tts:
+  sample_rate: 24000
+  encoding: pcm_s16le
+  timeout_s: 30
+  voices:
+    english: aai-kyla
+    spanish: aai-antonioluis
+    french: aai-donatien
+    german: aai-magdalena
+    italian: aai-giada
+    portuguese: aai-nelson
+
+server:
+  host: 0.0.0.0
+  port: 8000
+
+log:
+  path: logs/turns.jsonl

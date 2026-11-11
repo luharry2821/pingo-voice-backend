@@ -1,0 +1,53 @@
+# Same pipeline as baseline, with keyterms on.
+# Swap this list for the case's target phrase before a real A/B run
+# (at most 100 terms, 50 characters each). Keyterms can make speech-to-text
+# "hear" the correct phrase when the learner said it wrong, which lowers
+# error preservation. That trade-off is the experiment.
+
+target_language: es
+
+stt:
+  speech_model: universal-3-6-pro
+  language_detection: true
+  language_codes: []
+  prompt: >-
+    A language learner asking how to say words and phrases in another language.
+    Speech mixes their own language and the target. The learner may mispronounce
+    words or make grammar mistakes.
+  keyterms_prompt:
+    - estación de tren
+    - gracias
+    - la biblioteca
+  agent_context: ""
+  agent_context_enabled: false
+  mode: balanced
+  min_turn_silence: null
+  max_turn_silence: null
+  interruption_delay: 500
+  vad_threshold: null
+
+llm:
+  model: gemini-2.5-flash-lite
+  temperature: 0.2
+  max_tokens: 500
+  stream: true
+  timeout_s: 30
+
+tts:
+  sample_rate: 24000
+  encoding: pcm_s16le
+  timeout_s: 30
+  voices:
+    english: aai-kyla
+    spanish: aai-antonioluis
+    french: aai-donatien
+    german: aai-magdalena
+    italian: aai-giada
+    portuguese: aai-nelson
+
+server:
+  host: 0.0.0.0
+  port: 8000
+
+log:
+  path: logs/turns.jsonl
