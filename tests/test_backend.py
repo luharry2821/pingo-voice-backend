@@ -9,7 +9,7 @@ import wave
 
 from server.audio import iter_chunks, read_pcm16_mono, resample_pcm16
 from server.config import load_settings, merge_session_config
-from server.llm import error_strings, parse_lesson_text, parse_sse_line
+from server.llm import error_strings, parse_lesson_text
 from server.log import write_turn
 from server.session import Session
 from server.stt import stt_query_params, update_configuration_message
@@ -28,7 +28,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(params["mode"], "balanced")
         self.assertEqual(params["interruption_delay"], 500)
         self.assertIn("language learner", params["prompt"])
-        self.assertEqual(params["language_detection"], "true")
+        self.assertIs(params["language_detection"], True)
         self.assertNotIn("keyterms_prompt", params)
         self.assertNotIn("language_codes", params)
         self.assertNotIn("end_of_turn_confidence_threshold", params)
@@ -37,8 +37,7 @@ class ConfigTests(unittest.TestCase):
     def test_keyterms_config_sends_terms(self):
         settings = load_settings("configs/keyterms_on.yaml")
         params = stt_query_params(settings["stt"])
-        terms = json.loads(params["keyterms_prompt"])
-        self.assertIn("gracias", terms)
+        self.assertIn("gracias", params["keyterms_prompt"])
 
     def test_empty_client_prompt_does_not_wipe_the_server_prompt(self):
         settings = load_settings("configs/baseline.yaml")
@@ -66,7 +65,9 @@ class ConfigTests(unittest.TestCase):
         )
         self.assertEqual(message["type"], "UpdateConfiguration")
         self.assertEqual(message["keyterms_prompt"], ["hola"])
-        self.assertEqual(message["mode"], "max_accuracy")
+        self.assertEqual(message["min_turn_silence"], 400)
+        # RealTimeSessionParameters has no mode field, so set_params cannot send it.
+        self.assertNotIn("mode", message)
         self.assertNotIn("end_of_turn_confidence_threshold", message)
 
     def test_system_prompt_refuses_silent_correction(self):
@@ -106,13 +107,66 @@ class LessonParseTests(unittest.TestCase):
         self.assertEqual(parsed["translation"], "Tengo frío.")
         self.assertEqual(error_strings(parsed["detected_errors"]), ["soy -> tengo"])
 
-    def test_sse_line(self):
-        piece, usage, done = parse_sse_line('data: {"choices":[{"delta":{"content":"{"}}]}')
-        self.assertEqual(piece, "{")
-        self.assertFalse(done)
-        self.assertEqual(parse_sse_line("data: [DONE]")[2], True)
-        _, usage, _ = parse_sse_line('data: {"choices":[],"usage":{"input_tokens":3,"output_tokens":4}}')
-        self.assertEqual(usage["input_tokens"], 3)
+    def test_plain_text_is_the_translation(self):
+        parsed = parse_lesson_text("just say hola")
+        self.assertEqual(parsed["translation"], "just say hola")
+        self.assertEqual(parsed["pronunciation"], "")
+        self.assertEqual(parsed["detected_errors"], [])
+
+    def test_playground_post_shape_and_usage(self):
+        import server.llm as llm
+
+        captured = {}
+
+        class Response:
+            status_code = 200
+            text = ""
+
+            def json(self):
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": (
+                                    '{"translation":"Hola","pronunciation":"OH-la",'
+                                    '"tip":"Short.","detected_errors":[]}'
+                                )
+                            }
+                        }
+                    ],
+                    "usage": {"input_tokens": 11, "output_tokens": 7},
+                }
+
+        def fake_post(url, headers=None, json=None, timeout=None):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["json"] = json
+            return Response()
+
+        original = llm.requests.post
+        llm.requests.post = fake_post
+        try:
+            lesson = _run(
+                llm.GatewayLLM(
+                    "secret",
+                    {
+                        "model": "qwen3.5-4b-32k-fast",
+                        "system_prompt": "You are Pingo. {target}",
+                        "timeout_s": 5,
+                    },
+                ).complete("hello", "en", 0.9, "Spanish")
+            )
+        finally:
+            llm.requests.post = original
+        self.assertEqual(captured["url"], "https://llm-gateway.assemblyai.com/v1/chat/completions")
+        self.assertEqual(captured["headers"], {"authorization": "secret"})
+        self.assertEqual(captured["json"]["model"], "qwen3.5-4b-32k-fast")
+        self.assertEqual([item["role"] for item in captured["json"]["messages"]], ["system", "user"])
+        self.assertNotIn("response_format", captured["json"])
+        self.assertEqual(set(captured["json"]), {"model", "messages"})
+        self.assertEqual(lesson.translation, "Hola")
+        self.assertEqual(lesson.tokens_in, 11)
+        self.assertEqual(lesson.tokens_out, 7)
 
 
 class _FakeSTT:
@@ -277,7 +331,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(row["usage"]["llm_output_tokens"], 40)
         self.assertGreater(row["usage"]["tts_characters"], 0)
         self.assertEqual(row["config"]["mode"], "balanced")
-        self.assertEqual(row["config"]["llm_model"], "gemini-2.5-flash-lite")
+        self.assertEqual(row["config"]["llm_model"], "qwen3.5-4b-32k-fast")
         self.assertEqual(row["config"]["llm_done"], "full_response")
         self.assertFalse(row["barge_in"])
         self.assertEqual(row["stt_partial_first"], "how do I say")

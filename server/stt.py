@@ -1,25 +1,27 @@
-"""AssemblyAI Universal-3.6 Pro streaming speech-to-text.
+"""Streaming speech-to-text through AssemblyAI's official SDK.
 
-Connect:  wss://streaming.assemblyai.com/v3/ws
-Auth:     Authorization header, the raw API key (no "Bearer ").
-Audio:    binary frames of 16 kHz pcm_s16le.
+This is the playground pattern: a RealTimeTranscriber, event handlers, then
+connect / stream / disconnect. The SDK runs its own threads. Events are
+handed back to the asyncio session with run_coroutine_threadsafe.
 
-We do not send `end_of_turn_confidence_threshold` (Universal Streaming only)
-and we do not set the streaming `llm_gateway` parameter. The lesson is a
-separate chat-completions call so a failed generation cannot swallow the turn.
+`mode` is a connect parameter. The SDK's set_params model (RealTimeSessionParameters)
+has no `mode` field, so a mid-session mode change is kept for the next start.
+`end_of_turn_confidence_threshold` and the streaming `llm_gateway` parameter
+are never sent.
 """
 
 import asyncio
-import json
 import logging
-from urllib.parse import urlencode
 
-import websockets
+from assemblyai.streaming.v3 import (
+    RealTimeEvents,
+    RealTimeParameters,
+    RealTimeSessionParameters,
+    RealTimeTranscriber,
+    RealTimeTranscriberOptions,
+)
 
 logger = logging.getLogger("pingo.stt")
-
-STT_URL = "wss://streaming.assemblyai.com/v3/ws"
-API_VERSION = "2025-05-12"
 
 UPDATABLE = (
     "prompt",
@@ -33,23 +35,29 @@ UPDATABLE = (
     "agent_context",
 )
 
+# What set_params can actually carry. `mode` is not one of them.
+SESSION_FIELDS = set(RealTimeSessionParameters.model_fields) - {
+    "end_of_turn_confidence_threshold",
+    "min_end_of_turn_silence_when_confident",
+}
+
 KEYTERMS_MAX = 100
 KEYTERM_CHARS = 50
 TEXT_CHARS = 1750
 
 
 def stt_query_params(stt):
-    """Query fields actually sent. Omitted fields keep the server default.
+    """Fields passed to RealTimeParameters. Omitted fields keep the server default.
 
-    Empty `language_codes` is left unset so the model code-switches across all
-    32 languages. `mode` and `interruption_delay` are sent: both are documented
-    for universal-3-6-pro. `prompt` is sent when it is non-empty.
+    Empty language_codes stays unset so the model code-switches across all 32
+    languages. mode and interruption_delay are included. prompt is included
+    when it is non-empty.
     """
     params = {
-        "speech_model": stt.get("speech_model") or "universal-3-6-pro",
         "sample_rate": int(stt.get("sample_rate") or 16000),
         "encoding": stt.get("encoding") or "pcm_s16le",
-        "language_detection": "true" if stt.get("language_detection", True) else "false",
+        "speech_model": stt.get("speech_model") or "universal-3-6-pro",
+        "language_detection": bool(stt.get("language_detection", True)),
     }
     if stt.get("mode"):
         params["mode"] = stt["mode"]
@@ -60,10 +68,10 @@ def stt_query_params(stt):
         params["prompt"] = prompt[:TEXT_CHARS]
     codes = [code for code in (stt.get("language_codes") or []) if code]
     if codes:
-        params["language_codes"] = json.dumps(codes)
+        params["language_codes"] = codes
     terms = clip_keyterms(stt.get("keyterms_prompt") or [])
     if terms:
-        params["keyterms_prompt"] = json.dumps(terms)
+        params["keyterms_prompt"] = terms
     if stt.get("agent_context_enabled") and (stt.get("agent_context") or "").strip():
         params["agent_context"] = str(stt["agent_context"])[:TEXT_CHARS]
     if stt.get("min_turn_silence") is not None:
@@ -71,17 +79,25 @@ def stt_query_params(stt):
     if stt.get("max_turn_silence") is not None:
         params["max_turn_silence"] = int(stt["max_turn_silence"])
     if stt.get("vad_threshold") is not None:
-        params["vad_threshold"] = stt["vad_threshold"]
+        params["vad_threshold"] = float(stt["vad_threshold"])
     return params
 
 
+def build_parameters(params):
+    """The object passed to RealTimeTranscriber.connect."""
+    return RealTimeParameters(**params)
+
+
 def update_configuration_message(changes, stt):
-    """An UpdateConfiguration body, or None when there is nothing to send."""
+    """Fields for set_params, or None when the SDK cannot apply the change.
+
+    `mode` is dropped here: RealTimeSessionParameters does not have it.
+    """
     if not changes:
         return None
-    body = {"type": "UpdateConfiguration"}
+    body = {}
     for key in UPDATABLE:
-        if key not in changes:
+        if key not in changes or key not in SESSION_FIELDS:
             continue
         if key == "agent_context" and not stt.get("agent_context_enabled"):
             continue
@@ -101,9 +117,12 @@ def update_configuration_message(changes, stt):
             value = str(value)[:TEXT_CHARS]
         elif key in ("min_turn_silence", "max_turn_silence", "interruption_delay"):
             value = int(value)
+        elif key == "vad_threshold":
+            value = float(value)
         body[key] = value
-    if len(body) == 1:
+    if not body:
         return None
+    body["type"] = "UpdateConfiguration"
     return body
 
 
@@ -119,73 +138,100 @@ def clip_keyterms(terms):
     return cleaned
 
 
-def build_url(params):
-    return STT_URL + "?" + urlencode(params)
+def _event_dict(event):
+    if hasattr(event, "model_dump"):
+        return event.model_dump(mode="json")
+    return event.dict()
 
 
 class StreamingSTT:
-    """One upstream session. The reader task calls on_event with each JSON message."""
+    """One SDK streaming session. on_event receives plain dicts, same as before."""
 
     def __init__(self, api_key, params, on_event):
         self.api_key = api_key
         self.params = params
         self.on_event = on_event
-        self.ws = None
-        self._reader = None
+        self._client = None
+        self._loop = None
+        self._open = False
+        self._connect_error = None
 
     async def connect(self):
-        self.ws = await websockets.connect(
-            build_url(self.params),
-            additional_headers={
-                "Authorization": self.api_key,
-                "AssemblyAI-Version": API_VERSION,
-            },
-            open_timeout=15,
-            max_size=8 * 1024 * 1024,
+        self._loop = asyncio.get_running_loop()
+        # Same construction as the AssemblyAI streaming playground snippet.
+        self._client = RealTimeTranscriber(
+            RealTimeTranscriberOptions(
+                api_key=self.api_key,
+                api_host="streaming.assemblyai.com",
+                connect_timeout=15,
+            )
         )
-        self._reader = asyncio.create_task(self._read())
+        self._client.on(RealTimeEvents.Begin, self._on_begin)
+        self._client.on(RealTimeEvents.Turn, self._on_turn)
+        self._client.on(RealTimeEvents.SpeechStarted, self._on_speech_started)
+        self._client.on(RealTimeEvents.Termination, self._on_terminated)
+        self._client.on(RealTimeEvents.Error, self._on_error)
+        await asyncio.to_thread(self._client.connect, build_parameters(self.params))
+        thread = getattr(self._client, "_write_thread", None)
+        if thread is None or not thread.is_alive():
+            message = self._connect_error or "Speech-to-text did not connect."
+            self._client = None
+            raise RuntimeError(message)
+        self._open = True
 
     async def send_audio(self, pcm: bytes):
-        if self.ws is not None:
-            await self.ws.send(pcm)
+        # stream() only enqueues. 50 ms PCM16 frames are what the SDK example sends.
+        if self._client is not None and pcm:
+            self._client.stream(pcm)
 
     async def send_json(self, payload: dict):
-        if self.ws is not None:
-            await self.ws.send(json.dumps(payload))
+        if self._client is None or not payload:
+            return
+        fields = {key: value for key, value in payload.items() if key in SESSION_FIELDS}
+        if not fields:
+            return
+        self._client.set_params(RealTimeSessionParameters(**fields))
 
     async def close(self):
-        ws = self.ws
-        self.ws = None
-        if ws is not None:
-            try:
-                await ws.send(json.dumps({"type": "Terminate"}))
-            except Exception:
-                logger.debug("terminate send failed", exc_info=True)
-            try:
-                await ws.close()
-            except Exception:
-                logger.debug("websocket close failed", exc_info=True)
-        reader = self._reader
-        self._reader = None
-        if reader is not None:
-            reader.cancel()
+        client = self._client
+        self._client = None
+        self._open = False
+        if client is not None:
+            await asyncio.to_thread(client.disconnect, True)
 
-    async def _read(self):
+    def _on_begin(self, _client, event):
+        self._schedule(_event_dict(event))
+
+    def _on_turn(self, _client, event):
+        self._schedule(_event_dict(event))
+
+    def _on_speech_started(self, _client, event):
+        self._schedule(_event_dict(event))
+
+    def _on_terminated(self, _client, event):
+        logger.info("STT terminated: %s", _event_dict(event))
+
+    def _on_error(self, _client, error):
+        text = getattr(error, "args", ("",))[0] or str(error)
+        if not self._open:
+            self._connect_error = text
+            return
+        self._schedule({"type": "Error", "error": text})
+
+    def _schedule(self, message):
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            return
         try:
-            async for raw in self.ws:
-                if isinstance(raw, bytes):
-                    continue
-                try:
-                    message = json.loads(raw)
-                except json.JSONDecodeError:
-                    logger.warning("speech-to-text sent non-JSON text")
-                    continue
-                await self.on_event(message)
-        except asyncio.CancelledError:
-            raise
-        except websockets.ConnectionClosed as exc:
-            await self.on_event(
-                {"type": "Error", "error": f"Speech-to-text connection closed ({exc.code})."}
-            )
-        except Exception as exc:
-            await self.on_event({"type": "Error", "error": f"Speech-to-text failed: {exc}"})
+            future = asyncio.run_coroutine_threadsafe(self.on_event(message), loop)
+        except RuntimeError:
+            logger.debug("event loop closed before an STT event could be delivered")
+            return
+        future.add_done_callback(_log_handler_error)
+
+
+def _log_handler_error(future):
+    try:
+        future.result()
+    except Exception:
+        logger.exception("speech-to-text event handler failed")

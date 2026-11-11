@@ -27,10 +27,12 @@ stt:
   vad_threshold: null
 
 llm:
-  model: gemini-2.5-flash-lite
+  # Same model choice as baseline. gemma-4-31b is the other model this key
+  # can call, and the one that supports response_format.
+  model: qwen3.5-4b-32k-fast
   temperature: 0.2
   max_tokens: 500
-  stream: true
+  stream: false
   timeout_s: 30
 
 tts:

@@ -3,3 +3,5 @@ uvicorn==0.54.0
 httpx==0.28.1
 websockets==17.4
 PyYAML==6.0.3
+assemblyai==1.9.1
+requests==2.34.2

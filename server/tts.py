@@ -1,13 +1,20 @@
-"""AssemblyAI text-to-speech. HTTP stream of 24 kHz pcm_s16le.
+"""Text-to-speech through AssemblyAI's official SDK.
 
-POST https://tts.us.assemblyai.com/v1/speech
-`language` is a full name (`spanish`), not a code (`es`).
-Each language is pinned to its catalog voice so eval runs stay repeatable.
+    tts = TextToSpeech(api_key=...)
+    with tts.stream(text, TTSConfig(language="spanish", ...)) as speech:
+        for chunk in speech:
+            play(chunk)
+
+The HTTP route is still POST /v1/speech. Chunks are not sample-aligned, so
+an odd trailing byte is held until the next one. The first yielded chunk is
+the first audio byte this process received.
 """
 
-import httpx
+import asyncio
+import threading
 
-TTS_URL = "https://tts.us.assemblyai.com/v1/speech"
+from assemblyai import Client, Settings, TTSConfig, TTSError as SdkTTSError, TextToSpeech
+
 TTS_MAX_CHARS = 5000
 
 
@@ -19,69 +26,86 @@ class GatewayTTS:
     def __init__(self, api_key, tts_settings):
         self.api_key = api_key
         self.settings = tts_settings
+        self._tts = None
 
     def voice_for(self, language_name):
         return (self.settings.get("voices") or {}).get(language_name) or None
 
-    async def stream(self, text, language_name, meta):
-        """Yield even PCM16 chunks. `meta` receives sample_rate and billed_chars.
+    def _client(self):
+        seconds = float(self.settings.get("timeout_s") or 30)
+        if self._tts is None:
+            http = Client(settings=Settings(api_key=self.api_key, tts_http_timeout=seconds))
+            self._tts = TextToSpeech(client=http)
+        else:
+            self._tts.client.settings.tts_http_timeout = seconds
+        return self._tts
 
-        The caller stamps time-to-first-audio when the first chunk arrives,
-        which is when this process has the first TTS byte.
-        """
+    async def stream(self, text, language_name, meta):
         spoken = (text or "").strip()[:TTS_MAX_CHARS]
         if not spoken:
             return
         seconds = float(self.settings.get("timeout_s") or 30)
-        body = {
-            "text": spoken,
-            "language": language_name,
-            "sample_rate": int(self.settings.get("sample_rate") or 24000),
-            "encoding": self.settings.get("encoding") or "pcm_s16le",
-            "container": "raw",
-            "stream": True,
-        }
+        config = TTSConfig(
+            language=language_name,
+            sample_rate=int(self.settings.get("sample_rate") or 24000),
+            encoding="pcm_s16le",
+            container="raw",
+        )
         voice = self.voice_for(language_name)
         if voice:
-            body["voice_id"] = voice
-        timeout = httpx.Timeout(connect=10.0, read=seconds, write=10.0, pool=10.0)
-        headers = {"Authorization": self.api_key}
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                async with client.stream("POST", TTS_URL, headers=headers, json=body) as response:
-                    if response.status_code >= 400:
-                        detail = (await response.aread()).decode("utf-8", "replace")[:300]
-                        raise TTSError(f"Speech synthesis returned HTTP {response.status_code}: {detail}")
-                    meta["sample_rate"] = _int_header(
-                        response.headers.get("x-tts-sample-rate"), body["sample_rate"]
-                    )
-                    meta["billed_chars"] = _int_header(
-                        response.headers.get("x-tts-billed-characters"), len(spoken)
-                    )
-                    pending = b""
-                    async for chunk in response.aiter_bytes():
-                        if not chunk:
-                            continue
+            config = TTSConfig(
+                voice_id=voice,
+                language=language_name,
+                sample_rate=config.sample_rate,
+                encoding="pcm_s16le",
+                container="raw",
+            )
+        loop = asyncio.get_running_loop()
+        queue = asyncio.Queue()
+        stop = threading.Event()
+
+        def worker():
+            pending = b""
+            try:
+                with self._client().stream(spoken, config) as speech:
+                    info = speech.info
+                    meta["sample_rate"] = info.sample_rate
+                    meta["billed_chars"] = info.billed_characters
+                    for chunk in speech:
+                        if stop.is_set():
+                            break
                         pending += chunk
                         even = len(pending) - (len(pending) % 2)
                         if even:
-                            yield pending[:even]
+                            loop.call_soon_threadsafe(queue.put_nowait, pending[:even])
                             pending = pending[even:]
-                    if pending:
-                        yield pending + b"\x00"
-        except TTSError:
-            raise
-        except httpx.TimeoutException as exc:
-            raise TTSError(f"Speech synthesis timed out after {int(seconds)} seconds.") from exc
-        except httpx.HTTPError as exc:
-            raise TTSError(f"Speech synthesis could not be reached ({exc.__class__.__name__}).") from exc
+                    if pending and not stop.is_set():
+                        loop.call_soon_threadsafe(queue.put_nowait, pending + b"\x00")
+            except SdkTTSError as exc:
+                loop.call_soon_threadsafe(queue.put_nowait, _clean(exc, seconds))
+            except Exception as exc:
+                loop.call_soon_threadsafe(queue.put_nowait, _clean(exc, seconds))
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)
+
+        threading.Thread(target=worker, name="pingo-tts", daemon=True).start()
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    return
+                if isinstance(item, Exception):
+                    raise item
+                yield item
+        finally:
+            stop.set()
 
 
-def _int_header(value, fallback):
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return fallback
+def _clean(exc, seconds):
+    text = str(exc)
+    if "timeout" in text.lower() or "timed out" in text.lower():
+        return TTSError(f"Speech synthesis timed out after {int(seconds)} seconds.")
+    return TTSError(f"Speech synthesis failed: {text}")
 
 
 def audio_ms(nbytes, sample_rate):

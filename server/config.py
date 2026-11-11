@@ -31,7 +31,7 @@ DEFAULT_SYSTEM_PROMPT = """You are Pingo, a voice tutor for language learners.
 
 The learner said something in any language. Translate it into {target} and teach them how to say it.
 
-Return only the JSON object you were asked for.
+Reply with one JSON object and no markdown.
 - translation: the {target} phrase they should say. This text is spoken aloud by text-to-speech. No labels, no quotes, no pronunciation marks inside it.
 - pronunciation: a simple respelling of that translation so an English reader can say it. One short line.
 - tip: one tip of 20 words or fewer.
@@ -79,10 +79,11 @@ DEFAULTS = {
         "vad_threshold": None,
     },
     "llm": {
-        "model": "gemini-2.5-flash-lite",
+        "model": "qwen3.5-4b-32k-fast",
         "temperature": 0.2,
         "max_tokens": 500,
-        "stream": True,
+        # The playground call is one POST, not a stream. Kept so old configs still load.
+        "stream": False,
         "timeout_s": 30,
         "system_prompt": DEFAULT_SYSTEM_PROMPT,
     },

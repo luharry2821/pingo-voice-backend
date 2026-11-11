@@ -106,9 +106,9 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 | `stt.max_turn_silence` | unset | only when set | Silence that forces the turn to end. The main lever for hesitant-pause cutoffs. |
 | `stt.vad_threshold` | unset (server default 0.2) | only when set | Raise it if echo or noise causes false barge-ins. |
 | `stt.agent_context_enabled` | `false` | — | When true, after each reply the server sends `UpdateConfiguration` with `agent_context` set to the spoken translation (max 1750 characters). Same fidelity risk as keyterms, so the baseline leaves it off. |
-| `llm.model` | `gemini-2.5-flash-lite` | — | Fast model that supports JSON schema. Swap with `--set llm.model=...`. |
-| `llm.temperature` | `0.2` | — | Low so eval runs repeat. |
-| `llm.stream` | `true` | — | Used only to stamp time-to-first-token. TTS waits for the full JSON. |
+| `llm.model` | `qwen3.5-4b-32k-fast` | — | The model this key can call that does not support `response_format`. `gemma-4-31b` is the other allowed model, and that one does support `response_format`. Anything else, including `gemini-2.5-flash-lite`, returns 400. |
+| `llm.temperature` | `0.2` | logged, not sent | The playground body is only `model` and `messages`. Temperature stays in the JSONL config. |
+| `llm.stream` | `false` | no | The playground call is one POST. `llm_first_token` is null. |
 | `llm.timeout_s` | `30` | — | Overall deadline. The client gets "The tutor model timed out after 30 seconds." |
 | `llm.system_prompt` | see `server/config.py` | — | Must not silently correct the learner. It has to name the specific difference. `{target}` is replaced with the language name. |
 | `tts.voices.*` | catalog default per language | `voice_id` | `english`→`aai-kyla`, `spanish`→`aai-antonioluis`, `french`→`aai-donatien`, `german`→`aai-magdalena`, `italian`→`aai-giada`, `portuguese`→`aai-nelson`. TTS `language` is the full name. |
@@ -151,7 +151,7 @@ One JSONL object per final STT turn, written once the tutor reply has finished o
     "mode": "balanced",
     "language_codes": [],
     "keyterms_prompt": [],
-    "llm_model": "gemini-2.5-flash-lite",
+    "llm_model": "qwen3.5-4b-32k-fast",
     "temperature": 0.2,
     "llm_done": "full_response"
   },
@@ -163,7 +163,7 @@ One JSONL object per final STT turn, written once the tutor reply has finished o
     "end_of_turn_confidence": 1.0
   },
   "llm": {
-    "model": "gemini-2.5-flash-lite",
+    "model": "qwen3.5-4b-32k-fast",
     "translation": "Tengo mucho frío.",
     "pronunciation": "TEN-go MOO-cho FREE-o",
     "tip": "Use tener for age and for being cold.",
@@ -210,36 +210,45 @@ All five `timings_ms` values are wall-clock epoch milliseconds from `time.time()
 2. **All AssemblyAI.** Universal-3.6 Pro Realtime, then the LLM Gateway, then TTS. One key, one vendor. The deprecated managed Voice Agent API is not used.
 3. **`universal-3-6-pro` with `language_detection=true`.** The model code-switches across its languages in one stream. The detected language is shown to the learner and passed to the tutor.
 4. **`mode=balanced`, with `max_turn_silence` exposed.** Learners hesitate. Balanced waits up to 1280 ms. Raising `max_turn_silence` is the cutoff experiment. `min_turn_silence` and `vad_threshold` stay at the preset unless a run sets them.
-5. **`mode` and `interruption_delay` are sent.** Both are documented for universal-3-6-pro (turn detection and the mid-stream configuration page). The API reference still labels them Universal-3.5 Pro only; unrecognized query params are ignored rather than rejected, so `scripts/verify_params.py` checks the SessionBegins echo. See below.
+5. **`mode` and `interruption_delay` are sent.** A live check on Nov 10, 2026 (PT) showed `mode` echoed on `universal-3-6-pro`. `interruption_delay` is validated (a value outside 0–1000 ms returns error 3006) but is not in the SessionBegins echo. `prompt` was not rejected and was not echoed, so it stays unconfirmed. See below.
 6. **`keyterms_prompt` off by default.** It protects error preservation. `configs/keyterms_on.yaml` turns it on. Enable it in production only if the eval shows no loss on planted mistakes.
 7. **`agent_context` off by default.** When enabled, the tutor's last spoken line is sent with `UpdateConfiguration` so a short repeat ("estación") has context. Same risk as keyterms: it can erase the mistake you wanted to hear.
 8. **Barge-in on `SpeechStarted`.** That event fires only once there is a real transcript, not on noise. It cancels an in-flight LLM or TTS call and sends `barge_in`.
 9. **Six target languages.** English, Spanish, French, German, Italian, Portuguese. The UI should not offer Japanese or Hindi as something the tutor can speak.
-10. **Structured JSON at low temperature.** The lesson is `{translation, pronunciation, tip, detected_errors}`. The system prompt says to never silently correct the transcript and to name the specific difference.
+10. **JSON from the prompt, not `response_format`.** The default model, `qwen3.5-4b-32k-fast`, does not support `response_format`. The system prompt asks for `{translation, pronunciation, tip, detected_errors}` and the server parses that text, stripping code fences. If the reply is not JSON, the whole text is used as the translation. `gemma-4-31b` is the other model this key can call, and it does support `response_format`; the client still uses the same prompt-and-parse path. The prompt also says to never silently correct the transcript and to name the specific difference.
 11. **Separate chat-completions call, not the streaming `llm_gateway` parameter.** The lesson has to be structured so the card and the scorer can read it, and the stage timings have to be ours. The streaming `llm_gateway` query parameter can run a prompt inside the STT socket and would save a network hop, but a failed gateway call returns nothing. Using it would need its own timeout and a fallback to this chat-completions call. That is a latency experiment, not the baseline. We also do not start the LLM on a partial, no matter how high `end_of_turn_confidence` is.
 12. **File mode plus one JSONL line per final turn.** Live and eval share `Session`, so the latency numbers come from the same code path. The log is append-only.
 
 ## Live verification
 
-**Not run.** `ASSEMBLYAI_API_KEY` was not available in the environment that built this repo.
+Checked against the real API on Nov 10, 2026 (PT), on commit `e2326c3` and the follow-up client change.
 
-What the docs say, as of 11 Nov 2026:
+**LLM Gateway.** This key can call two models:
 
-- The [streaming API reference](https://www.assemblyai.com/docs/streaming/api-spec/streaming-websocket) still labels `prompt`, `mode`, and `interruption_delay` "Universal-3.5 Pro only". Its SessionBegins example nevertheless shows `"model": "universal-3-6-pro"` with `"mode": "balanced"`, and it warns that unrecognized query parameters are **ignored**, not rejected.
-- The [turn-detection guide](https://www.assemblyai.com/docs/streaming/turn-detection) describes `mode`, `min_turn_silence`, `max_turn_silence`, `vad_threshold`, and `interruption_delay` for Universal-3.6 Pro.
-- The [mid-stream configuration](https://www.assemblyai.com/docs/streaming/updating-configuration-mid-stream) page lists `mode`, `prompt`, `interruption_delay`, and `agent_context` for U3 Pro. `agent_context` is explicitly documented for 3.6 on the connection itself.
+| Model | `response_format` | What we do |
+|---|---|---|
+| `qwen3.5-4b-32k-fast` (default) | not supported | Ask for JSON in the system prompt and parse the text |
+| `gemma-4-31b` | supported | Same prompt-and-parse path. Switch with `--set llm.model=gemma-4-31b` |
 
-Because of that, the server **sends `mode` and `interruption_delay` by default**, and sends `prompt` when it is non-empty. It does not send `end_of_turn_confidence_threshold`.
+Every other model, including `gemini-2.5-flash-lite`, returns HTTP 400: `Your account does not have access to this LLM Gateway model`.
 
-Check the echo with a real key:
+**Streaming parameters on `universal-3-6-pro`.**
+
+| Parameter | Result |
+|---|---|
+| `mode` | Accepted. The SessionBegins echo returns the value that was sent. |
+| `interruption_delay` | Validated. A value outside 0–1000 ms returns error 3006, `must be between 0 and 1000 ms`. It is not in the SessionBegins echo. |
+| `prompt` | Not rejected, and not echoed. Unconfirmed: the server may be applying it or ignoring it. |
+
+The server sends `mode` (default `balanced`) and `interruption_delay` (default 500), and sends `prompt` when it is non-empty. It does not send `end_of_turn_confidence_threshold`. The SDK's `set_params` model has no `mode` field, so a mid-session mode change waits for the next `start`.
+
+Re-check with a key:
 
 ```bash
 python scripts/verify_params.py
 ```
 
-The script connects with `mode=min_latency` and `interruption_delay=123` (not the balanced defaults, so an echo of `balanced` means the value was ignored). It prints `ACCEPT`, `IGNORE`, or `UNKNOWN` for `mode`, `interruption_delay`, and `prompt`, then tries an invalid mode and an out-of-range `interruption_delay`. `prompt` and `interruption_delay` are not in the published SessionBegins schema, so "UNKNOWN" plus no Error frame means "not rejected" rather than "applied". If the echo shows a parameter was ignored, stop sending it: set `stt.mode` empty via config only after changing `server/stt.py` (`stt_query_params`), or set `interruption_delay` to null and `prompt` to `""`.
-
-A real file-mode run, once a key is present:
+A file-mode run:
 
 ```bash
 python -m server --input clip.wav --case-id smoke-1 --session-id smoke-1 --log logs/turns.jsonl
@@ -253,7 +262,9 @@ Confirm a transcript, a lesson on stdout, and audio in `logs/last_reply.pcm`.
 python -m unittest discover -s tests -t .
 ```
 
-The tests use fake STT, LLM, and TTS clients. They cover the query string, the eval JSONL line, append-only logging, barge-in, replay, a second `start`, and one WebSocket turn.
+The tests fake the SDK streaming client and the gateway `requests.post`. They cover the eval JSONL line, append-only logging, barge-in, replay, a second `start`, and one WebSocket turn.
+
+Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming playground pattern). Text-to-speech uses the SDK `TextToSpeech.stream` call. The lesson uses the LLM Gateway playground `requests.post` shown above, with header `authorization: <key>` and no `Bearer` prefix. SDK version: `assemblyai==1.9.1`.
 
 ## Known gaps
 
@@ -274,9 +285,9 @@ The tests use fake STT, LLM, and TTS clients. They cover the query string, the e
 | `server/__main__.py` | CLI: WebSocket server, or `--input` file mode |
 | `server/app.py` | FastAPI app, `GET /health`, `WS /ws` |
 | `server/session.py` | One learner session: STT events, lesson, TTS, barge-in, log |
-| `server/stt.py` | Streaming STT client and the query-string rules |
-| `server/llm.py` | LLM Gateway chat completions, JSON schema, timeouts |
-| `server/tts.py` | TTS HTTP stream, timeouts |
+| `server/stt.py` | SDK `RealTimeTranscriber` and the parameter rules |
+| `server/llm.py` | Playground `requests.post` to the LLM Gateway |
+| `server/tts.py` | SDK `TextToSpeech.stream` |
 | `server/config.py` | Defaults, YAML, env, `--set`, per-session merge |
 | `server/audio.py` | WAV to 16 kHz mono PCM16, real-time chunking |
 | `server/log.py` | Append one JSONL line |

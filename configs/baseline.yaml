@@ -23,10 +23,13 @@ stt:
   vad_threshold: null
 
 llm:
-  model: gemini-2.5-flash-lite
+  # This key can call qwen3.5-4b-32k-fast (no response_format; the prompt asks
+  # for JSON and we parse the text) or gemma-4-31b (that one supports
+  # response_format). Other models return 400.
+  model: qwen3.5-4b-32k-fast
   temperature: 0.2
   max_tokens: 500
-  stream: true
+  stream: false
   timeout_s: 30
 
 tts:
