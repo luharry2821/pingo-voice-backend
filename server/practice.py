@@ -24,6 +24,52 @@ EXTRA_WORDS = 3
 
 VERDICTS = ("correct", "close", "try_again")
 
+# Everyday English words. A turn made only of these is the learner asking for a
+# new phrase in their own language ("Hello", "Good morning", "coffee"), not a
+# try at the practice phrase, even when it is spelled a bit like it
+# ("coffee" vs "Café", "my name is" vs "Mi nombre es"). Speech-to-text often
+# labels short Spanish words as English, so the detected language alone cannot
+# make this call.
+ENGLISH_WORDS = frozenset(
+    """
+    a about after afternoon again ago all also always am an and angry any anything are around as ask at
+    away bad bathroom be beach beautiful bed beer been before best better big bill birthday book bored
+    boy banana bread breakfast brother bus but buy by bye call can cant car cat cheap check cheers cheese child
+    chicken chocolate city close coffee cold come congratulations cool could cousin dad day dear delicious did didnt dinner do
+    does doing dog dont down drink eat egg eight eleven enjoy evening every everything excuse expensive
+    family far fast father feel fine first fish five food for four friend friends from fun funny gift girl
+    give glad go going good goodbye goodnight great guys had happy has hate have he hear hello help her
+    here hey hi him his home hope horse hot hotel hour house how hows hungry husband i ill im in is isnt
+    it its job juice just kid kind kiss know last late later laugh learn leave left let lets like little live
+    long look lot love lunch am made make man many may maybe me meat meet menu milk mine minute miss
+    mom money more morning mother much music my name near need never new nice night nine no not nothing
+    now of off oh ok okay old on one only open or orange other our out over pardon party pay people
+    phone please pleasure pretty rain ready really restaurant rice right room sad say school see seven she
+    shop should sick sister sit six sleep slow small so some something son sorry soon speak station
+    stop store street sun sure sweet table take taxi tea teacher tell ten thank thanks that thats the
+    their them then there they thing think thirsty this three time tired to today together toilet
+    tomorrow tonight too train tree twelve two understand up us very wait want warm was water way we
+    weather week weekend welcome well were what whats when where which who why wife will wine with
+    without woman work would wow yeah year yes yesterday you your youre
+    """.split()
+)
+
+
+def is_native_phrase(utterance, target, native="en"):
+    """True when the turn is an everyday phrase in the learner's own language.
+
+    Only English is checked: every word must be a common English word, and at
+    least one of them must not be a word of the practice phrase itself (so "no"
+    for "No" or "pizza" for "Pizza" still count as attempts).
+    """
+    if native not in (None, "", "en", "english"):
+        return False
+    words = fold(utterance).split()
+    if not words or any(word not in ENGLISH_WORDS for word in words):
+        return False
+    target_words = set(fold(target).split())
+    return any(word not in target_words for word in words)
+
 
 def fold(text):
     """Lowercase, strip accents and punctuation, collapse spaces."""
@@ -75,9 +121,15 @@ def match_score(attempt, target, language="es"):
     return round(best, 3)
 
 
-def looks_like_attempt(attempt, target, language="es"):
-    """Short enough and close enough to be a try at the practice phrase."""
+def looks_like_attempt(attempt, target, language="es", native="en"):
+    """Short enough and close enough to be a try at the practice phrase.
+
+    A new phrase in the learner's own language is never an attempt, even when
+    it sounds a little like the practice phrase ("coffee" after "Café").
+    """
     if not target or not attempt:
+        return False
+    if is_native_phrase(attempt, target, native):
         return False
     attempt_words = fold(attempt).split()
     target_words = fold(target).split()

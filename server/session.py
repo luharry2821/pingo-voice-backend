@@ -16,7 +16,7 @@ from server.config import (
 )
 from server.log import write_turn
 from server.llm import error_strings
-from server.practice import check_attempt, looks_like_attempt, slow_text
+from server.practice import check_attempt, is_native_phrase, looks_like_attempt, slow_text
 from server.stt import UPDATABLE, StreamingSTT, stt_query_params, update_configuration_message
 from server.tts import TTSError, audio_ms
 
@@ -94,6 +94,8 @@ class Session:
         self.background = set()
         self.history = []
         self.practice_target = ""
+        # Misses on the current practice phrase. After two, the phrase is read slowly.
+        self.misses = 0
         self.native_language = "en"
         self._order_ids = {}
         self._stt_epoch = 0
@@ -377,10 +379,17 @@ class Session:
             await self._status("thinking")
             transcript = view["transcript"]
             check = None
-            if self.practice_target and looks_like_attempt(transcript, self.practice_target, self.target):
+            new_phrase = False
+            if self.practice_target and looks_like_attempt(
+                transcript, self.practice_target, self.target, self.native_language
+            ):
                 check = check_attempt(transcript, self.practice_target, self.target, view["words"])
+                check["misses_before"] = self.misses
             else:
                 self._note_native(turn, transcript)
+                # A pending practice phrase does not swallow a new phrase in the
+                # learner's own language ("Good morning" while "Hola" is pending).
+                new_phrase = is_native_phrase(transcript, self.practice_target, self.native_language)
             native = self._native_name()
             lesson = await self.llm.complete(
                 transcript=transcript,
@@ -391,11 +400,12 @@ class Session:
                 native_name=native,
                 practice_target=self.practice_target,
                 practice_check=check,
+                new_phrase=new_phrase,
             )
             record["timings_ms"]["llm_first_token"] = _ms(lesson.first_token_at)
             record["timings_ms"]["llm_done"] = _ms(lesson.done_at)
             if not lesson.unparsed:
-                self._apply_practice(lesson, check)
+                self._apply_practice(lesson, check, new_phrase)
             record["llm"] = {
                 "model": lesson.model,
                 "intent": getattr(lesson, "intent", None),
@@ -411,6 +421,7 @@ class Session:
                 "retried": bool(getattr(lesson, "retried", False)),
             }
             record["practice"] = check
+            record["routing"] = "practice_attempt" if check else ("new_phrase" if new_phrase else "model")
             record["usage"]["llm_input_tokens"] = lesson.tokens_in
             record["usage"]["llm_output_tokens"] = lesson.tokens_out
             if lesson.unparsed:
@@ -422,7 +433,7 @@ class Session:
                 record["barge_in"] = True
                 return
             order = turn.get("turn_order")
-            plans = speech_plans(lesson, native, target_name(self.target))
+            plans = speech_plans(lesson, native, target_name(self.target), slow_read=self.misses >= MISSES_BEFORE_SLOW)
             self.lessons[turn_id] = {
                 "translation": lesson.translation,
                 "target_language": self.target,
@@ -523,6 +534,8 @@ class Session:
     def _forget(self):
         self.history.clear()
         self.practice_target = ""
+        # Misses on the current practice phrase. After two, the phrase is read slowly.
+        self.misses = 0
 
     def _warm_voices(self):
         warm = getattr(self.voices, "warm", None)
@@ -547,10 +560,19 @@ class Session:
             return
         self.native_language = code
 
-    def _apply_practice(self, lesson, check):
+    def _apply_practice(self, lesson, check, new_phrase=False):
         """Ground the verdict in the practice check and move the practice phrase."""
         intent = getattr(lesson, "intent", None)
-        if check is not None and intent not in ("teach_phrase", "pronunciation"):
+        if check is None and new_phrase and intent in ("practice_attempt", "chat") and lesson.translation:
+            # A new phrase in the learner's own language is taught, never judged
+            # or answered as small talk.
+            logger.info("new %s phrase: %s -> teach_phrase", self._native_name(), intent)
+            lesson.intent = intent = "teach_phrase"
+            lesson.verdict = "none"
+            lesson.verdict_reason = ""
+        # A pronunciation breakdown after a miss is still a judged attempt: the
+        # verdict badge stays, and the slow read comes from the miss count.
+        if check is not None and intent != "teach_phrase":
             if intent != "practice_attempt" or lesson.verdict != check["verdict"]:
                 logger.info(
                     "practice check overrides the model: %s/%s -> practice_attempt/%s",
@@ -574,7 +596,11 @@ class Session:
         if intent == "practice_attempt" and not lesson.translation:
             lesson.translation = self.practice_target
         if lesson.translation and (lesson.intent != "practice_attempt" or not self.practice_target):
+            if lesson.translation != self.practice_target:
+                self.misses = 0
             self.practice_target = lesson.translation
+        if lesson.intent == "practice_attempt":
+            self.misses = 0 if lesson.verdict == "correct" else self.misses + 1
 
     def _remember(self, transcript, lesson):
         phrase = getattr(lesson, "translation", "") or ""
@@ -779,6 +805,8 @@ class Session:
             self.closed = True
 
 
+MISSES_BEFORE_SLOW = 2
+
 CANNED_VERDICT = {
     "correct": "Correct! That sounded right.",
     "close": "Close! Almost there.",
@@ -786,7 +814,7 @@ CANNED_VERDICT = {
 }
 
 
-def speech_plans(lesson, native_name, target_name_):
+def speech_plans(lesson, native_name, target_name_, slow_read=False):
     """What to say for one tutor turn, as (text, tts language, kind) segments.
 
     all: the whole turn. The reply in the learner's voice, the target phrase in
@@ -811,7 +839,8 @@ def speech_plans(lesson, native_name, target_name_):
         plan += slow_seg
     elif intent == "practice_attempt":
         if verdict != "correct":
-            plan += phrase_seg
+            # After two misses, syllables slowly, then the whole phrase.
+            plan += slow_seg if slow_read else phrase_seg
     else:
         plan += phrase_seg
     if next_prompt and plan:
