@@ -163,11 +163,13 @@ DEFAULTS = {
         "agent_context_enabled": False,
         # Documented for universal-3-6-pro. Sent on the streaming connection.
         "mode": "balanced",
-        "min_turn_silence": None,
-        "max_turn_silence": None,
+        # Learners pause mid-phrase: wait longer before ending a turn.
+        "min_turn_silence": 400,
+        "max_turn_silence": 2400,
         # Balanced preset is 500 ms. Sent explicitly so the log matches the session.
         "interruption_delay": 500,
-        "vad_threshold": None,
+        # Documented default, sent explicitly so the log matches the session.
+        "vad_threshold": 0.2,
     },
     "llm": {
         "model": "gemma-4-31b",

@@ -27,6 +27,9 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(params["speech_model"], "universal-3-6-pro")
         self.assertEqual(params["mode"], "balanced")
         self.assertEqual(params["interruption_delay"], 500)
+        self.assertEqual(params["min_turn_silence"], 400)
+        self.assertEqual(params["max_turn_silence"], 2400)
+        self.assertEqual(params["vad_threshold"], 0.2)
         self.assertIn("language learner", params["prompt"])
         self.assertIs(params["language_detection"], True)
         self.assertNotIn("keyterms_prompt", params)
@@ -364,8 +367,8 @@ class SessionTests(unittest.TestCase):
         # speech_end is the last word's end mapped onto the same wall clock.
         self.assertGreaterEqual(row["timings_ms"]["stt_final"], row["timings_ms"]["speech_end"] - 40)
         self.assertGreaterEqual(row["timings_ms"]["tts_first_audio"], row["timings_ms"]["llm_done"])
-        # 0.1s of audio plus 2s of endpointing silence.
-        self.assertAlmostEqual(row["usage"]["stt_audio_seconds"], 2.1, places=2)
+        # 0.1s of audio plus max_turn_silence (2.4s) + 0.7s of endpointing silence.
+        self.assertAlmostEqual(row["usage"]["stt_audio_seconds"], 3.2, places=2)
         self.assertEqual(row["usage"]["llm_input_tokens"], 120)
         self.assertEqual(row["usage"]["llm_output_tokens"], 40)
         self.assertGreater(row["usage"]["tts_characters"], 0)

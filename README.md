@@ -126,9 +126,9 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 | `stt.keyterms_prompt` | `[]` (omitted) | when non-empty | **Off in the baseline.** The main A/B test. Boosting the target phrase can make STT "hear" the correct form. Max 100 terms, 50 characters each. |
 | `stt.mode` | `balanced` | yes | Turn-taking preset. `min_latency` cuts pauses at 640 ms. `max_accuracy` waits 2560 ms. Balanced is 128 / 1280 ms. |
 | `stt.interruption_delay` | `500` | yes | How soon the first partial is emitted. The server adds 256 ms. Balanced and max-accuracy use 500; min-latency uses 0. |
-| `stt.min_turn_silence` | unset | only when set | Silence before an end-of-turn check. Leave unset to keep the mode preset. |
-| `stt.max_turn_silence` | unset | only when set | Silence that forces the turn to end. The main lever for hesitant-pause cutoffs. |
-| `stt.vad_threshold` | unset (server default 0.2) | only when set | Raise it if echo or noise causes false barge-ins. |
+| `stt.min_turn_silence` | `400` | yes | Silence before an end-of-turn check. Raised from the balanced preset (128 ms) so a learner's short thinking pause does not end the turn. |
+| `stt.max_turn_silence` | `2400` | yes | Silence that forces the turn to end. Raised from 1280 ms so hesitant learners are not cut off. The main lever for hesitant-pause cutoffs. |
+| `stt.vad_threshold` | `0.2` | yes | The documented default, sent explicitly. Lower it if soft speech is missed; raise it if echo or noise causes false barge-ins. |
 | `stt.agent_context_enabled` | `false` | — | When true, after each reply the server sends `UpdateConfiguration` with `agent_context` set to the spoken translation (max 1750 characters). Same fidelity risk as keyterms, so the baseline leaves it off. |
 | `llm.model` | `gemma-4-31b` | — | Sends `response_format` for the lesson schema. `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast` (or `llm.model` in YAML) selects the other model this key can call. That one does not support `response_format`. Anything else, including `gemini-2.5-flash-lite`, returns 400. |
 | `llm.temperature` | `0.2` | yes | Sent on the playground POST. |
@@ -234,7 +234,7 @@ All five `timings_ms` values are wall-clock epoch milliseconds from `time.time()
 1. **Split repos.** The frontend is in Lovable. This repo is one WebSocket server and three AssemblyAI clients. The key stays in `.env`.
 2. **All AssemblyAI.** Universal-3.6 Pro Realtime, then the LLM Gateway, then TTS. One key, one vendor. The deprecated managed Voice Agent API is not used.
 3. **`universal-3-6-pro` with `language_detection=true`.** The model code-switches across its languages in one stream. The detected language is shown to the learner and passed to the tutor.
-4. **`mode=balanced`, with `max_turn_silence` exposed.** Learners hesitate. Balanced waits up to 1280 ms. Raising `max_turn_silence` is the cutoff experiment. `min_turn_silence` and `vad_threshold` stay at the preset unless a run sets them.
+4. **`mode=balanced`, with `max_turn_silence` exposed.** Learners hesitate. Balanced waits up to 1280 ms. Raising `max_turn_silence` is the cutoff experiment. Defaults are now `min_turn_silence` 400 ms and `max_turn_silence` 2400 ms after Haramal was cut off mid-phrase on the preset values; all four turn settings are editable live from the app's Advanced settings.
 5. **`mode` and `interruption_delay` are sent.** A live check on Nov 10, 2026 (PT) showed `mode` echoed on `universal-3-6-pro`. `interruption_delay` is validated (a value outside 0–1000 ms returns error 3006) but is not in the SessionBegins echo. `prompt` was not rejected and was not echoed, so it stays unconfirmed. See below.
 6. **`keyterms_prompt` off by default.** It protects error preservation. `configs/keyterms_on.yaml` turns it on. Enable it in production only if the eval shows no loss on planted mistakes.
 7. **`agent_context` off by default.** When enabled, the tutor's last spoken line is sent with `UpdateConfiguration` so a short repeat ("estación") has context. Same risk as keyterms: it can erase the mistake you wanted to hear.
@@ -320,3 +320,7 @@ Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming
 | `server/log.py` | Append one JSONL line |
 | `configs/` | `baseline.yaml`, `keyterms_on.yaml` |
 | `scripts/verify_params.py` | Live check of `prompt`, `mode`, `interruption_delay` |
+
+## Cold starts
+
+The backend runs on Render's free plan, which sleeps after 15 minutes without traffic; the first connection after that waits about a minute. `.github/workflows/keep-warm.yml` pings `/health` every 10 minutes to keep it awake, and the Pingo page pings `/health` on load and shows a "waking Pingo up" screen until the server answers. A paid Render instance removes the sleep entirely.
