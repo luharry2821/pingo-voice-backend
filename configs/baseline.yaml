@@ -22,7 +22,8 @@ stt:
   mode: balanced
   min_turn_silence: 400
   max_turn_silence: 2400
-  interruption_delay: 500
+  # 250 ms (preset 500) so Pingo stops sooner when the learner talks over it.
+  interruption_delay: 250
   vad_threshold: 0.2
 
 llm:

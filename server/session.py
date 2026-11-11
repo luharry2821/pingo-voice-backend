@@ -24,6 +24,10 @@ logger = logging.getLogger("pingo.session")
 
 # SpeechStarted while the tutor is working means the learner talked over it.
 BUSY = ("thinking", "speaking")
+# TTS arrives faster than real time, so the server finishes sending a reply
+# seconds before the browser finishes playing it. Pad the estimated playback end
+# for network and scheduling delay.
+PLAYBACK_PAD_MS = 400
 HISTORY_TURNS = 6
 # Silence between spoken segments (reply, phrase, prompt), in milliseconds.
 GAP_MS = 250
@@ -82,6 +86,10 @@ class Session:
         self.job = None
         self.generation = 0
         self.state = "idle"
+        # Wall-clock ms when the browser should finish playing what we sent.
+        self.playback_until = 0
+        # turn_order of the final turn the tutor is currently answering.
+        self.answering_order = None
         self.lessons = {}
         self.partials = []
         self.partial_first = None
@@ -209,6 +217,8 @@ class Session:
         self.stt_session_id = None
         self.partials = []
         self.partial_first = None
+        self.answering_order = None
+        self.playback_until = 0
         self._forget()
         self._stt_epoch += 1
         self.stt = self.stt_factory(self.api_key, self.stt_query, self._on_stt)
@@ -317,9 +327,17 @@ class Session:
             await self._error(text)
         # Heartbeat, Warning, Termination: nothing for the browser to render.
 
+    def _agent_audible(self):
+        """True while the tutor is thinking, sending audio, or the browser is still playing it."""
+        return self.state in BUSY or now_ms() < self.playback_until
+
     async def _on_speech_started(self):
-        if self.state not in BUSY:
+        if not self._agent_audible():
             return
+        await self._barge_in()
+
+    async def _barge_in(self):
+        self.playback_until = 0
         self.generation += 1
         await self._cancel_job()
         await self._emit({"type": "barge_in"})
@@ -338,6 +356,11 @@ class Session:
             "transcript": turn.get("transcript") or "",
             "words": [word_view(word) for word in turn.get("words") or []],
         }
+        # Backup for SpeechStarted: real words from the learner while Pingo is
+        # still audible also stop it.
+        # A repeat of the turn Pingo is already answering is not a new interruption.
+        if view["transcript"].strip() and order != self.answering_order and self._agent_audible():
+            await self._barge_in()
         if not turn.get("end_of_turn"):
             if view["transcript"] and self.partial_first is None:
                 self.partial_first = view["transcript"]
@@ -362,6 +385,7 @@ class Session:
         self.partial_first = None
         # Stamp these here, not when the reply task runs. More audio can be
         # forwarded before that task is scheduled.
+        self.answering_order = order
         audio_mark = self.audio_bytes
         received_ms = now_ms()
         self.generation += 1
@@ -710,6 +734,7 @@ class Session:
             asyncio.create_task(pump(text, lang, queue, meta))
             for (text, lang, _kind), queue, meta in zip(segments, queues, metas)
         ]
+        play_start = now_ms()
         try:
             async with asyncio.timeout(seconds):
                 stopped = False
@@ -735,6 +760,7 @@ class Session:
                             record["timings_ms"]["tts_first_audio"] = now_ms()
                         total += len(item)
                         await self._emit(item)
+                        self.playback_until = play_start + audio_ms(total, sample_rate) + PLAYBACK_PAD_MS
         except TimeoutError as exc:
             raise TTSError(f"Speech synthesis timed out after {int(seconds)} seconds.") from exc
         finally:

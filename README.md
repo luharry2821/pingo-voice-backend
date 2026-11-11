@@ -125,7 +125,7 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 | `stt.prompt` | short learner context | when non-empty | Context about the audio, not instructions. Max 1750 characters. |
 | `stt.keyterms_prompt` | `[]` (omitted) | when non-empty | **Off in the baseline.** The main A/B test. Boosting the target phrase can make STT "hear" the correct form. Max 100 terms, 50 characters each. |
 | `stt.mode` | `balanced` | yes | Turn-taking preset. `min_latency` cuts pauses at 640 ms. `max_accuracy` waits 2560 ms. Balanced is 128 / 1280 ms. |
-| `stt.interruption_delay` | `500` | yes | How soon the first partial is emitted. The server adds 256 ms. Balanced and max-accuracy use 500; min-latency uses 0. |
+| `stt.interruption_delay` | `250` | yes | How soon the first partial is emitted. The server adds 256 ms. Lowered from the balanced preset (500) so a learner who talks over Pingo stops it sooner. Min-latency uses 0. |
 | `stt.min_turn_silence` | `400` | yes | Silence before an end-of-turn check. Raised from the balanced preset (128 ms) so a learner's short thinking pause does not end the turn. |
 | `stt.max_turn_silence` | `2400` | yes | Silence that forces the turn to end. Raised from 1280 ms so hesitant learners are not cut off. The main lever for hesitant-pause cutoffs. |
 | `stt.vad_threshold` | `0.2` | yes | The documented default, sent explicitly. Lower it if soft speech is missed; raise it if echo or noise causes false barge-ins. |

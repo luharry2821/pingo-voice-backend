@@ -166,8 +166,8 @@ DEFAULTS = {
         # Learners pause mid-phrase: wait longer before ending a turn.
         "min_turn_silence": 400,
         "max_turn_silence": 2400,
-        # Balanced preset is 500 ms. Sent explicitly so the log matches the session.
-        "interruption_delay": 500,
+        # Balanced preset is 500 ms; 250 so Pingo stops sooner when talked over.
+        "interruption_delay": 250,
         # Documented default, sent explicitly so the log matches the session.
         "vad_threshold": 0.2,
     },

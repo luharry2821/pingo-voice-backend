@@ -26,7 +26,7 @@ class ConfigTests(unittest.TestCase):
         params = stt_query_params(settings["stt"])
         self.assertEqual(params["speech_model"], "universal-3-6-pro")
         self.assertEqual(params["mode"], "balanced")
-        self.assertEqual(params["interruption_delay"], 500)
+        self.assertEqual(params["interruption_delay"], 250)
         self.assertEqual(params["min_turn_silence"], 400)
         self.assertEqual(params["max_turn_silence"], 2400)
         self.assertEqual(params["vad_threshold"], 0.2)

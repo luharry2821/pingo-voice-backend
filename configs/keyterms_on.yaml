@@ -23,7 +23,7 @@ stt:
   mode: balanced
   min_turn_silence: null
   max_turn_silence: null
-  interruption_delay: 500
+  interruption_delay: 250
   vad_threshold: null
 
 llm:
