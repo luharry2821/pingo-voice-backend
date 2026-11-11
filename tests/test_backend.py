@@ -8,7 +8,7 @@ import unittest
 import wave
 
 from server.audio import iter_chunks, read_pcm16_mono, resample_pcm16
-from server.config import load_settings, merge_session_config
+from server.config import bind_address, default_settings, load_settings, merge_session_config
 from server.llm import error_strings, parse_lesson_text
 from server.log import write_turn
 from server.session import Session
@@ -69,6 +69,15 @@ class ConfigTests(unittest.TestCase):
         # RealTimeSessionParameters has no mode field, so set_params cannot send it.
         self.assertNotIn("mode", message)
         self.assertNotIn("end_of_turn_confidence_threshold", message)
+
+    def test_local_bind_stays_on_localhost_until_port_is_set(self):
+        settings = default_settings()
+        self.assertEqual(bind_address(settings, env={}), ("127.0.0.1", 8000))
+        self.assertEqual(bind_address(settings, env={"PORT": "10000"}), ("127.0.0.1", 10000))
+        self.assertEqual(
+            bind_address(settings, host="0.0.0.0", port=443, env={"PORT": "10000"}),
+            ("0.0.0.0", 443),
+        )
 
     def test_system_prompt_refuses_silent_correction(self):
         settings = load_settings("configs/baseline.yaml")

@@ -56,9 +56,19 @@ The server listens on `ws://localhost:8000/ws`. In the Lovable project, set:
 VITE_BACKEND_WS_URL=ws://localhost:8000/ws
 ```
 
-`localhost` works when the backend runs on the same machine as the browser. From another device, use that machine's address. `GET /health` returns `{"ok": true}`.
+`localhost` works when the backend runs on the same machine as the browser. A local run binds `127.0.0.1:8000`. If `PORT` is set, that port is used instead. From another device, pass `--host 0.0.0.0`. `GET /health` returns `{"ok": true}`.
 
 CORS is open so the Lovable-hosted page can connect. A new `start` on an existing socket closes the previous STT session and opens a fresh one. A dropped socket closes the upstream STT connection.
+
+## Deploy on Render
+
+`render.yaml` is a Blueprint for one free Python web service named `pingo-voice-backend`.
+
+1. In Render: **New > Blueprint**, and pick this repo.
+2. When it asks for `ASSEMBLYAI_API_KEY`, paste the key. The Blueprint does not contain a value.
+3. After the deploy, set the Pingo app's backend URL to `wss://<service>.onrender.com/ws`.
+
+The free tier sleeps after inactivity. The first connection after a sleep can take about 30–60 seconds while the service wakes up.
 
 ## WebSocket protocol
 

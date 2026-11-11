@@ -15,7 +15,7 @@ import time
 import uvicorn
 
 from server.audio import iter_chunks, read_pcm16_mono, silence
-from server.config import load_dotenv, load_settings, normalize_target
+from server.config import bind_address, load_dotenv, load_settings, normalize_target
 from server.llm import GatewayLLM
 from server.app import create_app
 from server.session import Session
@@ -43,10 +43,6 @@ def main(argv=None):
     settings = load_settings(args.config, args.set)
     if args.log:
         settings["log"]["path"] = args.log
-    if args.host:
-        settings["server"]["host"] = args.host
-    if args.port:
-        settings["server"]["port"] = args.port
     if args.target_language:
         settings["target_language"] = normalize_target(args.target_language)
     api_key = os.environ.get("ASSEMBLYAI_API_KEY", "")
@@ -62,11 +58,8 @@ def main(argv=None):
             )
         )
         raise SystemExit(code)
-    uvicorn.run(
-        create_app(settings, api_key),
-        host=settings["server"]["host"],
-        port=settings["server"]["port"],
-    )
+    host, port = bind_address(settings, host=args.host, port=args.port)
+    uvicorn.run(create_app(settings, api_key), host=host, port=port)
 
 
 async def run_file(

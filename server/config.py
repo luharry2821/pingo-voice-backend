@@ -93,7 +93,8 @@ DEFAULTS = {
         "timeout_s": 30,
         "voices": dict(DEFAULT_VOICES),
     },
-    "server": {"host": "0.0.0.0", "port": 8000},
+    # Local default. Render's start command passes --host 0.0.0.0 and $PORT.
+    "server": {"host": "127.0.0.1", "port": 8000},
     "log": {"path": "logs/turns.jsonl"},
 }
 
@@ -299,6 +300,23 @@ def merge_session_config(settings, config):
     if "system_prompt" in config:
         merged["llm"]["system_prompt"] = config["system_prompt"]
     return _coerce(merged)
+
+
+def bind_address(settings, host=None, port=None, env=None):
+    """Where the WebSocket server listens.
+
+    Local runs stay on 127.0.0.1:8000. ``PORT`` (set by Render) overrides the
+    configured port. ``--host`` and ``--port`` override both.
+    """
+    env = os.environ if env is None else env
+    bind_host = settings["server"]["host"] if host is None else host
+    if port is not None:
+        bind_port = int(port)
+    elif env.get("PORT"):
+        bind_port = int(env["PORT"])
+    else:
+        bind_port = int(settings["server"]["port"])
+    return bind_host, bind_port
 
 
 def normalize_target(value):
