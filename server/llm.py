@@ -1,4 +1,4 @@
-"""Lessons from the AssemblyAI LLM Gateway, using the playground request.
+"""Tutor turns from the AssemblyAI LLM Gateway, using the playground request.
 
     response = requests.post(
         "https://llm-gateway.assemblyai.com/v1/chat/completions",
@@ -20,26 +20,41 @@ same request without response_format.
 
 import asyncio
 import json
+import logging
+import re
 import time
 
 import requests
+
+logger = logging.getLogger("pingo.llm")
 
 LLM_URL = "https://llm-gateway.assemblyai.com/v1/chat/completions"
 DEFAULT_MODEL = "gemma-4-31b"
 GEMMA_MODEL = "gemma-4-31b"
 
+INTENTS = ("teach_phrase", "pronunciation", "practice_attempt", "correction", "chat")
+VERDICTS = ("correct", "close", "try_again", "none")
+
+# One tutor turn. Every field is required so strict json_schema decoding works;
+# fields that do not apply are empty strings, "none" or [].
 LESSON_SCHEMA = {
     "type": "json_schema",
     "json_schema": {
-        "name": "pingo_lesson",
+        "name": "pingo_tutor_turn",
         "strict": True,
         "schema": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
-                "translation": {"type": "string"},
+                "intent": {"type": "string", "enum": list(INTENTS)},
+                "reply": {"type": "string"},
+                "target_phrase": {"type": "string"},
                 "pronunciation": {"type": "string"},
+                "syllables": {"type": "string"},
                 "tip": {"type": "string"},
+                "verdict": {"type": "string", "enum": list(VERDICTS)},
+                "verdict_reason": {"type": "string"},
+                "next_prompt": {"type": "string"},
                 "detected_errors": {
                     "type": "array",
                     "items": {
@@ -53,10 +68,23 @@ LESSON_SCHEMA = {
                     },
                 },
             },
-            "required": ["translation", "pronunciation", "tip", "detected_errors"],
+            "required": [
+                "intent",
+                "reply",
+                "target_phrase",
+                "pronunciation",
+                "syllables",
+                "tip",
+                "verdict",
+                "verdict_reason",
+                "next_prompt",
+                "detected_errors",
+            ],
         },
     },
 }
+
+TURN_FIELDS = ("intent", "reply", "syllables", "verdict", "verdict_reason", "next_prompt")
 
 
 class LLMError(RuntimeError):
@@ -64,7 +92,10 @@ class LLMError(RuntimeError):
 
 
 class Lesson:
-    def __init__(self, translation, pronunciation, tip, detected_errors, model, tokens_in, tokens_out, first_token_at, done_at, streamed):
+    """One tutor turn. `translation` is the target-language phrase (kept under
+    its old name for the eval scorer and older clients)."""
+
+    def __init__(self, translation, pronunciation, tip, detected_errors, model, tokens_in, tokens_out, first_token_at, done_at, streamed, **turn):
         self.translation = translation
         self.pronunciation = pronunciation
         self.tip = tip
@@ -76,12 +107,31 @@ class Lesson:
         self.done_at = done_at
         self.streamed = streamed
         self.unparsed = False
+        self.raw_text = ""
+        self.retried = False
+        self.intent = turn.get("intent") or ("teach_phrase" if translation else "chat")
+        self.reply = turn.get("reply") or ""
+        self.syllables = turn.get("syllables") or ""
+        self.verdict = turn.get("verdict") or "none"
+        self.verdict_reason = turn.get("verdict_reason") or ""
+        self.next_prompt = turn.get("next_prompt") or ""
+
+    @property
+    def target_phrase(self):
+        return self.translation
 
     def as_json(self):
         return {
+            "intent": self.intent,
+            "reply": self.reply,
+            "target_phrase": self.translation,
             "translation": self.translation,
             "pronunciation": self.pronunciation,
+            "syllables": self.syllables,
             "tip": self.tip,
+            "verdict": self.verdict,
+            "verdict_reason": self.verdict_reason,
+            "next_prompt": self.next_prompt,
             "detected_errors": self.detected_errors,
         }
 
@@ -111,7 +161,17 @@ class GatewayLLM:
         self.api_key = api_key
         self.settings = llm_settings
 
-    async def complete(self, transcript, source_language, language_confidence, target_name, history=None):
+    async def complete(
+        self,
+        transcript,
+        source_language,
+        language_confidence,
+        target_name,
+        history=None,
+        native_name="english",
+        practice_target="",
+        practice_check=None,
+    ):
         seconds = float(self.settings.get("timeout_s") or 30)
         try:
             return await asyncio.wait_for(
@@ -123,37 +183,68 @@ class GatewayLLM:
                     target_name,
                     seconds,
                     list(history or []),
+                    native_name,
+                    practice_target,
+                    practice_check,
                 ),
                 timeout=seconds + 1,
             )
         except asyncio.TimeoutError as exc:
             raise LLMError(f"The tutor model timed out after {int(seconds)} seconds.") from exc
 
-    def _post(self, transcript, source_language, language_confidence, target_name, seconds, history):
-        prompt = (self.settings.get("system_prompt") or "").replace("{target}", target_name)
-        confidence = "unknown" if language_confidence is None else language_confidence
-        user_text = (
-            f"Target language: {target_name}.\n"
-            f"Detected source language: {source_language or 'unknown'}.\n"
-            f"Source language confidence: {confidence}.\n"
-            "Learner transcript, verbatim. Never silently correct it:\n"
-            f"{transcript}"
+    def _post(
+        self,
+        transcript,
+        source_language,
+        language_confidence,
+        target_name,
+        seconds,
+        history,
+        native_name="english",
+        practice_target="",
+        practice_check=None,
+    ):
+        prompt = (
+            (self.settings.get("system_prompt") or "")
+            .replace("{target}", target_name.capitalize() if target_name.islower() else target_name)
+            .replace("{native}", (native_name or "english").capitalize())
+        )
+        user_text = build_user_text(
+            transcript,
+            source_language,
+            language_confidence,
+            target_name,
+            native_name,
+            practice_target,
+            practice_check,
         )
         model = self.settings.get("model") or DEFAULT_MODEL
         body = {
             "model": model,
             "messages": [{"role": "system", "content": prompt}, *history, {"role": "user", "content": user_text}],
-            "max_tokens": int(self.settings.get("max_tokens") or 300),
+            "max_tokens": int(self.settings.get("max_tokens") or 450),
             "temperature": float(self.settings.get("temperature", 0.2)),
         }
         if model == GEMMA_MODEL:
             body["response_format"] = LESSON_SCHEMA
+        started = time.time()
+        lesson = self._send(body, model, seconds)
+        if lesson.unparsed and time.time() - started < seconds / 3:
+            # Rare non-JSON reply: one quick retry beats a silent turn.
+            logger.warning("tutor reply was not JSON, retrying once: %r", lesson.raw_text[:200])
+            retry = self._send(body, model, seconds - (time.time() - started))
+            if not retry.unparsed:
+                retry.retried = True
+                return retry
+        return lesson
+
+    def _send(self, body, model, seconds):
         try:
             response = requests.post(
                 LLM_URL,
                 headers={"authorization": self.api_key},
                 json=body,
-                timeout=seconds,
+                timeout=max(1.0, seconds),
             )
         except requests.Timeout as exc:
             raise LLMError(f"The tutor model timed out after {int(seconds)} seconds.") from exc
@@ -169,11 +260,70 @@ class GatewayLLM:
         except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMError("The tutor model returned a lesson with no text.") from exc
         usage = data.get("usage") if isinstance(data, dict) else None
-        return _lesson(text or "", model, usage, None, time.time(), streamed=False)
+        lesson = _lesson(text or "", model, usage, None, time.time(), streamed=False)
+        lesson.raw_text = text or ""
+        return lesson
+
+
+def build_user_text(
+    transcript,
+    source_language,
+    language_confidence,
+    target_name,
+    native_name="english",
+    practice_target="",
+    practice_check=None,
+):
+    confidence = "unknown" if language_confidence is None else language_confidence
+    lines = [
+        f"Target language: {target_name}.",
+        f"Learner's own language: {native_name or 'english'}.",
+        f"Detected language of this turn: {source_language or 'unknown'} (confidence {confidence}).",
+        f"Current practice phrase: {practice_target or '(none yet)'}.",
+    ]
+    if practice_check:
+        low = ", ".join(
+            f"{w['text']} ({w['confidence']})" for w in practice_check.get("low_confidence_words") or []
+        ) or "none"
+        lines.append(
+            "Practice check (automatic, trust it): this turn sounds like an attempt at "
+            f"\"{practice_check['target']}\". Match score {practice_check['score']}, "
+            f"verdict {practice_check['verdict']} ({practice_check['reason']}). "
+            f"Low-confidence words: {low}. Use intent practice_attempt and this verdict "
+            "unless the learner is clearly asking a question."
+        )
+    lines.append("Learner transcript, verbatim. Never silently correct it:")
+    lines.append(transcript)
+    return "\n".join(lines)
+
+
+def _field(value):
+    """A string field, without JSON debris the model sometimes leaves at the end ('.\',\'}')."""
+    text = str(value or "").strip()
+    text = re.sub(r"""['"]?\s*,?\s*['"]?\s*[{}]+\s*$""", "", text)
+    return re.sub(r"""['"]\s*,\s*['"]?\s*$""", "", text).strip()
+
+
+def _spoken(value):
+    """Text a voice will read: drop template slots like {target_phrase} the model sometimes copies."""
+    text = re.sub(r"\{[^{}]*\}", "", _field(value))
+    text = re.sub(r"\s*\.\.\.\s*([.!?:,]|$)", r"\1", text)
+    text = re.sub(r"\s+([.!?:,])", r"\1", text)
+    text = re.sub(r"([.!?:,])\1+", r"\1", text)
+    return re.sub(r"\s{2,}", " ", text).strip()
+
+
+def _choice(value, allowed, default):
+    text = str(value or "").strip().lower().replace(" ", "_").replace("-", "_")
+    return text if text in allowed else default
 
 
 def parse_lesson_text(text):
-    """Parse the tutor JSON. None means the reply is not usable JSON."""
+    """Parse the tutor JSON. None means the reply is not usable JSON.
+
+    Accepts the tutor-turn schema and the older lesson schema
+    (`translation` instead of `target_phrase`).
+    """
     raw = (text or "").strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
@@ -191,10 +341,25 @@ def parse_lesson_text(text):
                     "issue": str(item.get("issue") or item.get("difference") or ""),
                 }
             )
+    phrase = _field(data.get("target_phrase") or data.get("translation"))
+    intent = _choice(data.get("intent"), INTENTS, "teach_phrase" if phrase else "chat")
+    verdict = _choice(data.get("verdict"), VERDICTS, "none")
+    if intent != "practice_attempt":
+        verdict = "none"
+    reply = _spoken(data.get("reply") or data.get("reply_native"))
+    next_prompt = _spoken(data.get("next_prompt"))
+    if next_prompt and len(reply) > len(next_prompt) and reply.lower().endswith(next_prompt.lower()):
+        reply = reply[: -len(next_prompt)].rstrip(" ,;-")
     return {
-        "translation": str(data.get("translation") or "").strip(),
-        "pronunciation": str(data.get("pronunciation") or "").strip(),
-        "tip": str(data.get("tip") or "").strip(),
+        "intent": intent,
+        "reply": reply,
+        "translation": phrase,
+        "pronunciation": _field(data.get("pronunciation")),
+        "syllables": _field(data.get("syllables")),
+        "tip": _field(data.get("tip")),
+        "verdict": verdict,
+        "verdict_reason": _field(data.get("verdict_reason")),
+        "next_prompt": next_prompt,
         "detected_errors": errors,
     }
 
@@ -264,4 +429,5 @@ def _lesson(text, model, usage, first_token_at, done_at, streamed):
         first_token_at=first_token_at,
         done_at=done_at,
         streamed=streamed,
+        **{key: parsed[key] for key in TURN_FIELDS},
     )

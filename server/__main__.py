@@ -143,7 +143,7 @@ async def run_file(
         if not session.ready and not saw_lesson:
             print("Timed out waiting for a final turn and a tutor reply.", file=sys.stderr)
 
-    await session.close()
+    await session.shutdown()
     if audio:
         directory = os.path.dirname(settings["log"]["path"]) or "."
         os.makedirs(directory, exist_ok=True)

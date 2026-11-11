@@ -8,6 +8,7 @@ import uuid
 from server.audio import TARGET_RATE
 from server.config import (
     STT_LANGUAGES,
+    TARGET_LANGUAGES,
     log_config,
     merge_session_config,
     normalize_target,
@@ -15,6 +16,7 @@ from server.config import (
 )
 from server.log import write_turn
 from server.llm import error_strings
+from server.practice import check_attempt, looks_like_attempt, slow_text
 from server.stt import UPDATABLE, StreamingSTT, stt_query_params, update_configuration_message
 from server.tts import TTSError, audio_ms
 
@@ -23,6 +25,11 @@ logger = logging.getLogger("pingo.session")
 # SpeechStarted while the tutor is working means the learner talked over it.
 BUSY = ("thinking", "speaking")
 HISTORY_TURNS = 6
+# Silence between spoken segments (reply, phrase, prompt), in milliseconds.
+GAP_MS = 250
+REPLAY_MODES = ("phrase", "slow", "all")
+# A learner turn this long or longer, outside practice, sets the learner's own language.
+NATIVE_MIN_WORDS = 3
 
 
 def now_ms():
@@ -64,6 +71,8 @@ class Session:
         )
         self.llm = llm
         self.tts = tts
+        # One open TTS session per voice for this connection, when the engine supports it.
+        self.voices = tts.pool() if hasattr(tts, "pool") else tts
         self.log_path = settings["log"]["path"] if log_path is None else log_path
         self.target = settings.get("target_language")
         self.stt = None
@@ -84,6 +93,9 @@ class Session:
         self._stt_ready = False
         self.background = set()
         self.history = []
+        self.practice_target = ""
+        self.native_language = "en"
+        self._order_ids = {}
         self._stt_epoch = 0
         self._turn_seq = 0
         self._turn_key = None
@@ -101,7 +113,7 @@ class Session:
         elif kind == "set_target":
             await self._set_target(message.get("target_language"))
         elif kind == "replay":
-            await self._replay(message.get("turn_order"))
+            await self._replay(message)
         elif kind == "stop":
             await self.close()
         else:
@@ -144,8 +156,14 @@ class Session:
         if stt is not None:
             await stt.close()
         self._flush_ready(final=True)
-        self.history.clear()
+        self._forget()
         self.state = "idle"
+
+    async def shutdown(self):
+        """The socket is gone: close, then hang up the per-voice TTS sessions."""
+        await self.close()
+        if hasattr(self.voices, "aclose"):
+            await self.voices.aclose()
 
     async def _start(self, message):
         if self.stt is not None or self.state != "idle":
@@ -162,6 +180,9 @@ class Session:
             self.case_id = str(message["case_id"])
         if message.get("session_id"):
             self.session_id = str(message["session_id"])
+        native = str(message.get("native_language") or "").strip().lower()
+        if native in TARGET_LANGUAGES:
+            self.native_language = native
         self.settings = merge_session_config(self.base_settings, message.get("config") or {})
         self.settings["target_language"] = self.target
         bad_codes = [
@@ -183,7 +204,7 @@ class Session:
         self.stt_session_id = None
         self.partials = []
         self.partial_first = None
-        self.history.clear()
+        self._forget()
         self._stt_epoch += 1
         self.stt = self.stt_factory(self.api_key, self.stt_query, self._on_stt)
         try:
@@ -196,6 +217,7 @@ class Session:
         self._stt_ready = True
         await self._flush_pending_audio()
         await self._status("listening")
+        self._warm_voices()
 
     async def _replace_upstream(self):
         """A new `start` on the same socket closes the previous STT session."""
@@ -231,32 +253,47 @@ class Session:
             await self._error(str(exc))
             return
         if target != self.target:
-            self.history.clear()
+            self._forget()
         self.target = target
         self.settings["target_language"] = self.target
 
-    async def _replay(self, turn_order):
-        try:
-            key = int(turn_order)
-        except (TypeError, ValueError):
-            await self._error("Replay needs a turn_order.")
+    async def _replay(self, message):
+        """Speak a stored turn again without a second LLM call.
+
+        Keyed by turn_id (turn_order restarts on every STT stream). An old
+        client that only sends turn_order gets the latest turn with that order.
+        mode: phrase (default, the target phrase), slow (syllables then the
+        phrase) or all (the whole tutor turn).
+        """
+        if not isinstance(message, dict):
+            message = {"turn_order": message}
+        key = None
+        for field in ("turn_id", "turn_order"):
+            value = message.get(field)
+            if value is None:
+                continue
+            try:
+                number = int(value)
+            except (TypeError, ValueError):
+                continue
+            key = number if field == "turn_id" else self._order_ids.get(number)
+            break
+        if key is None:
+            await self._error("Replay needs a turn_id.")
             return
         saved = self.lessons.get(key)
         if not saved:
             await self._error(f"No lesson stored for turn {key}.")
             return
+        mode = message.get("mode") if message.get("mode") in REPLAY_MODES else "phrase"
+        plan = saved.get(mode) or saved.get("phrase") or saved.get("all") or []
+        if not plan:
+            await self._error(f"Nothing to replay for turn {key}.")
+            return
         self.generation += 1
         generation = self.generation
         await self._cancel_job()
-        self.job = asyncio.create_task(
-            self._speak(
-                saved["translation"],
-                saved["target_language"],
-                generation,
-                None,
-                saved.get("turn_id"),
-            )
-        )
+        self.job = asyncio.create_task(self._speak_plan(plan, generation, None, key))
 
     async def _on_stt(self, message):
         if self.closed:
@@ -286,6 +323,8 @@ class Session:
     async def _on_turn(self, turn):
         order = turn.get("turn_order")
         turn_id = self._turn_id_for(order)
+        if order is not None:
+            self._order_ids[order] = turn_id
         if order != self.partial_turn:
             self.partial_turn = order
             self.partials = []
@@ -336,26 +375,46 @@ class Session:
                 record["barge_in"] = True
                 return
             await self._status("thinking")
+            transcript = view["transcript"]
+            check = None
+            if self.practice_target and looks_like_attempt(transcript, self.practice_target, self.target):
+                check = check_attempt(transcript, self.practice_target, self.target, view["words"])
+            else:
+                self._note_native(turn, transcript)
+            native = self._native_name()
             lesson = await self.llm.complete(
-                transcript=view["transcript"],
+                transcript=transcript,
                 source_language=turn.get("language_code"),
                 language_confidence=turn.get("language_confidence"),
                 target_name=target_name(self.target),
                 history=list(self.history),
+                native_name=native,
+                practice_target=self.practice_target,
+                practice_check=check,
             )
             record["timings_ms"]["llm_first_token"] = _ms(lesson.first_token_at)
             record["timings_ms"]["llm_done"] = _ms(lesson.done_at)
+            if not lesson.unparsed:
+                self._apply_practice(lesson, check)
             record["llm"] = {
                 "model": lesson.model,
+                "intent": getattr(lesson, "intent", None),
+                "reply": getattr(lesson, "reply", ""),
                 "translation": lesson.translation,
                 "pronunciation": lesson.pronunciation,
+                "syllables": getattr(lesson, "syllables", ""),
                 "tip": lesson.tip,
+                "verdict": getattr(lesson, "verdict", "none"),
+                "next_prompt": getattr(lesson, "next_prompt", ""),
                 "detected_errors": error_strings(lesson.detected_errors),
                 "streamed": lesson.streamed,
+                "retried": bool(getattr(lesson, "retried", False)),
             }
+            record["practice"] = check
             record["usage"]["llm_input_tokens"] = lesson.tokens_in
             record["usage"]["llm_output_tokens"] = lesson.tokens_out
             if lesson.unparsed:
+                record["llm"]["raw_text"] = (getattr(lesson, "raw_text", "") or "")[:500]
                 await self._error("The tutor reply was not valid JSON, so it was not spoken.")
                 lesson.tip = "Please try that phrase again."
                 record["llm"]["tip"] = lesson.tip
@@ -363,31 +422,45 @@ class Session:
                 record["barge_in"] = True
                 return
             order = turn.get("turn_order")
-            self.lessons[order] = {
+            plans = speech_plans(lesson, native, target_name(self.target))
+            self.lessons[turn_id] = {
                 "translation": lesson.translation,
                 "target_language": self.target,
                 "turn_id": turn_id,
+                **plans,
             }
             await self._emit(
                 {
                     "type": "lesson",
                     "turn_id": turn_id,
                     "turn_order": order,
-                    "source_text": view["transcript"],
+                    "source_text": transcript,
                     "source_language": turn.get("language_code"),
-                    "translation": lesson.translation,
+                    "native_language": self.native_language,
                     "target_language": self.target,
+                    "intent": getattr(lesson, "intent", None),
+                    "reply": getattr(lesson, "reply", ""),
+                    "target_phrase": lesson.translation,
+                    "translation": lesson.translation,
                     "pronunciation": lesson.pronunciation,
+                    "syllables": getattr(lesson, "syllables", ""),
                     "tip": lesson.tip,
+                    "verdict": getattr(lesson, "verdict", "none"),
+                    "verdict_reason": getattr(lesson, "verdict_reason", ""),
+                    "next_prompt": getattr(lesson, "next_prompt", ""),
+                    "detected_errors": lesson.detected_errors,
+                    "practice": check,
+                    "practice_target": self.practice_target,
                 }
             )
+            spoken = " ".join(text for text, _lang, _kind in plans["all"])
             await self._emit(
-                {"type": "agent_text", "turn_id": turn_id, "text": lesson.translation, "final": True}
+                {"type": "agent_text", "turn_id": turn_id, "text": spoken or lesson.translation, "final": True}
             )
-            if lesson.translation and not lesson.unparsed:
-                await self._speak(lesson.translation, self.target, generation, record, turn_id)
+            if plans["all"] and not lesson.unparsed:
+                await self._speak_plan(plans["all"], generation, record, turn_id)
             if not lesson.unparsed and not record["barge_in"] and self._alive(generation):
-                self._remember(view["transcript"], lesson)
+                self._remember(transcript, lesson)
                 await self._push_agent_context(lesson.translation)
         except asyncio.CancelledError:
             record["barge_in"] = True
@@ -447,10 +520,81 @@ class Session:
             self._turn_id = self._turn_seq
         return self._turn_id
 
+    def _forget(self):
+        self.history.clear()
+        self.practice_target = ""
+
+    def _warm_voices(self):
+        warm = getattr(self.voices, "warm", None)
+        if warm is None:
+            return
+        task = asyncio.create_task(warm([self._native_name(), target_name(self.target)]))
+        self.background.add(task)
+        task.add_done_callback(self.background.discard)
+
+    def _native_name(self):
+        return TARGET_LANGUAGES.get(self.native_language, "english")
+
+    def _note_native(self, turn, transcript):
+        """The learner's own language: what they speak when they are not practising."""
+        code = turn.get("language_code")
+        confidence = turn.get("language_confidence")
+        if code not in TARGET_LANGUAGES or code == self.target:
+            return
+        if len(transcript.split()) < NATIVE_MIN_WORDS:
+            return
+        if isinstance(confidence, (int, float)) and confidence < 0.6:
+            return
+        self.native_language = code
+
+    def _apply_practice(self, lesson, check):
+        """Ground the verdict in the practice check and move the practice phrase."""
+        intent = getattr(lesson, "intent", None)
+        if check is not None and intent not in ("teach_phrase", "pronunciation"):
+            if intent != "practice_attempt" or lesson.verdict != check["verdict"]:
+                logger.info(
+                    "practice check overrides the model: %s/%s -> practice_attempt/%s",
+                    intent,
+                    getattr(lesson, "verdict", None),
+                    check["verdict"],
+                )
+                if lesson.verdict not in ("none", check["verdict"]) and self.native_language == "en":
+                    lesson.reply = CANNED_VERDICT[check["verdict"]]
+                    lesson.verdict_reason = check["reason"]
+            lesson.intent = "practice_attempt"
+            lesson.verdict = check["verdict"]
+            if not lesson.verdict_reason:
+                lesson.verdict_reason = check["reason"]
+            if not lesson.reply:
+                lesson.reply = CANNED_VERDICT[check["verdict"]]
+            if not lesson.translation:
+                lesson.translation = check["target"]
+            if check["verdict"] == "correct":
+                lesson.detected_errors = []
+        if intent == "practice_attempt" and not lesson.translation:
+            lesson.translation = self.practice_target
+        if lesson.translation and (lesson.intent != "practice_attempt" or not self.practice_target):
+            self.practice_target = lesson.translation
+
     def _remember(self, transcript, lesson):
-        spoken = lesson.translation or ""
-        if lesson.tip:
-            spoken = f"{spoken}\n{lesson.tip}".strip()
+        phrase = getattr(lesson, "translation", "") or ""
+        reply = getattr(lesson, "reply", "") or ""
+        parts = []
+        intent = getattr(lesson, "intent", None)
+        verdict = getattr(lesson, "verdict", "none")
+        if intent:
+            parts.append(f"[{intent}{'' if verdict in (None, 'none') else ': ' + verdict}]")
+        if reply:
+            parts.append(reply)
+        if phrase:
+            parts.append(f"Phrase: {phrase}")
+        tip = getattr(lesson, "tip", "") or ""
+        if tip:
+            parts.append(f"Tip: {tip}")
+        next_prompt = getattr(lesson, "next_prompt", "") or ""
+        if next_prompt:
+            parts.append(next_prompt)
+        spoken = "\n".join(parts) if (reply or intent) else f"{phrase}\n{tip}".strip()
         self.history.append({"role": "user", "content": transcript})
         self.history.append({"role": "assistant", "content": spoken})
         extra = len(self.history) - HISTORY_TURNS * 2
@@ -458,40 +602,93 @@ class Session:
             del self.history[:extra]
 
     async def _speak(self, text, language_code, generation, record, turn_id=None):
-        if not text or not self._alive(generation):
+        """One segment in one language. Kept for callers that speak a single phrase."""
+        if not text:
             return
-        name = target_name(language_code)
-        text = text[:300]
+        await self._speak_plan([(text, target_name(language_code), "phrase")], generation, record, turn_id)
+
+    async def _speak_plan(self, segments, generation, record, turn_id=None):
+        """Speak segments in order, each in its own voice, as one tts_start..tts_end.
+
+        Every segment's TTS session starts at once so the second voice is ready
+        when the first one finishes. Audio is still sent in order, with a short
+        silence between segments.
+        """
+        segments = [(text.strip()[:300], lang, kind) for text, lang, kind in segments if text and text.strip()]
+        if not segments or not self._alive(generation):
+            return
         sample_rate = int(self.settings["tts"].get("sample_rate") or 24000)
-        seconds = float(self.settings["tts"].get("timeout_s") or 30)
-        meta = {}
+        seconds = float(self.settings["tts"].get("timeout_s") or 30) + 10 * (len(segments) - 1)
+        gap = b"\x00\x00" * int(sample_rate * GAP_MS / 1000)
+        metas = [{} for _ in segments]
+        queues = [asyncio.Queue() for _ in segments]
         total = 0
-        started = False
+
+        async def pump(text, language_name, queue, meta):
+            try:
+                async for chunk in self.voices.stream(text, language_name, meta):
+                    queue.put_nowait(chunk)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                queue.put_nowait(exc)
+            finally:
+                queue.put_nowait(None)
+
         await self._status("speaking")
-        await self._emit({"type": "tts_start", "turn_id": turn_id, "sample_rate": sample_rate})
-        started = True
+        await self._emit(
+            {
+                "type": "tts_start",
+                "turn_id": turn_id,
+                "sample_rate": sample_rate,
+                "segments": [{"kind": kind, "language": lang, "text": text} for text, lang, kind in segments],
+            }
+        )
+        tasks = [
+            asyncio.create_task(pump(text, lang, queue, meta))
+            for (text, lang, _kind), queue, meta in zip(segments, queues, metas)
+        ]
         try:
             async with asyncio.timeout(seconds):
-                async for chunk in self.tts.stream(text, name, meta):
-                    if not self._alive(generation):
-                        if record is not None:
-                            record["barge_in"] = True
+                stopped = False
+                for index, queue in enumerate(queues):
+                    if stopped:
                         break
-                    if record is not None and record["timings_ms"]["tts_first_audio"] is None:
-                        # First byte this process got back from TTS, before the browser plays it.
-                        record["timings_ms"]["tts_first_audio"] = now_ms()
-                    total += len(chunk)
-                    await self._emit(chunk)
+                    if index and total:
+                        total += len(gap)
+                        await self._emit(gap)
+                    while True:
+                        item = await queue.get()
+                        if item is None:
+                            break
+                        if isinstance(item, Exception):
+                            raise item
+                        if not self._alive(generation):
+                            if record is not None:
+                                record["barge_in"] = True
+                            stopped = True
+                            break
+                        if record is not None and record["timings_ms"]["tts_first_audio"] is None:
+                            # First byte this process got back from TTS, before the browser plays it.
+                            record["timings_ms"]["tts_first_audio"] = now_ms()
+                        total += len(item)
+                        await self._emit(item)
         except TimeoutError as exc:
             raise TTSError(f"Speech synthesis timed out after {int(seconds)} seconds.") from exc
         finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
             if record is not None:
-                rate = meta.get("sample_rate") or sample_rate
-                chars = meta.get("billed_chars")
-                record["usage"]["tts_characters"] = chars if chars is not None else len(text)
+                rate = next((m["sample_rate"] for m in metas if m.get("sample_rate")), sample_rate)
+                chars = sum(
+                    m["billed_chars"] if m.get("billed_chars") is not None else len(text)
+                    for m, (text, _l, _k) in zip(metas, segments)
+                )
+                record["usage"]["tts_characters"] = chars
                 record["tts_audio_ms"] = audio_ms(total, rate)
-            if started:
-                await self._emit({"type": "tts_end"})
+                record["tts_segments"] = [kind for _t, _l, kind in segments]
+            await self._emit({"type": "tts_end", "turn_id": turn_id})
             if self._alive(generation):
                 await self._status("listening")
 
@@ -580,6 +777,49 @@ class Session:
         except Exception:
             logger.debug("client send failed", exc_info=True)
             self.closed = True
+
+
+CANNED_VERDICT = {
+    "correct": "Correct! That sounded right.",
+    "close": "Close! Almost there.",
+    "try_again": "Not quite. Listen once more.",
+}
+
+
+def speech_plans(lesson, native_name, target_name_):
+    """What to say for one tutor turn, as (text, tts language, kind) segments.
+
+    all: the whole turn. The reply in the learner's voice, the target phrase in
+    the target-language voice (slowly first for pronunciation), then the next
+    prompt. phrase / slow: what the play buttons replay.
+    """
+    phrase = (lesson.translation or "").strip()
+    reply = (getattr(lesson, "reply", "") or "").strip()
+    intent = getattr(lesson, "intent", None)
+    verdict = getattr(lesson, "verdict", "none")
+    next_prompt = (getattr(lesson, "next_prompt", "") or "").strip()
+    if next_prompt and reply.lower().endswith(next_prompt.lower()) and len(reply) > len(next_prompt):
+        # The model sometimes ends the reply with the next prompt too; say it once.
+        reply = reply[: -len(next_prompt)].rstrip(" ,;-")
+    slow = slow_text(phrase, getattr(lesson, "syllables", "")) if phrase else ""
+    phrase_seg = [(phrase, target_name_, "phrase")] if phrase else []
+    slow_seg = ([(slow, target_name_, "slow")] if slow else []) + phrase_seg
+    plan = []
+    if reply:
+        plan.append((reply, native_name, "reply"))
+    if intent == "pronunciation":
+        plan += slow_seg
+    elif intent == "practice_attempt":
+        if verdict != "correct":
+            plan += phrase_seg
+    else:
+        plan += phrase_seg
+    if next_prompt and plan:
+        plan.append((next_prompt, native_name, "next"))
+    if not reply and not next_prompt:
+        # Older schema (no reply): speak the phrase alone, as before.
+        plan = list(phrase_seg)
+    return {"all": plan, "phrase": phrase_seg, "slow": slow_seg}
 
 
 def _ms(timestamp):

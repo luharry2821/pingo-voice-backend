@@ -72,7 +72,7 @@ def create_app(settings, api_key, *, stt_factory=None, llm=None, tts=None, log_p
         except WebSocketDisconnect:
             pass
         finally:
-            await session.close()
+            await session.shutdown()
 
     return app
 

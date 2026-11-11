@@ -30,7 +30,7 @@ llm:
   # Same as baseline. PINGO_LLM_MODEL=qwen3.5-4b-32k-fast selects the other model.
   model: gemma-4-31b
   temperature: 0.2
-  max_tokens: 300
+  max_tokens: 450
   stream: false
   timeout_s: 30
 

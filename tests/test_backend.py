@@ -34,7 +34,7 @@ class ConfigTests(unittest.TestCase):
         self.assertNotIn("end_of_turn_confidence_threshold", params)
         self.assertNotIn("llm_gateway", params)
         self.assertEqual(settings["llm"]["model"], "gemma-4-31b")
-        self.assertEqual(settings["llm"]["max_tokens"], 300)
+        self.assertEqual(settings["llm"]["max_tokens"], 450)
         self.assertEqual(
             settings["tts"]["voices"]["spanish"],
             "bff56a11-dc95-552e-a93a-59f68ca60b64",
@@ -196,7 +196,7 @@ class LessonParseTests(unittest.TestCase):
         self.assertEqual(qwen["url"], "https://llm-gateway.assemblyai.com/v1/chat/completions")
         self.assertEqual(qwen["headers"], {"authorization": "secret"})
         self.assertEqual(qwen["json"]["model"], "qwen3.5-4b-32k-fast")
-        self.assertEqual(qwen["json"]["max_tokens"], 300)
+        self.assertEqual(qwen["json"]["max_tokens"], 450)
         self.assertEqual(qwen["json"]["temperature"], 0.2)
         self.assertEqual([item["role"] for item in qwen["json"]["messages"]], ["system", "user"])
         self.assertNotIn("response_format", qwen["json"])

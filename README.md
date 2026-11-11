@@ -76,11 +76,11 @@ Client to server:
 
 | Message | Meaning |
 |---|---|
-| `{"type":"start","target_language":"es","config":{...}}` | Open a streaming STT session. Optional `case_id` and `session_id`. |
+| `{"type":"start","target_language":"es","config":{...}}` | Open a streaming STT session. Optional `case_id`, `session_id`, and `native_language` (the learner's own language, one of the six codes; default `en`, otherwise learned from their longer non-practice turns). |
 | binary frames | PCM16 LE mono, 16 kHz, about 50 ms each |
 | `{"type":"update_config","config":{...}}` | Merge into the session and forward STT fields via `UpdateConfiguration` |
 | `{"type":"set_target","target_language":"fr"}` | Next reply uses this target. Does not reconnect STT. |
-| `{"type":"replay","turn_order":N}` | Speak that turn's translation again. No second LLM call. |
+| `{"type":"replay","turn_id":N,"mode":"phrase"}` | Speak that turn again with no second LLM call. `mode`: `phrase` (default, the target phrase in the target voice), `slow` (syllables, then the phrase), `all` (the whole tutor turn). Old clients may send `turn_order`; it maps to the latest turn with that order. |
 | `{"type":"stop"}` | Close STT and append any turn line still held in memory. |
 
 `target_language` is one of `en`, `es`, `fr`, `de`, `it`, `pt` (or the full name, `spanish`). Those are the six languages AssemblyAI TTS speaks.
@@ -91,11 +91,23 @@ Server to client:
 |---|---|
 | `{"type":"status","state":"listening"\|"thinking"\|"speaking"}` | Where the turn is |
 | `{"type":"transcript",...}` | Partial or final. Fields: `turn_id`, `turn_order`, `end_of_turn`, `transcript`, `language_code`, `language_confidence`, `words[{text,start,end,confidence,word_is_final}]`. Language is only filled on a final turn. |
-| `{"type":"lesson",...}` | `turn_id`, `turn_order`, `source_text`, `source_language`, `translation`, `target_language`, `pronunciation`, `tip` |
-| `{"type":"agent_text","turn_id","text","final"}` | The text TTS is about to speak (the translation). `final` is true. |
-| `{"type":"tts_start","turn_id","sample_rate":24000}` then binary PCM16 then `{"type":"tts_end"}` | Tutor audio |
+| `{"type":"lesson",...}` | One tutor turn: `turn_id`, `turn_order`, `source_text`, `source_language`, `native_language`, `target_language`, `intent` (`teach_phrase`, `pronunciation`, `practice_attempt`, `correction`, `chat`), `reply` (in the learner's language), `target_phrase` (also sent as `translation`), `pronunciation` (respelling such as `OH-lah`), `syllables` (`ho - la`), `tip`, `verdict` (`correct`, `close`, `try_again`, or `none`), `verdict_reason`, `next_prompt`, `detected_errors`, `practice` (the automatic check, or null), `practice_target` |
+| `{"type":"agent_text","turn_id","text","final"}` | Everything TTS is about to speak for this turn, joined. `final` is true. |
+| `{"type":"tts_start","turn_id","sample_rate":24000,"segments":[{kind,language,text}]}` then binary PCM16 then `{"type":"tts_end","turn_id"}` | Tutor audio. One turn can mix voices: `reply` and `next` in the learner's language, `slow` and `phrase` in the target language, with 250 ms of silence between segments. |
 
-`turn_id` is a server counter for this WebSocket. It starts at 1 and only goes up. Partials, the final transcript, the lesson, `agent_text`, and `tts_start` for one utterance share it, so the page can match a lesson to its transcript. `turn_order` stays the STT turn index and can go back to 0 when the mic restarts. `turn_id` does not. The tutor also keeps the last 6 exchanges (learner transcript plus the spoken lesson) and sends them between the system prompt and the new user message. That memory is cleared on `stop`, on a new `start`, and when `set_target` changes the language. A reply cancelled by barge-in is not stored.
+### Conversation
+
+Pingo is a back-and-forth tutor, not a one-shot translator. A typical exchange (Spanish, learner speaking English):
+
+1. "How do I say hello in Spanish?" → `teach_phrase`. English voice: "In Spanish, hello is", Spanish voice: "Hola", English voice: "Now you try: say it."
+2. "How do I pronounce it?" → `pronunciation`. "It" resolves to the practice phrase. English: "Say it like OH-lah. The h is silent. Here it is slowly." Spanish: "ho... la." then "Hola". English: "Now you try: say it."
+3. "Hola" (or "ola", "olá", "¡Hola!") → `practice_attempt`, verdict `correct`. English: "Correct! ..." then an offer of a next word.
+
+The session keeps a practice phrase: the last phrase the tutor taught, corrected or broke down. Before the LLM runs, `server/practice.py` checks whether the turn is a short try at that phrase. It folds case, accents, punctuation and the silent h (so `ola` matches `Hola`), scores the closest window with `difflib`, and reads AssemblyAI's word confidence from the final turn. Score 0.85 or higher is `correct` (downgraded to `close` if a word's confidence is under 0.5), 0.6 or higher is `close`, lower is `try_again`. The check goes into the prompt, and the server enforces its verdict on the reply. Routing uses this practice state, not the detected language: universal-3-6-pro often tags a lone "hola" as English.
+
+TTS has no speed control (`TTSConfig` has no speed field; the HTTP API refuses any speed but 1), so "slowly" means the phrase split into syllables with pauses, then the whole phrase. The account may open 5 TTS sessions a minute, so each connection keeps one `TTSSession` per voice open, warms both on `start`, and reuses them for every segment and turn.
+
+`turn_id` is a server counter for this WebSocket. It starts at 1 and only goes up. Partials, the final transcript, the lesson, `agent_text`, and `tts_start` for one utterance share it, so the page can match a lesson to its transcript. `turn_order` stays the STT turn index and can go back to 0 when the mic restarts. `turn_id` does not. The tutor also keeps the last 6 exchanges (learner transcript plus the tutor's intent, reply, phrase, tip and next prompt) and sends them between the system prompt and the new user message. That memory and the practice phrase are cleared on `stop`, on a new `start`, and when `set_target` changes the language. A reply cancelled by barge-in is not stored.
 | `{"type":"barge_in"}` | Learner spoke over the tutor. Flush playback. A `tts_end` may already have been sent; do not wait on it. |
 | `{"type":"error","message"}` | A clean message. Timeouts say which call timed out. |
 
@@ -120,7 +132,7 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 | `stt.agent_context_enabled` | `false` | — | When true, after each reply the server sends `UpdateConfiguration` with `agent_context` set to the spoken translation (max 1750 characters). Same fidelity risk as keyterms, so the baseline leaves it off. |
 | `llm.model` | `gemma-4-31b` | — | Sends `response_format` for the lesson schema. `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast` (or `llm.model` in YAML) selects the other model this key can call. That one does not support `response_format`. Anything else, including `gemini-2.5-flash-lite`, returns 400. |
 | `llm.temperature` | `0.2` | yes | Sent on the playground POST. |
-| `llm.max_tokens` | `300` | yes | Caps the lesson. Spoken text is also cut at 300 characters. |
+| `llm.max_tokens` | `450` | yes | Caps the tutor turn JSON. Each spoken segment is also cut at 300 characters. |
 | `llm.stream` | `false` | no | The playground call is one POST. `llm_first_token` is null. |
 | `llm.timeout_s` | `30` | — | Overall deadline. The client gets "The tutor model timed out after 30 seconds." |
 | `llm.system_prompt` | see `server/config.py` | — | Must not silently correct the learner. It has to name the specific difference. `{target}` is replaced with the language name. |
@@ -228,7 +240,7 @@ All five `timings_ms` values are wall-clock epoch milliseconds from `time.time()
 7. **`agent_context` off by default.** When enabled, the tutor's last spoken line is sent with `UpdateConfiguration` so a short repeat ("estación") has context. Same risk as keyterms: it can erase the mistake you wanted to hear.
 8. **Barge-in on `SpeechStarted`.** That event fires only once there is a real transcript, not on noise. It cancels an in-flight LLM or TTS call and sends `barge_in`.
 9. **Six target languages.** English, Spanish, French, German, Italian, Portuguese. The UI should not offer Japanese or Hindi as something the tutor can speak.
-10. **`gemma-4-31b` with a JSON schema.** The default model supports `response_format`, so the lesson request sends the schema plus `temperature: 0.2` and `max_tokens: 300`. `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast` is the same POST without `response_format`. Either way the server parses the text with `json.loads(..., strict=False)` so a raw newline inside a string still parses. If it still is not JSON, the client gets an error and the raw reply is not spoken. The prompt says to never silently correct the transcript and to name the specific difference.
+10. **`gemma-4-31b` with a JSON schema.** The default model supports `response_format`, so the tutor-turn request sends the schema (`pingo_tutor_turn`) plus `temperature: 0.2` and `max_tokens: 450`. `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast` is the same POST without `response_format`. Either way the server parses the text with `json.loads(..., strict=False)` so a raw newline inside a string still parses. If it is still not JSON, the request is retried once; after that the client gets an error and the raw reply is not spoken. The prompt says to never silently correct the transcript and to name the specific difference.
 11. **Separate chat-completions call, not the streaming `llm_gateway` parameter.** The lesson has to be structured so the card and the scorer can read it, and the stage timings have to be ours. The streaming `llm_gateway` query parameter can run a prompt inside the STT socket and would save a network hop, but a failed gateway call returns nothing. Using it would need its own timeout and a fallback to this chat-completions call. That is a latency experiment, not the baseline. We also do not start the LLM on a partial, no matter how high `end_of_turn_confidence` is.
 12. **File mode plus one JSONL line per final turn.** Live and eval share `Session`, so the latency numbers come from the same code path. The log is append-only.
 
@@ -282,7 +294,8 @@ Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming
 ## Known gaps
 
 - TTS speaks six languages. STT understands many more, so the tutor cannot yet teach Japanese or Hindi.
-- There is no phoneme-level pronunciation score. Low word confidence and `detected_errors` are the signals.
+- There is no phoneme-level pronunciation score. The practice check is spelling plus STT word confidence, so a strong accent that STT still transcribes as "hola" is judged correct.
+- TTS cannot slow down; slow reads are syllables with pauses.
 - `keyterms_prompt` and `agent_context` may normalize learner mistakes. Both are off until an eval says otherwise.
 - Language id arrives only on final turns, so the UI cannot show "you spoke: Spanish" while the person is still talking.
 - `SpeechStarted` needs a real transcript, so barge-in is slightly late by design. Browser echo can still false-trigger it; headphones or a higher `vad_threshold` help.
@@ -297,10 +310,11 @@ Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming
 |---|---|
 | `server/__main__.py` | CLI: WebSocket server, or `--input` file mode |
 | `server/app.py` | FastAPI app, `GET /health`, `WS /ws` |
-| `server/session.py` | One learner session: STT events, lesson, TTS, barge-in, log |
+| `server/session.py` | One learner session: STT events, tutor turn, practice state, multi-voice TTS, barge-in, log |
+| `server/practice.py` | Practice-attempt matching (accents, silent h, fuzzy score, word confidence) and slow-read text |
 | `server/stt.py` | SDK `RealTimeTranscriber` and the parameter rules |
 | `server/llm.py` | Playground `requests.post` to the LLM Gateway |
-| `server/tts.py` | SDK `TTSSession.speak` |
+| `server/tts.py` | SDK `TTSSession.speak`, one long-lived session per voice per connection |
 | `server/config.py` | Defaults, YAML, env, `--set`, per-session merge |
 | `server/audio.py` | WAV to 16 kHz mono PCM16, real-time chunking |
 | `server/log.py` | Append one JSONL line |

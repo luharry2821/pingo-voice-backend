@@ -27,7 +27,7 @@ llm:
   # for the other model this key can call. That one has no response_format.
   model: gemma-4-31b
   temperature: 0.2
-  max_tokens: 300
+  max_tokens: 450
   stream: false
   timeout_s: 30
 
