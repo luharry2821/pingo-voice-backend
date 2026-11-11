@@ -16,7 +16,7 @@ from server.config import (
 )
 from server.log import write_turn
 from server.llm import error_strings
-from server.practice import check_attempt, is_native_phrase, looks_like_attempt, slow_text
+from server.practice import CLOSE_AT, check_attempt, is_native_phrase, looks_like_attempt, match_score, slow_text
 from server.stt import UPDATABLE, StreamingSTT, stt_query_params, update_configuration_message
 from server.tts import TTSError, audio_ms
 
@@ -94,6 +94,9 @@ class Session:
         self.background = set()
         self.history = []
         self.practice_target = ""
+        # Respelling and syllables taught with the practice phrase. Attempts and
+        # breakdowns reuse them instead of trusting the model to repeat them.
+        self.practice_card = {}
         # Misses on the current practice phrase. After two, the phrase is read slowly.
         self.misses = 0
         self.native_language = "en"
@@ -534,6 +537,9 @@ class Session:
     def _forget(self):
         self.history.clear()
         self.practice_target = ""
+        # Respelling and syllables taught with the practice phrase. Attempts and
+        # breakdowns reuse them instead of trusting the model to repeat them.
+        self.practice_card = {}
         # Misses on the current practice phrase. After two, the phrase is read slowly.
         self.misses = 0
 
@@ -593,14 +599,44 @@ class Session:
                 lesson.translation = check["target"]
             if check["verdict"] == "correct":
                 lesson.detected_errors = []
-        if intent == "practice_attempt" and not lesson.translation:
-            lesson.translation = self.practice_target
+        self._pin_practice_phrase(lesson, check)
         if lesson.translation and (lesson.intent != "practice_attempt" or not self.practice_target):
             if lesson.translation != self.practice_target:
                 self.misses = 0
+                self.practice_card = {}
             self.practice_target = lesson.translation
+            self.practice_card = {
+                "pronunciation": lesson.pronunciation or self.practice_card.get("pronunciation", ""),
+                "syllables": getattr(lesson, "syllables", "") or self.practice_card.get("syllables", ""),
+            }
         if lesson.intent == "practice_attempt":
             self.misses = 0 if lesson.verdict == "correct" else self.misses + 1
+
+    def _pin_practice_phrase(self, lesson, check):
+        """Attempts and breakdowns are about the stored phrase, not what the model echoes.
+
+        Seen live: a correct attempt at "Hola" came back with target_phrase
+        "Hola. corticosteroids". A judged attempt always uses the stored phrase.
+        A model-labelled attempt or a pronunciation turn uses it when the model's
+        phrase is empty or close to it; a clearly different phrase is a new one.
+        """
+        if not self.practice_target or lesson.intent not in ("practice_attempt", "pronunciation"):
+            return
+        phrase = lesson.translation or ""
+        same = (
+            (lesson.intent == "practice_attempt" and check is not None)
+            or not phrase
+            or match_score(phrase, self.practice_target, self.target) >= CLOSE_AT
+        )
+        if not same:
+            return
+        if phrase != self.practice_target:
+            logger.info("pinning the practice phrase: %r -> %r", phrase, self.practice_target)
+        lesson.translation = self.practice_target
+        if self.practice_card.get("pronunciation"):
+            lesson.pronunciation = self.practice_card["pronunciation"]
+        if self.practice_card.get("syllables"):
+            lesson.syllables = self.practice_card["syllables"]
 
     def _remember(self, transcript, lesson):
         phrase = getattr(lesson, "translation", "") or ""

@@ -86,6 +86,11 @@ LESSON_SCHEMA = {
 
 TURN_FIELDS = ("intent", "reply", "syllables", "verdict", "verdict_reason", "next_prompt")
 
+# Control characters and the replacement character. Seen live from the model:
+# "Buenos d\x7fas" (DEL where "í" belongs). The gateway bytes are valid UTF-8
+# and we decode them as UTF-8, so this comes from the model's output itself.
+BAD_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ufffd]")
+
 
 class LLMError(RuntimeError):
     pass
@@ -109,6 +114,8 @@ class Lesson:
         self.unparsed = False
         self.raw_text = ""
         self.retried = False
+        # True when the model's phrase or syllables had control characters (now stripped).
+        self.corrupt = bool(turn.get("corrupt"))
         self.intent = turn.get("intent") or ("teach_phrase" if translation else "chat")
         self.reply = turn.get("reply") or ""
         self.syllables = turn.get("syllables") or ""
@@ -240,6 +247,14 @@ class GatewayLLM:
             if not retry.unparsed:
                 retry.retried = True
                 return retry
+        elif lesson.corrupt and time.time() - started < seconds / 3:
+            # A control character inside the phrase or syllables: the phrase is
+            # spoken and shown, so ask once more. The stripped first reply is the fallback.
+            logger.warning("tutor phrase had control characters, retrying once: %r", lesson.raw_text[:200])
+            retry = self._send(body, model, seconds - (time.time() - started))
+            if not retry.unparsed and not retry.corrupt:
+                retry.retried = True
+                return retry
         return lesson
 
     def _send(self, body, model, seconds):
@@ -259,7 +274,10 @@ class GatewayLLM:
                 f"The tutor model returned HTTP {response.status_code}: {response.text[:300]}"
             )
         try:
-            data = response.json()
+            # Decode the whole body as UTF-8 ourselves (the gateway sends
+            # application/json without relying on a charset guess).
+            body = getattr(response, "content", None)
+            data = json.loads(body.decode("utf-8", errors="replace")) if isinstance(body, bytes) else response.json()
             text = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMError("The tutor model returned a lesson with no text.") from exc
@@ -315,6 +333,15 @@ def build_user_text(
     return "\n".join(lines)
 
 
+def _has_bad_chars(value):
+    return bool(BAD_CHARS.search(str(value or "")))
+
+
+def _clean_chars(value):
+    """Drop control characters other than tab and newline."""
+    return BAD_CHARS.sub("", str(value or ""))
+
+
 def _field(value):
     """A string field, without JSON debris the model sometimes leaves at the end.
 
@@ -322,7 +349,7 @@ def _field(value):
     Fields never contain braces, so an unclosed '{' or '[' and everything after
     it is dropped, and so are stray closing braces at the end.
     """
-    text = str(value or "").strip()
+    text = _clean_chars(value).strip()
     text = re.sub(r"\s*[{\[][^{}\[\]]*$", "", text)
     for _ in range(3):
         before = text
@@ -335,13 +362,51 @@ def _field(value):
     return text
 
 
+def _drop_junk_tail(text):
+    """Drop one stray word after the last sentence end.
+
+    Seen live twice from gemma-4-31b on a correct attempt: "...want to say?
+    corticosteroids". A real sentence after "?", "!" or "." has more than one
+    word or ends with punctuation of its own.
+    """
+    match = re.match(r"^(.*[.!?])\s+([^\s.!?]+)$", text or "", re.S)
+    if match and len(match.group(2)) > 1:
+        logger.warning("dropping a stray word after the sentence: %r", match.group(2))
+        return match.group(1)
+    return text
+
+
 def _spoken(value):
     """Text a voice will read: drop template slots like {target_phrase} the model sometimes copies."""
     text = re.sub(r"\{[^{}]*\}", "", _field(value))
     text = re.sub(r"\s*\.\.\.\s*([.!?:,]|$)", r"\1", text)
     text = re.sub(r"\s+([.!?:,])", r"\1", text)
     text = re.sub(r"([.!?:,])\1+", r"\1", text)
-    return re.sub(r"\s{2,}", " ", text).strip()
+    return _drop_junk_tail(re.sub(r"\s{2,}", " ", text).strip())
+
+
+def _letters(text):
+    return re.sub(r"[^\w]|_", "", (text or "").lower())
+
+
+def _trim_phrase(phrase, syllables):
+    """Drop a stray tail the syllables do not cover.
+
+    Seen live: target_phrase "Hola. corticosteroids" with syllables "ho - la".
+    When the phrase has a sentence end followed by more words, and the syllables
+    spell only the part before it, the tail is junk.
+    """
+    if not phrase or not syllables:
+        return phrase
+    spelled = _letters(syllables)
+    if not spelled or _letters(phrase) == spelled:
+        return phrase
+    for match in re.finditer(r"[.!?…]+(?=\s+\S)", phrase):
+        head = phrase[: match.end()].strip()
+        if _letters(head) == spelled:
+            # Keep ? and !, drop a lone sentence period: "Hola." -> "Hola".
+            return re.sub(r"(?<!\.)\.$", "", head)
+    return phrase
 
 
 def _choice(value, allowed, default):
@@ -372,7 +437,9 @@ def parse_lesson_text(text):
                     "issue": str(item.get("issue") or item.get("difference") or ""),
                 }
             )
-    phrase = _field(data.get("target_phrase") or data.get("translation"))
+    raw_phrase = data.get("target_phrase") or data.get("translation")
+    corrupt = _has_bad_chars(raw_phrase) or _has_bad_chars(data.get("syllables"))
+    phrase = _trim_phrase(_field(raw_phrase), _field(data.get("syllables")))
     intent = _choice(data.get("intent"), INTENTS, "teach_phrase" if phrase else "chat")
     verdict = _choice(data.get("verdict"), VERDICTS, "none")
     if intent != "practice_attempt":
@@ -387,11 +454,12 @@ def parse_lesson_text(text):
         "translation": phrase,
         "pronunciation": _field(data.get("pronunciation")),
         "syllables": _field(data.get("syllables")),
-        "tip": _field(data.get("tip")),
+        "tip": _drop_junk_tail(_field(data.get("tip"))),
         "verdict": verdict,
-        "verdict_reason": _field(data.get("verdict_reason")),
+        "verdict_reason": _drop_junk_tail(_field(data.get("verdict_reason"))),
         "next_prompt": next_prompt,
         "detected_errors": errors,
+        "corrupt": corrupt,
     }
 
 
@@ -460,5 +528,6 @@ def _lesson(text, model, usage, first_token_at, done_at, streamed):
         first_token_at=first_token_at,
         done_at=done_at,
         streamed=streamed,
+        corrupt=parsed["corrupt"],
         **{key: parsed[key] for key in TURN_FIELDS},
     )
