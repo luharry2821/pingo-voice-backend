@@ -45,7 +45,7 @@ If they ask to learn a language you cannot help with, say that in the tip and se
 
 DEFAULT_VOICES = {
     "english": "aai-kyla",
-    "spanish": "aai-antonioluis",
+    "spanish": "bff56a11-dc95-552e-a93a-59f68ca60b64",
     "french": "aai-donatien",
     "german": "aai-magdalena",
     "italian": "aai-giada",
@@ -79,9 +79,9 @@ DEFAULTS = {
         "vad_threshold": None,
     },
     "llm": {
-        "model": "qwen3.5-4b-32k-fast",
+        "model": "gemma-4-31b",
         "temperature": 0.2,
-        "max_tokens": 500,
+        "max_tokens": 300,
         # The playground call is one POST, not a stream. Kept so old configs still load.
         "stream": False,
         "timeout_s": 30,

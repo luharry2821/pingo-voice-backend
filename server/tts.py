@@ -1,21 +1,21 @@
-"""Text-to-speech through AssemblyAI's official SDK.
+"""Text-to-speech through AssemblyAI's WebSocket session.
 
-    tts = TextToSpeech(api_key=...)
-    with tts.stream(text, TTSConfig(language="spanish", ...)) as speech:
-        for chunk in speech:
+    aai.settings.tts_base_url = "https://tts.us.assemblyai.com"
+    with aai.TTSSession(config=aai.TTSConfig(voice_id=..., language="spanish")) as session:
+        for chunk in session.speak(text):
             play(chunk)
 
-The HTTP route is still POST /v1/speech. Chunks are not sample-aligned, so
-an odd trailing byte is held until the next one. The first yielded chunk is
-the first audio byte this process received.
+Raw PCM at 24 kHz. speak() yields the first audio byte as soon as it arrives.
+cancel() is the barge-in. TTSSession has been in the SDK since 1.8.2; we run 1.9.1.
 """
 
 import asyncio
 import threading
 
-from assemblyai import Client, Settings, TTSConfig, TTSError as SdkTTSError, TextToSpeech
+import assemblyai as aai
 
-TTS_MAX_CHARS = 5000
+TTS_URL = "https://tts.us.assemblyai.com"
+TTS_CAP = 300
 
 
 class TTSError(RuntimeError):
@@ -26,54 +26,41 @@ class GatewayTTS:
     def __init__(self, api_key, tts_settings):
         self.api_key = api_key
         self.settings = tts_settings
-        self._tts = None
 
     def voice_for(self, language_name):
         return (self.settings.get("voices") or {}).get(language_name) or None
 
-    def _client(self):
-        seconds = float(self.settings.get("timeout_s") or 30)
-        if self._tts is None:
-            http = Client(settings=Settings(api_key=self.api_key, tts_http_timeout=seconds))
-            self._tts = TextToSpeech(client=http)
-        else:
-            self._tts.client.settings.tts_http_timeout = seconds
-        return self._tts
-
     async def stream(self, text, language_name, meta):
-        spoken = (text or "").strip()[:TTS_MAX_CHARS]
+        spoken = (text or "").strip()[:TTS_CAP]
         if not spoken:
             return
         seconds = float(self.settings.get("timeout_s") or 30)
-        config = TTSConfig(
+        voice = self.voice_for(language_name)
+        config = aai.TTSConfig(
+            voice_id=voice,
             language=language_name,
             sample_rate=int(self.settings.get("sample_rate") or 24000),
             encoding="pcm_s16le",
-            container="raw",
         )
-        voice = self.voice_for(language_name)
-        if voice:
-            config = TTSConfig(
-                voice_id=voice,
-                language=language_name,
-                sample_rate=config.sample_rate,
-                encoding="pcm_s16le",
-                container="raw",
-            )
         loop = asyncio.get_running_loop()
         queue = asyncio.Queue()
         stop = threading.Event()
+        holder = {}
 
         def worker():
             pending = b""
             try:
-                with self._client().stream(spoken, config) as speech:
-                    info = speech.info
-                    meta["sample_rate"] = info.sample_rate
-                    meta["billed_chars"] = info.billed_characters
-                    for chunk in speech:
+                aai.settings.tts_base_url = TTS_URL
+                with aai.TTSSession(config=config, api_key=self.api_key) as session:
+                    holder["session"] = session
+                    meta["sample_rate"] = config.sample_rate or 24000
+                    meta["billed_chars"] = len(spoken)
+                    for chunk in session.speak(spoken):
                         if stop.is_set():
+                            session.cancel()
                             break
+                        if not chunk:
+                            continue
                         pending += chunk
                         even = len(pending) - (len(pending) % 2)
                         if even:
@@ -81,8 +68,8 @@ class GatewayTTS:
                             pending = pending[even:]
                     if pending and not stop.is_set():
                         loop.call_soon_threadsafe(queue.put_nowait, pending + b"\x00")
-            except SdkTTSError as exc:
-                loop.call_soon_threadsafe(queue.put_nowait, _clean(exc, seconds))
+                    if stop.is_set():
+                        session.close()
             except Exception as exc:
                 loop.call_soon_threadsafe(queue.put_nowait, _clean(exc, seconds))
             finally:
@@ -99,6 +86,12 @@ class GatewayTTS:
                 yield item
         finally:
             stop.set()
+            session = holder.get("session")
+            if session is not None:
+                try:
+                    session.cancel()
+                except Exception:
+                    pass
 
 
 def _clean(exc, seconds):

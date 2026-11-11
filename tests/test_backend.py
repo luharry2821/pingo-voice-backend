@@ -33,6 +33,12 @@ class ConfigTests(unittest.TestCase):
         self.assertNotIn("language_codes", params)
         self.assertNotIn("end_of_turn_confidence_threshold", params)
         self.assertNotIn("llm_gateway", params)
+        self.assertEqual(settings["llm"]["model"], "gemma-4-31b")
+        self.assertEqual(settings["llm"]["max_tokens"], 300)
+        self.assertEqual(
+            settings["tts"]["voices"]["spanish"],
+            "bff56a11-dc95-552e-a93a-59f68ca60b64",
+        )
 
     def test_keyterms_config_sends_terms(self):
         settings = load_settings("configs/keyterms_on.yaml")
@@ -116,11 +122,17 @@ class LessonParseTests(unittest.TestCase):
         self.assertEqual(parsed["translation"], "Tengo frío.")
         self.assertEqual(error_strings(parsed["detected_errors"]), ["soy -> tengo"])
 
-    def test_plain_text_is_the_translation(self):
-        parsed = parse_lesson_text("just say hola")
-        self.assertEqual(parsed["translation"], "just say hola")
-        self.assertEqual(parsed["pronunciation"], "")
-        self.assertEqual(parsed["detected_errors"], [])
+    def test_plain_text_is_not_spoken(self):
+        self.assertIsNone(parse_lesson_text("just say hola"))
+
+    def test_newline_inside_a_json_string(self):
+        raw = (
+            '{"translation":"Hola","pronunciation":"OH-la",'
+            '"tip":"line one\nline two","detected_errors":[]}'
+        )
+        parsed = parse_lesson_text(raw)
+        self.assertEqual(parsed["translation"], "Hola")
+        self.assertEqual(parsed["tip"], "line one\nline two")
 
     def test_playground_post_shape_and_usage(self):
         import server.llm as llm
@@ -165,17 +177,35 @@ class LessonParseTests(unittest.TestCase):
                     },
                 ).complete("hello", "en", 0.9, "Spanish")
             )
+            qwen = dict(captured)
+            captured.clear()
+            gemma = _run(
+                llm.GatewayLLM(
+                    "secret",
+                    {
+                        "model": "gemma-4-31b",
+                        "temperature": 0.2,
+                        "max_tokens": 300,
+                        "system_prompt": "You are Pingo. {target}",
+                        "timeout_s": 5,
+                    },
+                ).complete("hello", "en", 0.9, "Spanish")
+            )
         finally:
             llm.requests.post = original
-        self.assertEqual(captured["url"], "https://llm-gateway.assemblyai.com/v1/chat/completions")
-        self.assertEqual(captured["headers"], {"authorization": "secret"})
-        self.assertEqual(captured["json"]["model"], "qwen3.5-4b-32k-fast")
-        self.assertEqual([item["role"] for item in captured["json"]["messages"]], ["system", "user"])
-        self.assertNotIn("response_format", captured["json"])
-        self.assertEqual(set(captured["json"]), {"model", "messages"})
+        self.assertEqual(qwen["url"], "https://llm-gateway.assemblyai.com/v1/chat/completions")
+        self.assertEqual(qwen["headers"], {"authorization": "secret"})
+        self.assertEqual(qwen["json"]["model"], "qwen3.5-4b-32k-fast")
+        self.assertEqual(qwen["json"]["max_tokens"], 300)
+        self.assertEqual(qwen["json"]["temperature"], 0.2)
+        self.assertEqual([item["role"] for item in qwen["json"]["messages"]], ["system", "user"])
+        self.assertNotIn("response_format", qwen["json"])
         self.assertEqual(lesson.translation, "Hola")
         self.assertEqual(lesson.tokens_in, 11)
         self.assertEqual(lesson.tokens_out, 7)
+        self.assertEqual(captured["json"]["model"], "gemma-4-31b")
+        self.assertEqual(captured["json"]["response_format"]["type"], "json_schema")
+        self.assertEqual(gemma.translation, "Hola")
 
 
 class _FakeSTT:
@@ -340,7 +370,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(row["usage"]["llm_output_tokens"], 40)
         self.assertGreater(row["usage"]["tts_characters"], 0)
         self.assertEqual(row["config"]["mode"], "balanced")
-        self.assertEqual(row["config"]["llm_model"], "qwen3.5-4b-32k-fast")
+        self.assertEqual(row["config"]["llm_model"], "gemma-4-31b")
         self.assertEqual(row["config"]["llm_done"], "full_response")
         self.assertFalse(row["barge_in"])
         self.assertEqual(row["stt_partial_first"], "how do I say")
@@ -348,6 +378,24 @@ class SessionTests(unittest.TestCase):
         write_turn(log_path, row)
         with open(log_path, encoding="utf-8") as handle:
             self.assertEqual(len(handle.readlines()), 2)
+
+    def test_first_frame_arrival_is_the_origin(self):
+        async def scenario():
+            async def send(_payload):
+                return None
+
+            session = Session(
+                load_settings("configs/baseline.yaml"),
+                "key",
+                send,
+                log_path=os.path.join(tempfile.mkdtemp(), "t.jsonl"),
+            )
+            await session.handle_audio(b"\x00\x00", arrived_at=1_700_000_000_000)
+            await session.handle_audio(b"\x00\x00", arrived_at=1_700_000_000_400)
+            self.assertEqual(session.origin_wall_ms, 1_700_000_000_000)
+            self.assertEqual(len(session._pending_audio), 2)
+
+        _run(scenario())
 
     def test_audio_seconds_sum_across_turns(self):
         settings = load_settings("configs/baseline.yaml")

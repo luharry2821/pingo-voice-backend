@@ -79,6 +79,9 @@ class Session:
         self.audio_bytes = 0
         self.audio_accounted = 0
         self.origin_wall_ms = None
+        self._pending_audio = []
+        self._stt_ready = False
+        self.background = set()
         self.ready = []
         self.closed = False
         self.turns_logged = 0
@@ -98,18 +101,35 @@ class Session:
         else:
             await self._error(f"Unknown message type: {kind}")
 
-    async def handle_audio(self, pcm: bytes):
-        if self.closed or self.stt is None or not pcm:
+    async def handle_audio(self, pcm: bytes, arrived_at=None):
+        if self.closed or not pcm:
             return
+        # Live frames pass the time they were read off the socket. File mode
+        # omits it and stamps here, which matches real-time playback.
         if self.origin_wall_ms is None:
-            # Wall clock of audio position 0. Word `end` is milliseconds from here.
-            self.origin_wall_ms = now_ms()
+            self.origin_wall_ms = now_ms() if arrived_at is None else int(arrived_at)
+        if not self._stt_ready or self.stt is None:
+            self._pending_audio.append(pcm)
+            return
+        await self._forward_audio(pcm)
+
+    async def _forward_audio(self, pcm: bytes):
         self.audio_bytes += len(pcm)
         await self.stt.send_audio(pcm)
+
+    async def _flush_pending_audio(self):
+        pending = self._pending_audio
+        self._pending_audio = []
+        for pcm in pending:
+            if self.stt is None:
+                return
+            await self._forward_audio(pcm)
 
     async def close(self):
         if self.closed and self.stt is None and not self.ready and self.job is None:
             return
+        for task in list(self.background):
+            task.cancel()
         self.closed = True
         self.generation += 1
         await self._cancel_job()
@@ -150,6 +170,8 @@ class Session:
         self.audio_bytes = 0
         self.audio_accounted = 0
         self.origin_wall_ms = None
+        self._pending_audio = []
+        self._stt_ready = False
         self.begin_configuration = None
         self.stt_session_id = None
         self.partials = []
@@ -159,8 +181,11 @@ class Session:
             await self.stt.connect()
         except Exception as exc:
             self.stt = None
+            self._pending_audio = []
             await self._error(f"Could not open speech-to-text: {exc}")
             return
+        self._stt_ready = True
+        await self._flush_pending_audio()
         await self._status("listening")
 
     async def _replace_upstream(self):
@@ -306,6 +331,10 @@ class Session:
             }
             record["usage"]["llm_input_tokens"] = lesson.tokens_in
             record["usage"]["llm_output_tokens"] = lesson.tokens_out
+            if lesson.unparsed:
+                await self._error("The tutor reply was not valid JSON, so it was not spoken.")
+                lesson.tip = "Please try that phrase again."
+                record["llm"]["tip"] = lesson.tip
             if not self._alive(generation):
                 record["barge_in"] = True
                 return
@@ -324,9 +353,10 @@ class Session:
                 }
             )
             await self._emit({"type": "agent_text", "text": lesson.translation, "final": True})
-            if lesson.translation:
+            if lesson.translation and not lesson.unparsed:
                 await self._speak(lesson.translation, self.target, generation, record)
-            await self._push_agent_context(lesson.translation)
+            if not lesson.unparsed:
+                await self._push_agent_context(lesson.translation)
         except asyncio.CancelledError:
             record["barge_in"] = True
             raise
@@ -380,6 +410,7 @@ class Session:
         if not text or not self._alive(generation):
             return
         name = target_name(language_code)
+        text = text[:300]
         sample_rate = int(self.settings["tts"].get("sample_rate") or 24000)
         seconds = float(self.settings["tts"].get("timeout_s") or 30)
         meta = {}

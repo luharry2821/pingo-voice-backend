@@ -116,12 +116,13 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 | `stt.max_turn_silence` | unset | only when set | Silence that forces the turn to end. The main lever for hesitant-pause cutoffs. |
 | `stt.vad_threshold` | unset (server default 0.2) | only when set | Raise it if echo or noise causes false barge-ins. |
 | `stt.agent_context_enabled` | `false` | — | When true, after each reply the server sends `UpdateConfiguration` with `agent_context` set to the spoken translation (max 1750 characters). Same fidelity risk as keyterms, so the baseline leaves it off. |
-| `llm.model` | `qwen3.5-4b-32k-fast` | — | The model this key can call that does not support `response_format`. `gemma-4-31b` is the other allowed model, and that one does support `response_format`. Anything else, including `gemini-2.5-flash-lite`, returns 400. |
-| `llm.temperature` | `0.2` | logged, not sent | The playground body is only `model` and `messages`. Temperature stays in the JSONL config. |
+| `llm.model` | `gemma-4-31b` | — | Sends `response_format` for the lesson schema. `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast` (or `llm.model` in YAML) selects the other model this key can call. That one does not support `response_format`. Anything else, including `gemini-2.5-flash-lite`, returns 400. |
+| `llm.temperature` | `0.2` | yes | Sent on the playground POST. |
+| `llm.max_tokens` | `300` | yes | Caps the lesson. Spoken text is also cut at 300 characters. |
 | `llm.stream` | `false` | no | The playground call is one POST. `llm_first_token` is null. |
 | `llm.timeout_s` | `30` | — | Overall deadline. The client gets "The tutor model timed out after 30 seconds." |
 | `llm.system_prompt` | see `server/config.py` | — | Must not silently correct the learner. It has to name the specific difference. `{target}` is replaced with the language name. |
-| `tts.voices.*` | catalog default per language | `voice_id` | `english`→`aai-kyla`, `spanish`→`aai-antonioluis`, `french`→`aai-donatien`, `german`→`aai-magdalena`, `italian`→`aai-giada`, `portuguese`→`aai-nelson`. TTS `language` is the full name. |
+| `tts.voices.*` | per language | `voice_id` | `spanish`→`bff56a11-dc95-552e-a93a-59f68ca60b64`. `english`→`aai-kyla`, `french`→`aai-donatien`, `german`→`aai-magdalena`, `italian`→`aai-giada`, `portuguese`→`aai-nelson`. `language` is the full name. |
 | `tts.timeout_s` | `30` | — | "Speech synthesis timed out after 30 seconds." |
 
 `end_of_turn_confidence_threshold` is not a universal-3-6-pro parameter and is never sent. Final turns do include `end_of_turn_confidence`; it is stored on the JSONL line and is **not** used to start the LLM early.
@@ -161,7 +162,7 @@ One JSONL object per final STT turn, written once the tutor reply has finished o
     "mode": "balanced",
     "language_codes": [],
     "keyterms_prompt": [],
-    "llm_model": "qwen3.5-4b-32k-fast",
+    "llm_model": "gemma-4-31b",
     "temperature": 0.2,
     "llm_done": "full_response"
   },
@@ -173,7 +174,7 @@ One JSONL object per final STT turn, written once the tutor reply has finished o
     "end_of_turn_confidence": 1.0
   },
   "llm": {
-    "model": "qwen3.5-4b-32k-fast",
+    "model": "gemma-4-31b",
     "translation": "Tengo mucho frío.",
     "pronunciation": "TEN-go MOO-cho FREE-o",
     "tip": "Use tener for age and for being cold.",
@@ -225,7 +226,7 @@ All five `timings_ms` values are wall-clock epoch milliseconds from `time.time()
 7. **`agent_context` off by default.** When enabled, the tutor's last spoken line is sent with `UpdateConfiguration` so a short repeat ("estación") has context. Same risk as keyterms: it can erase the mistake you wanted to hear.
 8. **Barge-in on `SpeechStarted`.** That event fires only once there is a real transcript, not on noise. It cancels an in-flight LLM or TTS call and sends `barge_in`.
 9. **Six target languages.** English, Spanish, French, German, Italian, Portuguese. The UI should not offer Japanese or Hindi as something the tutor can speak.
-10. **JSON from the prompt, not `response_format`.** The default model, `qwen3.5-4b-32k-fast`, does not support `response_format`. The system prompt asks for `{translation, pronunciation, tip, detected_errors}` and the server parses that text, stripping code fences. If the reply is not JSON, the whole text is used as the translation. `gemma-4-31b` is the other model this key can call, and it does support `response_format`; the client still uses the same prompt-and-parse path. The prompt also says to never silently correct the transcript and to name the specific difference.
+10. **`gemma-4-31b` with a JSON schema.** The default model supports `response_format`, so the lesson request sends the schema plus `temperature: 0.2` and `max_tokens: 300`. `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast` is the same POST without `response_format`. Either way the server parses the text with `json.loads(..., strict=False)` so a raw newline inside a string still parses. If it still is not JSON, the client gets an error and the raw reply is not spoken. The prompt says to never silently correct the transcript and to name the specific difference.
 11. **Separate chat-completions call, not the streaming `llm_gateway` parameter.** The lesson has to be structured so the card and the scorer can read it, and the stage timings have to be ours. The streaming `llm_gateway` query parameter can run a prompt inside the STT socket and would save a network hop, but a failed gateway call returns nothing. Using it would need its own timeout and a fallback to this chat-completions call. That is a latency experiment, not the baseline. We also do not start the LLM on a partial, no matter how high `end_of_turn_confidence` is.
 12. **File mode plus one JSONL line per final turn.** Live and eval share `Session`, so the latency numbers come from the same code path. The log is append-only.
 
@@ -237,8 +238,8 @@ Checked against the real API on Nov 10, 2026 (PT), on commit `e2326c3` and the f
 
 | Model | `response_format` | What we do |
 |---|---|---|
-| `qwen3.5-4b-32k-fast` (default) | not supported | Ask for JSON in the system prompt and parse the text |
-| `gemma-4-31b` | supported | Same prompt-and-parse path. Switch with `--set llm.model=gemma-4-31b` |
+| `gemma-4-31b` (default) | supported | Sent as `response_format`, then the text is still parsed |
+| `qwen3.5-4b-32k-fast` | not supported | `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast`. JSON is parsed from the text only |
 
 Every other model, including `gemini-2.5-flash-lite`, returns HTTP 400: `Your account does not have access to this LLM Gateway model`.
 
@@ -274,7 +275,7 @@ python -m unittest discover -s tests -t .
 
 The tests fake the SDK streaming client and the gateway `requests.post`. They cover the eval JSONL line, append-only logging, barge-in, replay, a second `start`, and one WebSocket turn.
 
-Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming playground pattern). Text-to-speech uses the SDK `TextToSpeech.stream` call. The lesson uses the LLM Gateway playground `requests.post` shown above, with header `authorization: <key>` and no `Bearer` prefix. SDK version: `assemblyai==1.9.1`.
+Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming playground pattern). Text-to-speech uses `TTSSession.speak` on `wss://tts.us.assemblyai.com/v1/ws` (raw 24 kHz PCM). `TTSSession` has been in the SDK since 1.8.2; this repo pins `assemblyai==1.9.1`, which has it and keeps streaming v3 working. Spanish uses voice id `bff56a11-dc95-552e-a93a-59f68ca60b64`. The other five languages still use the catalog slugs until their ids are set in `tts.voices`. The lesson is the LLM Gateway playground `requests.post`, header `authorization: <key>` and no `Bearer` prefix. Live audio stamps the first socket frame's arrival as speech-end origin, so time spent connecting STT is not missing from the latency. File mode still stamps when it sends each real-time chunk.
 
 ## Known gaps
 
@@ -297,7 +298,7 @@ Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming
 | `server/session.py` | One learner session: STT events, lesson, TTS, barge-in, log |
 | `server/stt.py` | SDK `RealTimeTranscriber` and the parameter rules |
 | `server/llm.py` | Playground `requests.post` to the LLM Gateway |
-| `server/tts.py` | SDK `TextToSpeech.stream` |
+| `server/tts.py` | SDK `TTSSession.speak` |
 | `server/config.py` | Defaults, YAML, env, `--set`, per-session merge |
 | `server/audio.py` | WAV to 16 kHz mono PCM16, real-time chunking |
 | `server/log.py` | Append one JSONL line |

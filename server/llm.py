@@ -13,8 +13,9 @@
     )
     text = response.json()["choices"][0]["message"]["content"]
 
-The POST runs in a thread so the asyncio session is not blocked. The model
-is asked for JSON in the system prompt. response_format is not sent.
+The POST runs in a thread so the asyncio session is not blocked. The default
+model is gemma-4-31b, which gets response_format. qwen3.5-4b-32k-fast is the
+same request without response_format.
 """
 
 import asyncio
@@ -24,7 +25,38 @@ import time
 import requests
 
 LLM_URL = "https://llm-gateway.assemblyai.com/v1/chat/completions"
-DEFAULT_MODEL = "qwen3.5-4b-32k-fast"
+DEFAULT_MODEL = "gemma-4-31b"
+GEMMA_MODEL = "gemma-4-31b"
+
+LESSON_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "pingo_lesson",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "translation": {"type": "string"},
+                "pronunciation": {"type": "string"},
+                "tip": {"type": "string"},
+                "detected_errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "heard": {"type": "string"},
+                            "issue": {"type": "string"},
+                        },
+                        "required": ["heard", "issue"],
+                    },
+                },
+            },
+            "required": ["translation", "pronunciation", "tip", "detected_errors"],
+        },
+    },
+}
 
 
 class LLMError(RuntimeError):
@@ -43,6 +75,7 @@ class Lesson:
         self.first_token_at = first_token_at
         self.done_at = done_at
         self.streamed = streamed
+        self.unparsed = False
 
     def as_json(self):
         return {
@@ -101,17 +134,22 @@ class GatewayLLM:
             f"{transcript}"
         )
         model = self.settings.get("model") or DEFAULT_MODEL
+        body = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_text},
+            ],
+            "max_tokens": int(self.settings.get("max_tokens") or 300),
+            "temperature": float(self.settings.get("temperature", 0.2)),
+        }
+        if model == GEMMA_MODEL:
+            body["response_format"] = LESSON_SCHEMA
         try:
             response = requests.post(
                 LLM_URL,
                 headers={"authorization": self.api_key},
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": user_text},
-                    ],
-                },
+                json=body,
                 timeout=seconds,
             )
         except requests.Timeout as exc:
@@ -132,18 +170,13 @@ class GatewayLLM:
 
 
 def parse_lesson_text(text):
-    """Parse the tutor JSON. If it is not JSON, the whole reply is the translation."""
+    """Parse the tutor JSON. None means the reply is not usable JSON."""
     raw = (text or "").strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
     data = _load_object(raw)
     if data is None:
-        return {
-            "translation": (text or "").strip(),
-            "pronunciation": "",
-            "tip": "",
-            "detected_errors": [],
-        }
+        return None
     errors = []
     for item in data.get("detected_errors") or []:
         if isinstance(item, str):
@@ -164,14 +197,15 @@ def parse_lesson_text(text):
 
 
 def _load_object(raw):
+    # strict=False accepts the raw newline qwen sometimes puts inside a string.
     try:
-        data = json.loads(raw)
+        data = json.loads(raw, strict=False)
     except json.JSONDecodeError:
         start, end = raw.find("{"), raw.rfind("}")
         if start < 0 or end <= start:
             return None
         try:
-            data = json.loads(raw[start : end + 1])
+            data = json.loads(raw[start : end + 1], strict=False)
         except json.JSONDecodeError:
             return None
     if not isinstance(data, dict):
@@ -201,6 +235,21 @@ def _tokens(usage):
 def _lesson(text, model, usage, first_token_at, done_at, streamed):
     parsed = parse_lesson_text(text)
     tokens_in, tokens_out = _tokens(usage)
+    if parsed is None:
+        lesson = Lesson(
+            translation="",
+            pronunciation="",
+            tip="",
+            detected_errors=[],
+            model=model,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            first_token_at=first_token_at,
+            done_at=done_at,
+            streamed=streamed,
+        )
+        lesson.unparsed = True
+        return lesson
     return Lesson(
         translation=parsed["translation"],
         pronunciation=parsed["pronunciation"],

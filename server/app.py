@@ -1,12 +1,13 @@
 """WebSocket server the Lovable page connects to. The API key stays here."""
 
+import asyncio
 import json
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from server.llm import GatewayLLM
-from server.session import Session
+from server.session import Session, now_ms
 from server.tts import GatewayTTS
 
 
@@ -48,7 +49,9 @@ def create_app(settings, api_key, *, stt_factory=None, llm=None, tts=None, log_p
                 if incoming["type"] == "websocket.disconnect":
                     break
                 if incoming.get("bytes") is not None:
-                    await session.handle_audio(incoming["bytes"])
+                    # Stamp before any await so connect() cannot move the clock.
+                    arrived = now_ms()
+                    await session.handle_audio(incoming["bytes"], arrived_at=arrived)
                 elif incoming.get("text") is not None:
                     try:
                         message = json.loads(incoming["text"])
@@ -58,7 +61,14 @@ def create_app(settings, api_key, *, stt_factory=None, llm=None, tts=None, log_p
                     if not isinstance(message, dict):
                         await session._error("Expected a JSON object.")
                         continue
-                    await session.handle_text(message)
+                    if message.get("type") == "start":
+                        # Keep reading audio while STT connects, so the first
+                        # frame's arrival stays the speech-end origin.
+                        task = asyncio.create_task(session.handle_text(message))
+                        session.background.add(task)
+                        task.add_done_callback(session.background.discard)
+                    else:
+                        await session.handle_text(message)
         except WebSocketDisconnect:
             pass
         finally:

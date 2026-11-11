@@ -27,11 +27,10 @@ stt:
   vad_threshold: null
 
 llm:
-  # Same model choice as baseline. gemma-4-31b is the other model this key
-  # can call, and the one that supports response_format.
-  model: qwen3.5-4b-32k-fast
+  # Same as baseline. PINGO_LLM_MODEL=qwen3.5-4b-32k-fast selects the other model.
+  model: gemma-4-31b
   temperature: 0.2
-  max_tokens: 500
+  max_tokens: 300
   stream: false
   timeout_s: 30
 
@@ -41,14 +40,14 @@ tts:
   timeout_s: 30
   voices:
     english: aai-kyla
-    spanish: aai-antonioluis
+    spanish: bff56a11-dc95-552e-a93a-59f68ca60b64
     french: aai-donatien
     german: aai-magdalena
     italian: aai-giada
     portuguese: aai-nelson
 
 server:
-  host: 0.0.0.0
+  host: 127.0.0.1
   port: 8000
 
 log:
