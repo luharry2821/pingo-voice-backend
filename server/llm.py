@@ -111,19 +111,25 @@ class GatewayLLM:
         self.api_key = api_key
         self.settings = llm_settings
 
-    async def complete(self, transcript, source_language, language_confidence, target_name):
+    async def complete(self, transcript, source_language, language_confidence, target_name, history=None):
         seconds = float(self.settings.get("timeout_s") or 30)
         try:
             return await asyncio.wait_for(
                 asyncio.to_thread(
-                    self._post, transcript, source_language, language_confidence, target_name, seconds
+                    self._post,
+                    transcript,
+                    source_language,
+                    language_confidence,
+                    target_name,
+                    seconds,
+                    list(history or []),
                 ),
                 timeout=seconds + 1,
             )
         except asyncio.TimeoutError as exc:
             raise LLMError(f"The tutor model timed out after {int(seconds)} seconds.") from exc
 
-    def _post(self, transcript, source_language, language_confidence, target_name, seconds):
+    def _post(self, transcript, source_language, language_confidence, target_name, seconds, history):
         prompt = (self.settings.get("system_prompt") or "").replace("{target}", target_name)
         confidence = "unknown" if language_confidence is None else language_confidence
         user_text = (
@@ -136,10 +142,7 @@ class GatewayLLM:
         model = self.settings.get("model") or DEFAULT_MODEL
         body = {
             "model": model,
-            "messages": [
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_text},
-            ],
+            "messages": [{"role": "system", "content": prompt}, *history, {"role": "user", "content": user_text}],
             "max_tokens": int(self.settings.get("max_tokens") or 300),
             "temperature": float(self.settings.get("temperature", 0.2)),
         }

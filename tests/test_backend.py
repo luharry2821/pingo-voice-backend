@@ -441,6 +441,7 @@ class SessionTests(unittest.TestCase):
                 await asyncio.sleep(0.01)
             await session._on_stt({"type": "SpeechStarted", "timestamp": 10, "confidence": 0.99})
             self.assertTrue(any(isinstance(item, dict) and item.get("type") == "barge_in" for item in sent))
+            self.assertEqual(session.history, [])
             await session.close()
             rows = [json.loads(line) for line in open(session.log_path, encoding="utf-8")]
             self.assertTrue(rows[0]["barge_in"])
@@ -509,6 +510,96 @@ class SessionTests(unittest.TestCase):
 
     async def _ignore(self, payload):
         return None
+
+
+class MemoryTests(unittest.TestCase):
+    def test_history_is_included_and_capped_at_six_exchanges(self):
+        async def scenario():
+            llm = _FakeLLM()
+
+            async def send(_payload):
+                return None
+
+            session = Session(
+                load_settings("configs/baseline.yaml"),
+                "key",
+                send,
+                stt_factory=_FakeSTT,
+                llm=llm,
+                tts=_FakeTTS(),
+                log_path=os.path.join(tempfile.mkdtemp(), "t.jsonl"),
+            )
+            await session.handle_text({"type": "start", "target_language": "es"})
+            await session.stt.send_audio(b"\x00\x00" * 80)
+            await session.job
+            self.assertEqual(llm.calls[0]["history"], [])
+            self.assertEqual(len(session.history), 2)
+            self.assertEqual(session.history[0]["role"], "user")
+            self.assertIn("station", session.history[0]["content"])
+            self.assertEqual(session.history[1]["role"], "assistant")
+            await session._on_stt(
+                {
+                    "type": "Turn",
+                    "turn_order": 1,
+                    "end_of_turn": True,
+                    "transcript": "hello",
+                    "language_code": "en",
+                    "language_confidence": 0.9,
+                    "end_of_turn_confidence": 1,
+                    "words": [{"text": "hello", "start": 0, "end": 10, "confidence": 0.9, "word_is_final": True}],
+                }
+            )
+            await session.job
+            self.assertEqual(llm.calls[1]["history"][0]["content"], session.history[0]["content"])
+            self.assertIn("estación", llm.calls[1]["history"][1]["content"])
+            for index in range(8):
+                lesson = llm.calls[0]
+                lesson = type("Lesson", (), {"translation": f"t{index}", "tip": "tip"})()
+                session._remember(f"u{index}", lesson)
+            self.assertEqual(len(session.history), 12)
+            self.assertTrue(session.history[0]["content"].startswith("u"))
+            self.assertIn("t7", session.history[-1]["content"])
+            await session.handle_text({"type": "set_target", "target_language": "fr"})
+            self.assertEqual(session.history, [])
+
+        _run(scenario())
+
+    def test_turn_id_climbs_across_a_restart(self):
+        async def scenario():
+            sent = []
+
+            async def send(payload):
+                sent.append(payload)
+
+            session = Session(
+                load_settings("configs/baseline.yaml"),
+                "key",
+                send,
+                stt_factory=_FakeSTT,
+                llm=_FakeLLM(),
+                tts=_FakeTTS(),
+                log_path=os.path.join(tempfile.mkdtemp(), "t.jsonl"),
+            )
+            kinds = ("transcript", "lesson", "agent_text", "tts_start")
+
+            async def one_turn():
+                sent.clear()
+                await session.stt.send_audio(b"\x00\x00" * 80)
+                await session.job
+                ids = [item["turn_id"] for item in sent if isinstance(item, dict) and item.get("type") in kinds]
+                self.assertGreaterEqual(len(ids), 4)
+                self.assertEqual(len(set(ids)), 1)
+                return ids[0]
+
+            await session.handle_text({"type": "start", "target_language": "es"})
+            first = await one_turn()
+            await session.handle_text({"type": "start", "target_language": "es"})
+            second = await one_turn()
+            self.assertEqual(first, 1)
+            self.assertEqual(second, 2)
+            self.assertEqual(session.history[0]["role"], "user")
+
+        _run(scenario())
 
 
 class WebSocketTests(unittest.TestCase):

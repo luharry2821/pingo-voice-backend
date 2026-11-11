@@ -22,6 +22,7 @@ logger = logging.getLogger("pingo.session")
 
 # SpeechStarted while the tutor is working means the learner talked over it.
 BUSY = ("thinking", "speaking")
+HISTORY_TURNS = 6
 
 
 def now_ms():
@@ -82,6 +83,11 @@ class Session:
         self._pending_audio = []
         self._stt_ready = False
         self.background = set()
+        self.history = []
+        self._stt_epoch = 0
+        self._turn_seq = 0
+        self._turn_key = None
+        self._turn_id = 0
         self.ready = []
         self.closed = False
         self.turns_logged = 0
@@ -138,6 +144,7 @@ class Session:
         if stt is not None:
             await stt.close()
         self._flush_ready(final=True)
+        self.history.clear()
         self.state = "idle"
 
     async def _start(self, message):
@@ -176,6 +183,8 @@ class Session:
         self.stt_session_id = None
         self.partials = []
         self.partial_first = None
+        self.history.clear()
+        self._stt_epoch += 1
         self.stt = self.stt_factory(self.api_key, self.stt_query, self._on_stt)
         try:
             await self.stt.connect()
@@ -217,10 +226,14 @@ class Session:
 
     async def _set_target(self, value):
         try:
-            self.target = normalize_target(value)
-            self.settings["target_language"] = self.target
+            target = normalize_target(value)
         except ValueError as exc:
             await self._error(str(exc))
+            return
+        if target != self.target:
+            self.history.clear()
+        self.target = target
+        self.settings["target_language"] = self.target
 
     async def _replay(self, turn_order):
         try:
@@ -236,7 +249,13 @@ class Session:
         generation = self.generation
         await self._cancel_job()
         self.job = asyncio.create_task(
-            self._speak(saved["translation"], saved["target_language"], generation, None)
+            self._speak(
+                saved["translation"],
+                saved["target_language"],
+                generation,
+                None,
+                saved.get("turn_id"),
+            )
         )
 
     async def _on_stt(self, message):
@@ -266,6 +285,7 @@ class Session:
 
     async def _on_turn(self, turn):
         order = turn.get("turn_order")
+        turn_id = self._turn_id_for(order)
         if order != self.partial_turn:
             self.partial_turn = order
             self.partials = []
@@ -281,6 +301,7 @@ class Session:
         await self._emit(
             {
                 "type": "transcript",
+                "turn_id": turn_id,
                 "turn_order": order,
                 "end_of_turn": bool(turn.get("end_of_turn")),
                 "transcript": view["transcript"],
@@ -303,10 +324,12 @@ class Session:
         generation = self.generation
         await self._cancel_job()
         self.job = asyncio.create_task(
-            self._respond(turn, view, partials, partial_first, generation, audio_mark, received_ms)
+            self._respond(
+                turn, view, partials, partial_first, generation, audio_mark, received_ms, turn_id
+            )
         )
 
-    async def _respond(self, turn, view, partials, partial_first, generation, audio_mark, received_ms):
+    async def _respond(self, turn, view, partials, partial_first, generation, audio_mark, received_ms, turn_id):
         record = self._new_record(turn, view, partials, partial_first, audio_mark, received_ms)
         try:
             if not self._alive(generation):
@@ -318,6 +341,7 @@ class Session:
                 source_language=turn.get("language_code"),
                 language_confidence=turn.get("language_confidence"),
                 target_name=target_name(self.target),
+                history=list(self.history),
             )
             record["timings_ms"]["llm_first_token"] = _ms(lesson.first_token_at)
             record["timings_ms"]["llm_done"] = _ms(lesson.done_at)
@@ -339,10 +363,15 @@ class Session:
                 record["barge_in"] = True
                 return
             order = turn.get("turn_order")
-            self.lessons[order] = {"translation": lesson.translation, "target_language": self.target}
+            self.lessons[order] = {
+                "translation": lesson.translation,
+                "target_language": self.target,
+                "turn_id": turn_id,
+            }
             await self._emit(
                 {
                     "type": "lesson",
+                    "turn_id": turn_id,
                     "turn_order": order,
                     "source_text": view["transcript"],
                     "source_language": turn.get("language_code"),
@@ -352,10 +381,13 @@ class Session:
                     "tip": lesson.tip,
                 }
             )
-            await self._emit({"type": "agent_text", "text": lesson.translation, "final": True})
+            await self._emit(
+                {"type": "agent_text", "turn_id": turn_id, "text": lesson.translation, "final": True}
+            )
             if lesson.translation and not lesson.unparsed:
-                await self._speak(lesson.translation, self.target, generation, record)
-            if not lesson.unparsed:
+                await self._speak(lesson.translation, self.target, generation, record, turn_id)
+            if not lesson.unparsed and not record["barge_in"] and self._alive(generation):
+                self._remember(view["transcript"], lesson)
                 await self._push_agent_context(lesson.translation)
         except asyncio.CancelledError:
             record["barge_in"] = True
@@ -406,7 +438,26 @@ class Session:
             "_audio_mark": audio_mark,
         }
 
-    async def _speak(self, text, language_code, generation, record):
+    def _turn_id_for(self, turn_order):
+        """One id per learner turn. It keeps climbing across STT reconnects."""
+        key = (self._stt_epoch, turn_order)
+        if key != self._turn_key:
+            self._turn_seq += 1
+            self._turn_key = key
+            self._turn_id = self._turn_seq
+        return self._turn_id
+
+    def _remember(self, transcript, lesson):
+        spoken = lesson.translation or ""
+        if lesson.tip:
+            spoken = f"{spoken}\n{lesson.tip}".strip()
+        self.history.append({"role": "user", "content": transcript})
+        self.history.append({"role": "assistant", "content": spoken})
+        extra = len(self.history) - HISTORY_TURNS * 2
+        if extra > 0:
+            del self.history[:extra]
+
+    async def _speak(self, text, language_code, generation, record, turn_id=None):
         if not text or not self._alive(generation):
             return
         name = target_name(language_code)
@@ -417,7 +468,7 @@ class Session:
         total = 0
         started = False
         await self._status("speaking")
-        await self._emit({"type": "tts_start", "sample_rate": sample_rate})
+        await self._emit({"type": "tts_start", "turn_id": turn_id, "sample_rate": sample_rate})
         started = True
         try:
             async with asyncio.timeout(seconds):

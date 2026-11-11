@@ -90,10 +90,12 @@ Server to client:
 | Message | Meaning |
 |---|---|
 | `{"type":"status","state":"listening"\|"thinking"\|"speaking"}` | Where the turn is |
-| `{"type":"transcript",...}` | Partial or final. Fields: `turn_order`, `end_of_turn`, `transcript`, `language_code`, `language_confidence`, `words[{text,start,end,confidence,word_is_final}]`. Language is only filled on a final turn. |
-| `{"type":"lesson",...}` | `turn_order`, `source_text`, `source_language`, `translation`, `target_language`, `pronunciation`, `tip` |
-| `{"type":"agent_text","text","final"}` | The text TTS is about to speak (the translation). `final` is true. |
-| `{"type":"tts_start","sample_rate":24000}` then binary PCM16 then `{"type":"tts_end"}` | Tutor audio |
+| `{"type":"transcript",...}` | Partial or final. Fields: `turn_id`, `turn_order`, `end_of_turn`, `transcript`, `language_code`, `language_confidence`, `words[{text,start,end,confidence,word_is_final}]`. Language is only filled on a final turn. |
+| `{"type":"lesson",...}` | `turn_id`, `turn_order`, `source_text`, `source_language`, `translation`, `target_language`, `pronunciation`, `tip` |
+| `{"type":"agent_text","turn_id","text","final"}` | The text TTS is about to speak (the translation). `final` is true. |
+| `{"type":"tts_start","turn_id","sample_rate":24000}` then binary PCM16 then `{"type":"tts_end"}` | Tutor audio |
+
+`turn_id` is a server counter for this WebSocket. It starts at 1 and only goes up. Partials, the final transcript, the lesson, `agent_text`, and `tts_start` for one utterance share it, so the page can match a lesson to its transcript. `turn_order` stays the STT turn index and can go back to 0 when the mic restarts. `turn_id` does not. The tutor also keeps the last 6 exchanges (learner transcript plus the spoken lesson) and sends them between the system prompt and the new user message. That memory is cleared on `stop`, on a new `start`, and when `set_target` changes the language. A reply cancelled by barge-in is not stored.
 | `{"type":"barge_in"}` | Learner spoke over the tutor. Flush playback. A `tts_end` may already have been sent; do not wait on it. |
 | `{"type":"error","message"}` | A clean message. Timeouts say which call timed out. |
 
