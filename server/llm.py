@@ -213,6 +213,7 @@ class GatewayLLM:
         new_phrase=False,
         auto_target=False,
         previous_target="",
+        other_language="",
     ):
         seconds = float(self.settings.get("timeout_s") or 30)
         try:
@@ -231,6 +232,7 @@ class GatewayLLM:
                     new_phrase,
                     auto_target,
                     previous_target,
+                    other_language,
                 ),
                 timeout=seconds + 1,
             )
@@ -251,6 +253,7 @@ class GatewayLLM:
         new_phrase=False,
         auto_target=False,
         previous_target="",
+        other_language="",
     ):
         prompt = system_prompt(self.settings.get("system_prompt") or "", target_name, native_name, auto_target)
         user_text = build_user_text(
@@ -264,6 +267,7 @@ class GatewayLLM:
             new_phrase,
             auto_target=auto_target,
             previous_target=previous_target,
+            other_language=other_language,
         )
         model = self.settings.get("model") or DEFAULT_MODEL
         body = {
@@ -346,6 +350,7 @@ def build_user_text(
     new_phrase=False,
     auto_target=False,
     previous_target="",
+    other_language="",
 ):
     confidence = "unknown" if language_confidence is None else language_confidence
     if auto_target:
@@ -381,6 +386,23 @@ def build_user_text(
             "at the practice phrase. Use intent teach_phrase and teach its natural "
             f"{target_name or 'target language'} equivalent, unless it is a question about pronunciation or "
             "repeating the current phrase, or meta talk about the lesson."
+        )
+    elif other_language:
+        native = native_name or "english"
+        if auto_target:
+            target = "the language they ask for (else the previous target language)"
+            if not previous_target:
+                target = "the language they ask for"
+        else:
+            target = target_name or "target language"
+        lines.append(
+            f"Routing (automatic): this turn is clear speech in another language, not {native}. "
+            "The detected language code can be wrong; trust the transcript. Do not ask them to repeat it. "
+            f"Understand it as if they had said it in {native}: if it asks how to say something, teach that; "
+            f"otherwise teach what a native speaker would naturally say in {target} for its meaning "
+            "(correct grammar, not word for word). "
+            f"Use intent teach_phrase and explain in {native}."
+            + (" If they name no language and there is no previous target, ask which one, as above." if auto_target and not previous_target else "")
         )
     lines.append("Learner transcript, verbatim. Never silently correct it:")
     lines.append(transcript)

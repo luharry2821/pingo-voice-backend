@@ -16,7 +16,15 @@ from server.config import (
 )
 from server.log import write_turn
 from server.llm import error_strings
-from server.practice import CLOSE_AT, check_attempt, is_native_phrase, looks_like_attempt, match_score, slow_text
+from server.practice import (
+    CLOSE_AT,
+    check_attempt,
+    is_native_phrase,
+    is_other_script,
+    looks_like_attempt,
+    match_score,
+    slow_text,
+)
 from server.stt import UPDATABLE, StreamingSTT, stt_query_params, update_configuration_message
 from server.tts import TTSError, audio_ms
 
@@ -460,6 +468,7 @@ class Session:
             transcript = view["transcript"]
             check = None
             new_phrase = False
+            other_language = ""
             if self.practice_target and looks_like_attempt(
                 transcript, self.practice_target, self.target, self.native_language
             ):
@@ -470,6 +479,8 @@ class Session:
                 # A pending practice phrase does not swallow a new phrase in the
                 # learner's own language ("Good morning" while "Hola" is pending).
                 new_phrase = is_native_phrase(transcript, self.practice_target, self.native_language)
+                if not new_phrase:
+                    other_language = self._other_language(turn, transcript)
             native = self._native_name()
             extra = {"auto_target": True, "previous_target": self.target or ""} if self.auto_target else {}
             lesson = await self.llm.complete(
@@ -482,6 +493,7 @@ class Session:
                 practice_target=self.practice_target,
                 practice_check=check,
                 new_phrase=new_phrase,
+                other_language=other_language,
                 **extra,
             )
             record["timings_ms"]["llm_first_token"] = _ms(lesson.first_token_at)
@@ -505,7 +517,12 @@ class Session:
                 "retried": bool(getattr(lesson, "retried", False)),
             }
             record["practice"] = check
-            record["routing"] = "practice_attempt" if check else ("new_phrase" if new_phrase else "model")
+            record["routing"] = (
+                "practice_attempt" if check
+                else "new_phrase" if new_phrase
+                else "other_language" if other_language
+                else "model"
+            )
             record["usage"]["llm_input_tokens"] = lesson.tokens_in
             record["usage"]["llm_output_tokens"] = lesson.tokens_out
             if lesson.unparsed:
@@ -653,6 +670,25 @@ class Session:
         if isinstance(confidence, (int, float)) and confidence < 0.6:
             return
         self.native_language = code
+
+    def _other_language(self, turn, transcript):
+        """A turn in a language Pingo cannot speak (Hindi, Japanese, Chinese...).
+
+        Returns the STT language code (or "other") when the turn is clearly in
+        another language, else "". Such a turn is something to translate and
+        teach, not something Pingo "didn't catch". Non-Latin script decides on
+        its own; for Latin script, the STT code must be outside the six with
+        the same words and confidence bar as _note_native.
+        """
+        code = turn.get("language_code") or ""
+        if is_other_script(transcript):
+            return code if code and code not in TARGET_LANGUAGES else "other"
+        confidence = turn.get("language_confidence")
+        if not code or code in TARGET_LANGUAGES or len(transcript.split()) < NATIVE_MIN_WORDS:
+            return ""
+        if not isinstance(confidence, (int, float)) or confidence < 0.6:
+            return ""
+        return code
 
     def _apply_auto_target(self, lesson, check, record):
         """Auto-target mode: take this turn's target from the model, checked.

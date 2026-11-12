@@ -71,6 +71,21 @@ def is_native_phrase(utterance, target, native="en"):
     return any(word not in target_words for word in words)
 
 
+def is_other_script(utterance):
+    """True when most letters are not Latin (Devanagari, kana, kanji, Cyrillic...).
+
+    Every language Pingo teaches or explains in (en, es, fr, de, it, pt) is
+    written in Latin script, so such a turn is never an attempt at the practice
+    phrase: it is the learner speaking another language. STT's language_code
+    is not enough on its own (seen live: Japanese tagged "hi", Chinese "ja").
+    """
+    letters = [ch for ch in utterance or "" if ch.isalpha()]
+    if not letters:
+        return False
+    other = sum(1 for ch in letters if not unicodedata.name(ch, "").startswith("LATIN"))
+    return other * 2 > len(letters)
+
+
 def fold(text):
     """Lowercase, strip accents and punctuation, collapse spaces."""
     text = unicodedata.normalize("NFKD", text or "")
