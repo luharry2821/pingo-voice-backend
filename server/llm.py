@@ -84,7 +84,37 @@ LESSON_SCHEMA = {
     },
 }
 
-TURN_FIELDS = ("intent", "reply", "syllables", "verdict", "verdict_reason", "next_prompt")
+def _auto_schema():
+    """LESSON_SCHEMA plus `target_language`: the language the learner asked for this turn."""
+    schema = json.loads(json.dumps(LESSON_SCHEMA))
+    body = schema["json_schema"]["schema"]
+    schema["json_schema"]["name"] = "pingo_tutor_turn_auto"
+    body["properties"]["target_language"] = {"type": "string"}
+    body["required"].append("target_language")
+    return schema
+
+
+AUTO_LESSON_SCHEMA = _auto_schema()
+
+# Appended to the system prompt in auto-target mode. {target} in the main
+# prompt becomes "the target language"; this block says how to pick it.
+AUTO_TARGET_PROMPT = """
+# Auto-target mode
+
+The learner did not pick a language. They can speak any language. Each turn, decide which
+language they want to learn and return it as target_language:
+- The ISO 639-1 code of the language they ask for in this turn, in whatever language they ask
+  ("How do I say thanks in French?" -> "fr", "¿Cómo se dice hola en alemán?" -> "de").
+- If they do not name a language, use the previous target language from the turn details.
+- If they name none and there is no previous target, return "" with intent chat and an empty
+  target_phrase, and ask which language they want to learn it in.
+- Pingo teaches only en, es, fr, de, it and pt. If they ask for another language, still return its
+  code (e.g. "ja"), with intent chat and an empty target_phrase.
+- "The target language" above means this turn's target_language. In reply, name it
+  ("In German, that's"), never say "the target language".
+"""
+
+TURN_FIELDS = ("intent", "reply", "syllables", "verdict", "verdict_reason", "next_prompt", "target_language")
 
 # Control characters and the replacement character. Seen live from the model:
 # "Buenos d\x7fas" (DEL where "í" belongs). The gateway bytes are valid UTF-8
@@ -122,6 +152,8 @@ class Lesson:
         self.verdict = turn.get("verdict") or "none"
         self.verdict_reason = turn.get("verdict_reason") or ""
         self.next_prompt = turn.get("next_prompt") or ""
+        # Auto-target mode only: the language code the model says the learner asked for.
+        self.target_language = turn.get("target_language") or ""
 
     @property
     def target_phrase(self):
@@ -179,6 +211,8 @@ class GatewayLLM:
         practice_target="",
         practice_check=None,
         new_phrase=False,
+        auto_target=False,
+        previous_target="",
     ):
         seconds = float(self.settings.get("timeout_s") or 30)
         try:
@@ -195,6 +229,8 @@ class GatewayLLM:
                     practice_target,
                     practice_check,
                     new_phrase,
+                    auto_target,
+                    previous_target,
                 ),
                 timeout=seconds + 1,
             )
@@ -213,12 +249,10 @@ class GatewayLLM:
         practice_target="",
         practice_check=None,
         new_phrase=False,
+        auto_target=False,
+        previous_target="",
     ):
-        prompt = (
-            (self.settings.get("system_prompt") or "")
-            .replace("{target}", target_name.capitalize() if target_name.islower() else target_name)
-            .replace("{native}", (native_name or "english").capitalize())
-        )
+        prompt = system_prompt(self.settings.get("system_prompt") or "", target_name, native_name, auto_target)
         user_text = build_user_text(
             transcript,
             source_language,
@@ -228,6 +262,8 @@ class GatewayLLM:
             practice_target,
             practice_check,
             new_phrase,
+            auto_target=auto_target,
+            previous_target=previous_target,
         )
         model = self.settings.get("model") or DEFAULT_MODEL
         body = {
@@ -237,7 +273,7 @@ class GatewayLLM:
             "temperature": float(self.settings.get("temperature", 0.2)),
         }
         if model == GEMMA_MODEL:
-            body["response_format"] = LESSON_SCHEMA
+            body["response_format"] = AUTO_LESSON_SCHEMA if auto_target else LESSON_SCHEMA
         started = time.time()
         lesson = self._send(body, model, seconds)
         if lesson.unparsed and time.time() - started < seconds / 3:
@@ -287,6 +323,18 @@ class GatewayLLM:
         return lesson
 
 
+def system_prompt(template, target_name, native_name="english", auto_target=False):
+    """Fill {target} and {native}. Auto-target mode appends how to pick the target."""
+    if auto_target:
+        target = "the target language"
+    else:
+        target = target_name.capitalize() if target_name.islower() else target_name
+    prompt = template.replace("{target}", target).replace("{native}", (native_name or "english").capitalize())
+    if auto_target:
+        prompt = prompt.rstrip() + "\n" + AUTO_TARGET_PROMPT
+    return prompt
+
+
 def build_user_text(
     transcript,
     source_language,
@@ -296,10 +344,16 @@ def build_user_text(
     practice_target="",
     practice_check=None,
     new_phrase=False,
+    auto_target=False,
+    previous_target="",
 ):
     confidence = "unknown" if language_confidence is None else language_confidence
+    if auto_target:
+        target_line = f"Previous target language: {previous_target or 'none'}."
+    else:
+        target_line = f"Target language: {target_name}."
     lines = [
-        f"Target language: {target_name}.",
+        target_line,
         f"Learner's own language: {native_name or 'english'}.",
         f"Detected language of this turn: {source_language or 'unknown'} (confidence {confidence}).",
         f"Current practice phrase: {practice_target or '(none yet)'}.",
@@ -325,7 +379,7 @@ def build_user_text(
         lines.append(
             f"Routing (automatic): this turn is an everyday {native_name or 'english'} phrase, not an attempt "
             "at the practice phrase. Use intent teach_phrase and teach its natural "
-            f"{target_name} equivalent, unless it is a question about pronunciation or "
+            f"{target_name or 'target language'} equivalent, unless it is a question about pronunciation or "
             "repeating the current phrase, or meta talk about the lesson."
         )
     lines.append("Learner transcript, verbatim. Never silently correct it:")
@@ -460,6 +514,8 @@ def parse_lesson_text(text):
         "next_prompt": next_prompt,
         "detected_errors": errors,
         "corrupt": corrupt,
+        # Only the auto-target schema has it. Validated by the session.
+        "target_language": _field(data.get("target_language")).lower(),
     }
 
 

@@ -77,6 +77,7 @@ Client to server:
 | Message | Meaning |
 |---|---|
 | `{"type":"start","target_language":"es","config":{...}}` | Open a streaming STT session. Optional `case_id`, `session_id`, and `native_language` (the learner's own language, one of the six codes; default `en`, otherwise learned from their longer non-practice turns). |
+| `{"type":"start","auto_target":true,"config":{...}}` | Auto-target mode ("Ask Pingo"): no language picked up front. `target_language` may be omitted or `"auto"`. See [Auto-target mode](#auto-target-mode). |
 | binary frames | PCM16 LE mono, 16 kHz, about 50 ms each |
 | `{"type":"update_config","config":{...}}` | Merge into the session and forward STT fields via `UpdateConfiguration` |
 | `{"type":"set_target","target_language":"fr"}` | Next reply uses this target. Does not reconnect STT. |
@@ -91,9 +92,20 @@ Server to client:
 |---|---|
 | `{"type":"status","state":"listening"\|"thinking"\|"speaking"}` | Where the turn is |
 | `{"type":"transcript",...}` | Partial or final. Fields: `turn_id`, `turn_order`, `end_of_turn`, `transcript`, `language_code`, `language_confidence`, `words[{text,start,end,confidence,word_is_final}]`. Language is only filled on a final turn. |
-| `{"type":"lesson",...}` | One tutor turn: `turn_id`, `turn_order`, `source_text`, `source_language`, `native_language`, `target_language`, `intent` (`teach_phrase`, `pronunciation`, `practice_attempt`, `correction`, `chat`), `reply` (in the learner's language), `target_phrase` (also sent as `translation`), `pronunciation` (respelling such as `OH-lah`), `syllables` (`ho - la`), `tip`, `verdict` (`correct`, `close`, `try_again`, or `none`), `verdict_reason`, `next_prompt`, `detected_errors`, `practice` (the automatic check, or null), `practice_target` |
+| `{"type":"lesson",...}` | One tutor turn: `turn_id`, `turn_order`, `source_text`, `source_language`, `native_language`, `target_language`, `intent` (`teach_phrase`, `pronunciation`, `practice_attempt`, `correction`, `chat`), `reply` (in the learner's language), `target_phrase` (also sent as `translation`), `pronunciation` (respelling such as `OH-lah`), `syllables` (`ho - la`), `tip`, `verdict` (`correct`, `close`, `try_again`, or `none`), `verdict_reason`, `next_prompt`, `detected_errors`, `practice` (the automatic check, or null), `practice_target`. In auto-target mode also `"auto_target": true`, and `target_language` is the target resolved for this turn, or `null` while Pingo is still asking which language. |
 | `{"type":"agent_text","turn_id","text","final"}` | Everything TTS is about to speak for this turn, joined. `final` is true. |
 | `{"type":"tts_start","turn_id","sample_rate":24000,"segments":[{kind,language,text}]}` then binary PCM16 then `{"type":"tts_end","turn_id"}` | Tutor audio. One turn can mix voices: `reply` and `next` in the learner's language, `slow` and `phrase` in the target language, with 250 ms of silence between segments. |
+
+### Auto-target mode
+
+For the "Ask Pingo" section the learner does not pick a language. They speak in any of the 32 languages universal-3-6-pro detects, e.g. "How do I say where is the bathroom in French?" or "¿Cómo se dice buenos días en alemán?", and Pingo answers with the phrase in the language they asked for, spoken by that language's voice.
+
+- **Target, without a second LLM call.** In auto mode the tutor prompt gets an extra block (`AUTO_TARGET_PROMPT` in `server/llm.py`) and the JSON schema gets one more field, `target_language`: the ISO code the learner asked for this turn, or the previous target if they named none. The user message says `Previous target language: fr` (or `none`).
+- **Checked on the server** (`resolve_auto_target` and `Session._apply_auto_target` in `server/session.py`). One of the six codes or names wins. Empty, missing or junk keeps the previous target. A different target resets the practice phrase and history, like `set_target`.
+- **No target yet:** the turn becomes a `chat` with no phrase that asks "Which language would you like to learn that in? I can teach English, Spanish, French, German, Italian or Portuguese." (said in the learner's language), and the lesson's `target_language` is `null`.
+- **A language TTS cannot speak** (e.g. Japanese, Hindi): a `chat` saying which six languages Pingo teaches. The target does not change.
+- **Explanation language:** the detected language of the turn when it is one of the six TTS languages, the turn has 3 or more words, confidence is at least 0.6, and it is not the language being practised. Otherwise the previous one (default English). So a Hindi speaker gets explanations in English (no Hindi voice), and saying the phrase back never flips it.
+- Practice attempts work as in fixed mode, against the current target. The log line for each turn carries `auto_target` (`model`, `previous`, `resolved`, `unsupported`).
 
 ### Conversation
 
@@ -287,7 +299,7 @@ Confirm a transcript, a lesson on stdout, and audio in `logs/last_reply.pcm`.
 python -m unittest discover -s tests -t .
 ```
 
-The tests fake the SDK streaming client and the gateway `requests.post`. They cover the eval JSONL line, append-only logging, barge-in, replay, a second `start`, and one WebSocket turn.
+The tests fake the SDK streaming client and the gateway `requests.post`. They cover the eval JSONL line, append-only logging, barge-in, replay, a second `start`, auto-target mode (`tests/test_auto_target.py`), and one WebSocket turn.
 
 Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming playground pattern). Text-to-speech uses `TTSSession.speak` on `wss://tts.us.assemblyai.com/v1/ws` (raw 24 kHz PCM). `TTSSession` has been in the SDK since 1.8.2; this repo pins `assemblyai==1.9.1`, which has it and keeps streaming v3 working. Spanish uses voice id `bff56a11-dc95-552e-a93a-59f68ca60b64`. The other five languages still use the catalog slugs until their ids are set in `tts.voices`. The lesson is the LLM Gateway playground `requests.post`, header `authorization: <key>` and no `Bearer` prefix. Live audio stamps the first socket frame's arrival as speech-end origin, so time spent connecting STT is not missing from the latency. File mode still stamps when it sends each real-time chunk.
 

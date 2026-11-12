@@ -34,6 +34,53 @@ GAP_MS = 250
 REPLAY_MODES = ("phrase", "slow", "all")
 # A learner turn this long or longer, outside practice, sets the learner's own language.
 NATIVE_MIN_WORDS = 3
+# What a `start` may send as target_language in auto-target mode.
+AUTO_TARGET_VALUES = (None, "", "auto")
+
+# Auto-target mode: said in the learner's language when Pingo cannot tell which
+# language they want, or when they ask for one TTS cannot speak.
+ASK_TARGET = {
+    "en": "Which language would you like to learn that in? I can teach English, Spanish, French, German, Italian or Portuguese.",
+    "es": "¿En qué idioma te gustaría aprenderlo? Puedo enseñarte inglés, español, francés, alemán, italiano o portugués.",
+    "fr": "Dans quelle langue veux-tu l'apprendre ? Je peux t'apprendre l'anglais, l'espagnol, le français, l'allemand, l'italien ou le portugais.",
+    "de": "In welcher Sprache möchtest du das lernen? Ich kann dir Englisch, Spanisch, Französisch, Deutsch, Italienisch oder Portugiesisch beibringen.",
+    "it": "In quale lingua vuoi impararlo? Posso insegnarti inglese, spagnolo, francese, tedesco, italiano o portoghese.",
+    "pt": "Em que idioma você quer aprender isso? Posso ensinar inglês, espanhol, francês, alemão, italiano ou português.",
+}
+UNSUPPORTED_TARGET = {
+    "en": "Sorry, I can't teach that language yet. I can teach English, Spanish, French, German, Italian or Portuguese.",
+    "es": "Lo siento, todavía no puedo enseñar ese idioma. Puedo enseñarte inglés, español, francés, alemán, italiano o portugués.",
+    "fr": "Désolé, je ne peux pas encore enseigner cette langue. Je peux t'apprendre l'anglais, l'espagnol, le français, l'allemand, l'italien ou le portugais.",
+    "de": "Diese Sprache kann ich leider noch nicht unterrichten. Ich kann dir Englisch, Spanisch, Französisch, Deutsch, Italienisch oder Portugiesisch beibringen.",
+    "it": "Mi dispiace, non posso ancora insegnare quella lingua. Posso insegnarti inglese, spagnolo, francese, tedesco, italiano o portoghese.",
+    "pt": "Desculpe, ainda não posso ensinar esse idioma. Posso ensinar inglês, espanhol, francês, alemão, italiano ou português.",
+}
+# Names the model may return instead of a code for a language TTS cannot speak.
+OTHER_LANGUAGE_NAMES = {
+    "japanese", "chinese", "mandarin", "cantonese", "korean", "hindi", "arabic", "russian",
+    "turkish", "dutch", "swedish", "norwegian", "danish", "finnish", "hebrew", "persian",
+    "farsi", "urdu", "marathi", "vietnamese", "romanian", "catalan", "galician", "estonian",
+    "afrikaans", "xhosa", "zulu", "polish", "greek", "thai", "indonesian", "ukrainian",
+}
+
+
+def resolve_auto_target(value, previous):
+    """The model's target_language for this turn, checked.
+
+    Returns (target code or None, unsupported). One of the six codes or names
+    wins. Empty, missing or junk keeps the previous target. A real language TTS
+    cannot speak (e.g. "ja") keeps the previous target and is flagged.
+    """
+    text = str(value or "").strip().lower()
+    if not text:
+        return previous, False
+    try:
+        return normalize_target(text), False
+    except ValueError:
+        pass
+    if text in STT_LANGUAGES or text in OTHER_LANGUAGE_NAMES or (text.isalpha() and len(text) in (2, 3)):
+        return previous, True
+    return previous, False
 
 
 def now_ms():
@@ -79,6 +126,8 @@ class Session:
         self.voices = tts.pool() if hasattr(tts, "pool") else tts
         self.log_path = settings["log"]["path"] if log_path is None else log_path
         self.target = settings.get("target_language")
+        # Auto-target mode: no language picked up front; each turn says which one.
+        self.auto_target = False
         self.stt = None
         self.stt_query = {}
         self.stt_session_id = None
@@ -182,10 +231,14 @@ class Session:
         if self.stt is not None or self.state != "idle":
             await self._replace_upstream()
         self.closed = False
+        self.auto_target = bool(message.get("auto_target"))
+        raw_target = message.get("target_language")
         try:
-            self.target = normalize_target(
-                message.get("target_language") or self.base_settings.get("target_language")
-            )
+            if self.auto_target and (raw_target is None or str(raw_target).strip().lower() in AUTO_TARGET_VALUES):
+                # The learner names the language when they speak.
+                self.target = None
+            else:
+                self.target = normalize_target(raw_target or self.base_settings.get("target_language"))
         except ValueError as exc:
             await self._error(str(exc))
             return
@@ -418,19 +471,23 @@ class Session:
                 # learner's own language ("Good morning" while "Hola" is pending).
                 new_phrase = is_native_phrase(transcript, self.practice_target, self.native_language)
             native = self._native_name()
+            extra = {"auto_target": True, "previous_target": self.target or ""} if self.auto_target else {}
             lesson = await self.llm.complete(
                 transcript=transcript,
                 source_language=turn.get("language_code"),
                 language_confidence=turn.get("language_confidence"),
-                target_name=target_name(self.target),
+                target_name=target_name(self.target) if self.target else "",
                 history=list(self.history),
                 native_name=native,
                 practice_target=self.practice_target,
                 practice_check=check,
                 new_phrase=new_phrase,
+                **extra,
             )
             record["timings_ms"]["llm_first_token"] = _ms(lesson.first_token_at)
             record["timings_ms"]["llm_done"] = _ms(lesson.done_at)
+            if self.auto_target and not lesson.unparsed:
+                check = self._apply_auto_target(lesson, check, record)
             if not lesson.unparsed:
                 self._apply_practice(lesson, check, new_phrase)
             record["llm"] = {
@@ -460,37 +517,43 @@ class Session:
                 record["barge_in"] = True
                 return
             order = turn.get("turn_order")
-            plans = speech_plans(lesson, native, target_name(self.target), slow_read=self.misses >= MISSES_BEFORE_SLOW)
+            plans = speech_plans(
+                lesson,
+                native,
+                target_name(self.target) if self.target else native,
+                slow_read=self.misses >= MISSES_BEFORE_SLOW,
+            )
             self.lessons[turn_id] = {
                 "translation": lesson.translation,
                 "target_language": self.target,
                 "turn_id": turn_id,
                 **plans,
             }
-            await self._emit(
-                {
-                    "type": "lesson",
-                    "turn_id": turn_id,
-                    "turn_order": order,
-                    "source_text": transcript,
-                    "source_language": turn.get("language_code"),
-                    "native_language": self.native_language,
-                    "target_language": self.target,
-                    "intent": getattr(lesson, "intent", None),
-                    "reply": getattr(lesson, "reply", ""),
-                    "target_phrase": lesson.translation,
-                    "translation": lesson.translation,
-                    "pronunciation": lesson.pronunciation,
-                    "syllables": getattr(lesson, "syllables", ""),
-                    "tip": lesson.tip,
-                    "verdict": getattr(lesson, "verdict", "none"),
-                    "verdict_reason": getattr(lesson, "verdict_reason", ""),
-                    "next_prompt": getattr(lesson, "next_prompt", ""),
-                    "detected_errors": lesson.detected_errors,
-                    "practice": check,
-                    "practice_target": self.practice_target,
-                }
-            )
+            message = {
+                "type": "lesson",
+                "turn_id": turn_id,
+                "turn_order": order,
+                "source_text": transcript,
+                "source_language": turn.get("language_code"),
+                "native_language": self.native_language,
+                "target_language": self.target,
+                "intent": getattr(lesson, "intent", None),
+                "reply": getattr(lesson, "reply", ""),
+                "target_phrase": lesson.translation,
+                "translation": lesson.translation,
+                "pronunciation": lesson.pronunciation,
+                "syllables": getattr(lesson, "syllables", ""),
+                "tip": lesson.tip,
+                "verdict": getattr(lesson, "verdict", "none"),
+                "verdict_reason": getattr(lesson, "verdict_reason", ""),
+                "next_prompt": getattr(lesson, "next_prompt", ""),
+                "detected_errors": lesson.detected_errors,
+                "practice": check,
+                "practice_target": self.practice_target,
+            }
+            if self.auto_target:
+                message["auto_target"] = True
+            await self._emit(message)
             spoken = " ".join(text for text, _lang, _kind in plans["all"])
             await self._emit(
                 {"type": "agent_text", "turn_id": turn_id, "text": spoken or lesson.translation, "final": True}
@@ -571,7 +634,8 @@ class Session:
         warm = getattr(self.voices, "warm", None)
         if warm is None:
             return
-        task = asyncio.create_task(warm([self._native_name(), target_name(self.target)]))
+        names = [self._native_name()] + ([target_name(self.target)] if self.target else [])
+        task = asyncio.create_task(warm(names))
         self.background.add(task)
         task.add_done_callback(self.background.discard)
 
@@ -589,6 +653,44 @@ class Session:
         if isinstance(confidence, (int, float)) and confidence < 0.6:
             return
         self.native_language = code
+
+    def _apply_auto_target(self, lesson, check, record):
+        """Auto-target mode: take this turn's target from the model, checked.
+
+        A new target resets the practice phrase like set_target does. With no
+        target yet, or one TTS cannot speak, the turn becomes a chat that says
+        which languages Pingo teaches. Returns the practice check still valid.
+        """
+        previous = self.target
+        target, unsupported = resolve_auto_target(getattr(lesson, "target_language", ""), previous)
+        record["auto_target"] = {
+            "model": getattr(lesson, "target_language", ""),
+            "previous": previous,
+            "resolved": target,
+            "unsupported": unsupported,
+        }
+        if target != previous:
+            logger.info("auto target: %s -> %s", previous, target)
+            if previous is not None:
+                self._forget()
+            # The check was against the old language's phrase.
+            check = None
+            self.target = target
+            self.settings["target_language"] = target
+        if unsupported or self.target is None:
+            canned = UNSUPPORTED_TARGET if unsupported else ASK_TARGET
+            lesson.intent = "chat"
+            lesson.reply = canned.get(self.native_language, canned["en"])
+            lesson.translation = ""
+            lesson.pronunciation = ""
+            lesson.syllables = ""
+            lesson.tip = ""
+            lesson.verdict = "none"
+            lesson.verdict_reason = ""
+            lesson.next_prompt = ""
+            lesson.detected_errors = []
+            return None
+        return check
 
     def _apply_practice(self, lesson, check, new_phrase=False):
         """Ground the verdict in the practice check and move the practice phrase."""
