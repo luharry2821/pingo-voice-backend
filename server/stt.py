@@ -80,6 +80,14 @@ def stt_query_params(stt):
         params["max_turn_silence"] = int(stt["max_turn_silence"])
     if stt.get("vad_threshold") is not None:
         params["vad_threshold"] = float(stt["vad_threshold"])
+    if stt.get("filter_profanity"):
+        params["filter_profanity"] = True
+    # Voice Focus is a connection parameter: a change takes effect on the next start.
+    focus = (stt.get("voice_focus") or "").strip().lower()
+    if focus and focus != "off":
+        params["voice_focus"] = focus
+        if stt.get("voice_focus_threshold") is not None:
+            params["voice_focus_threshold"] = float(stt["voice_focus_threshold"])
     return params
 
 

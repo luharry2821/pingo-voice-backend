@@ -25,6 +25,12 @@ stt:
   max_turn_silence: null
   interruption_delay: 250
   vad_threshold: null
+  # AssemblyAI Voice Focus: near-field | far-field | off. far-field fits laptop mics.
+  voice_focus: far-field
+  # 0..1, higher suppresses more. null = server default (0.5), not sent.
+  voice_focus_threshold: null
+  # Mask profane words (first letter kept) in partial and final turns.
+  filter_profanity: true
 
 llm:
   # Same as baseline. PINGO_LLM_MODEL=qwen3.5-4b-32k-fast selects the other model.

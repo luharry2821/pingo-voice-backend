@@ -174,6 +174,15 @@ DEFAULTS = {
         "interruption_delay": 250,
         # Documented default, sent explicitly so the log matches the session.
         "vad_threshold": 0.2,
+        # AssemblyAI Voice Focus: suppress background voices and noise before
+        # transcription. far-field suits laptop mics; "" or "off" turns it off.
+        "voice_focus": "far-field",
+        # 0..1, higher suppresses more. None = the server default (0.5), not sent.
+        "voice_focus_threshold": None,
+        # AssemblyAI streaming profanity filter: masks profane words in partial and
+        # final turns, keeping the first letter ("s***"). Fixed AssemblyAI word list
+        # (e.g. "crap" and "damn" pass through). Sent only when True.
+        "filter_profanity": True,
     },
     "llm": {
         "model": "gemma-4-31b",
@@ -286,6 +295,9 @@ _ENV_SCALARS = {
     "PINGO_STT_MAX_TURN_SILENCE": ("stt", "max_turn_silence"),
     "PINGO_STT_INTERRUPTION_DELAY": ("stt", "interruption_delay"),
     "PINGO_STT_VAD_THRESHOLD": ("stt", "vad_threshold"),
+    "PINGO_STT_VOICE_FOCUS": ("stt", "voice_focus"),
+    "PINGO_STT_VOICE_FOCUS_THRESHOLD": ("stt", "voice_focus_threshold"),
+    "PINGO_STT_FILTER_PROFANITY": ("stt", "filter_profanity"),
     "PINGO_LLM_MODEL": ("llm", "model"),
     "PINGO_LLM_TEMPERATURE": ("llm", "temperature"),
     "PINGO_LLM_MAX_TOKENS": ("llm", "max_tokens"),
@@ -344,6 +356,9 @@ def _coerce(settings):
     stt.pop("end_of_turn_confidence_threshold", None)
     stt["language_detection"] = bool(stt.get("language_detection", True))
     stt["agent_context_enabled"] = bool(stt.get("agent_context_enabled", False))
+    stt["filter_profanity"] = _as_bool(stt.get("filter_profanity", True))
+    stt["voice_focus"] = normalize_voice_focus(stt.get("voice_focus"))
+    stt["voice_focus_threshold"] = normalize_voice_focus_threshold(stt.get("voice_focus_threshold"))
     settings["llm"]["temperature"] = float(settings["llm"]["temperature"])
     settings["llm"]["stream"] = bool(settings["llm"].get("stream", True))
     settings["llm"]["timeout_s"] = float(settings["llm"].get("timeout_s") or 30)
@@ -367,7 +382,47 @@ _FLAT_STT_KEYS = {
     "interruption_delay",
     "vad_threshold",
     "language_detection",
+    "voice_focus",
+    "voice_focus_threshold",
 }
+
+
+def _as_bool(value):
+    """YAML/env/client booleans: "false", "0", "no", "off" and "" are False."""
+    if isinstance(value, str):
+        return value.strip().lower() not in ("", "false", "0", "no", "off", "none", "null")
+    return bool(value)
+
+
+VOICE_FOCUS_VALUES = ("near-field", "far-field")
+VOICE_FOCUS_OFF = ("", "off", "none", "null", "false", "0")
+
+
+def normalize_voice_focus(value):
+    """"near-field", "far-field", or "" for off. Raises ValueError otherwise."""
+    if value is None or value is False:
+        return ""
+    text = str(value).strip().lower().replace("_", "-")
+    if text in VOICE_FOCUS_OFF:
+        return ""
+    if text in VOICE_FOCUS_VALUES:
+        return text
+    raise ValueError("voice_focus must be near-field, far-field or off")
+
+
+def normalize_voice_focus_threshold(value):
+    """None (server default 0.5) or a float from 0 to 1. Raises ValueError otherwise."""
+    if value is None or (isinstance(value, str) and value.strip().lower() in ("", "null", "none")):
+        return None
+    if isinstance(value, bool):
+        raise ValueError("voice_focus_threshold must be a number from 0 to 1")
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("voice_focus_threshold must be a number from 0 to 1") from None
+    if not 0.0 <= number <= 1.0:
+        raise ValueError("voice_focus_threshold must be a number from 0 to 1")
+    return number
 
 
 def merge_session_config(settings, config):
@@ -450,6 +505,9 @@ def log_config(settings):
         "max_turn_silence": stt.get("max_turn_silence"),
         "interruption_delay": stt.get("interruption_delay"),
         "vad_threshold": stt.get("vad_threshold"),
+        "voice_focus": stt.get("voice_focus") or "off",
+        "voice_focus_threshold": stt.get("voice_focus_threshold"),
+        "filter_profanity": bool(stt.get("filter_profanity")),
         "language_detection": bool(stt.get("language_detection", True)),
         "llm_model": llm.get("model"),
         "temperature": float(llm.get("temperature", 0.2)),

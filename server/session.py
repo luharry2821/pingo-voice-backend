@@ -260,7 +260,11 @@ class Session:
         native = str(message.get("native_language") or "").strip().lower()
         if native in TARGET_LANGUAGES:
             self.native_language = native
-        self.settings = merge_session_config(self.base_settings, message.get("config") or {})
+        try:
+            self.settings = merge_session_config(self.base_settings, message.get("config") or {})
+        except ValueError as exc:
+            await self._error(str(exc))
+            return
         self.settings["target_language"] = self.target
         bad_codes = [
             code for code in self.settings["stt"]["language_codes"] if code not in STT_LANGUAGES
@@ -310,7 +314,12 @@ class Session:
         self.state = "idle"
 
     async def _update_config(self, config):
-        self.settings = merge_session_config(self.settings, config)
+        try:
+            self.settings = merge_session_config(self.settings, config)
+        except ValueError as exc:
+            # A bad value leaves the session settings as they were.
+            await self._error(str(exc))
+            return
         changes = {key: config[key] for key in UPDATABLE if key in config}
         nested = config.get("stt") if isinstance(config.get("stt"), dict) else {}
         for key in UPDATABLE:
