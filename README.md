@@ -284,12 +284,6 @@ Every other model, including `gemini-2.5-flash-lite`, returns HTTP 400: `Your ac
 
 The server sends `mode` (default `balanced`) and `interruption_delay` (default 250; the balanced preset is 500), and sends `prompt` when it is non-empty. It does not send `end_of_turn_confidence_threshold`. The SDK's `set_params` model has no `mode` field, so a mid-session mode change waits for the next `start`.
 
-Re-check with a key:
-
-```bash
-python scripts/verify_params.py
-```
-
 A file-mode run:
 
 ```bash
@@ -318,7 +312,7 @@ Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming
 - `SpeechStarted` needs a real transcript, so barge-in is slightly late by design. Browser echo can still false-trigger it; headphones or a higher `vad_threshold` help.
 - No accounts, history, auth, or rate limiting. This is a reference server.
 - Prices for the cost KPI were not confirmed. `usage` has the quantities; multiply by the current price list.
-- The speech-end mapping assumes STT word times start at the first audio byte this process sent. `verify_params.py` does not check that clock. Compare `stt_final - speech_end` on a real clip before publishing latency numbers.
+- The speech-end mapping assumes STT word times start at the first audio byte this process sent. Compare `stt_final - speech_end` on a real clip before publishing latency numbers.
 - TTS is not started from a partial LLM token. Doing that is the next latency lever after the `llm_gateway` fallback sketched above.
 
 ## Layout
@@ -336,7 +330,6 @@ Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming
 | `server/audio.py` | WAV to 16 kHz mono PCM16, real-time chunking |
 | `server/log.py` | Append one JSONL line |
 | `configs/` | `baseline.yaml` |
-| `scripts/verify_params.py` | Live check of `prompt`, `mode`, `interruption_delay` |
 
 ## Cold starts
 
