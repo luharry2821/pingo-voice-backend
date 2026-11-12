@@ -55,8 +55,11 @@ class ConfigTests(unittest.TestCase):
         )
 
     def test_keyterms_config_sends_terms(self):
-        """The keyterms_on config sends its keyterms to STT."""
-        settings = load_settings("configs/keyterms_on.yaml")
+        """A non-empty keyterms_prompt, set as a config override, is forwarded to STT."""
+        settings = merge_session_config(
+            load_settings("configs/baseline.yaml"),
+            {"keyterms_prompt": ["gracias"]},
+        )
         params = stt_query_params(settings["stt"])
         self.assertIn("gracias", params["keyterms_prompt"])
 

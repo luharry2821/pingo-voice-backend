@@ -30,8 +30,7 @@ class VoiceFocusConfigTests(unittest.TestCase):
     """Voice Focus settings: defaults, env vars, validation, per-session overrides, logging."""
     def test_default_is_far_field_without_threshold(self):
         """Default is far-field with no threshold (server default)."""
-        for settings in (load_settings(None), load_settings("configs/baseline.yaml"),
-                         load_settings("configs/keyterms_on.yaml")):
+        for settings in (load_settings(None), load_settings("configs/baseline.yaml")):
             self.assertEqual(settings["stt"]["voice_focus"], "far-field")
             self.assertIsNone(settings["stt"]["voice_focus_threshold"])
 
@@ -128,7 +127,7 @@ class ProfanityFilterTests(unittest.TestCase):
     """The streaming profanity filter flag."""
     def test_on_by_default_and_sent(self):
         """filter_profanity is on by default, sent to STT and logged."""
-        for path in (None, "configs/baseline.yaml", "configs/keyterms_on.yaml"):
+        for path in (None, "configs/baseline.yaml"):
             settings = load_settings(path)
             self.assertIs(settings["stt"]["filter_profanity"], True)
             params = stt_query_params(settings["stt"])

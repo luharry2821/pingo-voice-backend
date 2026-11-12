@@ -158,7 +158,7 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 
 Environment variables (all optional): `PINGO_STT_MODE`, `PINGO_STT_PROMPT`, `PINGO_STT_LANGUAGE_CODES`, `PINGO_STT_KEYTERMS_PROMPT` (JSON or comma-separated), `PINGO_STT_AGENT_CONTEXT`, `PINGO_STT_AGENT_CONTEXT_ENABLED`, `PINGO_STT_MIN_TURN_SILENCE`, `PINGO_STT_MAX_TURN_SILENCE`, `PINGO_STT_INTERRUPTION_DELAY`, `PINGO_STT_VAD_THRESHOLD`, `PINGO_STT_VOICE_FOCUS` (`near-field`, `far-field` or `off`), `PINGO_STT_VOICE_FOCUS_THRESHOLD`, `PINGO_STT_FILTER_PROFANITY`, `PINGO_LLM_MODEL`, `PINGO_LLM_TEMPERATURE`, `PINGO_LLM_MAX_TOKENS`, `PINGO_LLM_STREAM`, `PINGO_LLM_TIMEOUT`, `PINGO_LLM_SYSTEM_PROMPT`, `PINGO_TTS_TIMEOUT`, `PINGO_TTS_VOICE_SPANISH` (or `_ES`, and the same for the other five), `PINGO_LOG_PATH`, `PINGO_HOST`, `PINGO_PORT`, `PINGO_TARGET_LANGUAGE`, `PINGO_CONFIG`.
 
-Example configs: `configs/baseline.yaml` and `configs/keyterms_on.yaml`. For a real keyterms run, replace the sample terms with that case's target phrase.
+Example config: `configs/baseline.yaml`.
 
 ## File mode and the turn log
 
@@ -251,7 +251,7 @@ All five `timings_ms` values are wall-clock epoch milliseconds from `time.time()
 3. **`universal-3-6-pro` with `language_detection=true`.** The model code-switches across its languages in one stream. The detected language is shown to the learner and passed to the tutor.
 4. **`mode=balanced`, with `max_turn_silence` exposed.** Learners hesitate. Balanced waits up to 1280 ms. Raising `max_turn_silence` is the cutoff experiment. Defaults are now `min_turn_silence` 400 ms and `max_turn_silence` 2400 ms after Haramal was cut off mid-phrase on the preset values; all four turn settings are editable live from the app's Advanced settings.
 5. **`mode` and `interruption_delay` are sent.** A live check on Nov 10, 2026 (PT) showed `mode` echoed on `universal-3-6-pro`. `interruption_delay` is validated (a value outside 0–1000 ms returns error 3006) but is not in the SessionBegins echo. `prompt` was not rejected and was not echoed, so it stays unconfirmed. See below.
-6. **`keyterms_prompt` off by default.** It protects error preservation. `configs/keyterms_on.yaml` turns it on. Enable it in production only if the eval shows no loss on planted mistakes.
+6. **`keyterms_prompt` off by default.** It is set via config or the Advanced settings, names and places only. Enable it in production only if the eval shows no loss on planted mistakes.
 7. **`agent_context` off by default.** When enabled, the tutor's last spoken line is sent with `UpdateConfiguration` so a short repeat ("estación") has context. Same risk as keyterms: it can erase the mistake you wanted to hear.
 8. **Barge-in on `SpeechStarted`.** That event fires only once there is a real transcript, not on noise. It cancels an in-flight LLM or TTS call and sends `barge_in`.
 9. **Six target languages.** English, Spanish, French, German, Italian, Portuguese. The UI should not offer Japanese or Hindi as something the tutor can speak.
@@ -335,7 +335,7 @@ Speech-to-text uses AssemblyAI's Python SDK `RealTimeTranscriber` (the streaming
 | `server/config.py` | Defaults, YAML, env, `--set`, per-session merge |
 | `server/audio.py` | WAV to 16 kHz mono PCM16, real-time chunking |
 | `server/log.py` | Append one JSONL line |
-| `configs/` | `baseline.yaml`, `keyterms_on.yaml` |
+| `configs/` | `baseline.yaml` |
 | `scripts/verify_params.py` | Live check of `prompt`, `mode`, `interruption_delay` |
 
 ## Cold starts
