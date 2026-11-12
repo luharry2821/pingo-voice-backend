@@ -1,7 +1,22 @@
-"""Settings from defaults, a YAML file, environment variables, and --set.
+"""All Pingo settings: defaults, a YAML file, environment variables, and --set.
 
-A live `start` / `update_config` message is merged on top per session.
-Flat keys from the Lovable client (`prompt`, `keyterms_prompt`, ...) land on `stt`.
+Precedence (later wins): DEFAULTS below -> configs/*.yaml -> PINGO_* environment
+variables -> `--set a.b=value` command-line flags. load_settings() builds that
+process-wide settings dict once at startup.
+
+A live `start` / `update_config` message from the browser is then merged on
+top per session (merge_session_config), so one learner's tweaks never leak
+into another's. Flat keys from the Lovable client (`prompt`,
+`keyterms_prompt`, ...) land on `stt`.
+
+Sections of the settings dict, matching the pipeline:
+  stt -> AssemblyAI streaming speech-to-text (server/stt.py)
+  llm -> the tutor model on the AssemblyAI LLM Gateway (server/llm.py)
+  tts -> AssemblyAI text-to-speech voices (server/tts.py)
+  server / log -> where to listen and where to write turns.jsonl
+
+The API key is never stored here; it comes from ASSEMBLYAI_API_KEY and is
+left out of the per-turn log (log_config).
 """
 
 import json
@@ -27,6 +42,8 @@ TARGET_LANGUAGES = {
     "pt": "portuguese",
 }
 
+# The tutor's system prompt. {target} and {native} are filled in per turn by
+# llm.system_prompt(). The JSON fields it asks for match LESSON_SCHEMA in server/llm.py.
 DEFAULT_SYSTEM_PROMPT = """# Personality
 
 You are Pingo, a warm, patient and encouraging language tutor.
@@ -138,6 +155,8 @@ Rules:
 - Write real words only in every field: no placeholders, no curly braces, no markdown.
 """
 
+# AssemblyAI TTS voice id for each language Pingo can speak. Overridable in YAML or with
+# PINGO_TTS_VOICE_<LANGUAGE>.
 DEFAULT_VOICES = {
     "english": "aai-kyla",
     "spanish": "bff56a11-dc95-552e-a93a-59f68ca60b64",
@@ -147,12 +166,16 @@ DEFAULT_VOICES = {
     "portuguese": "aai-nelson",
 }
 
+# Built-in defaults. Every key here can be overridden by YAML, env or --set.
 DEFAULTS = {
     "target_language": "es",
     "stt": {
+        # Streaming STT model and the audio format the browser sends (16 kHz PCM16).
         "speech_model": "universal-3-6-pro",
         "sample_rate": 16000,
         "encoding": "pcm_s16le",
+        # Let STT detect the spoken language each turn (the learner mixes languages).
+        # language_codes can narrow the choice; empty means any supported language.
         "language_detection": True,
         "language_codes": [],
         # Context about the audio, not instructions. Sent when non-empty.
@@ -161,7 +184,9 @@ DEFAULTS = {
             "Speech mixes their own language and the target. The learner may mispronounce "
             "words or make grammar mistakes."
         ),
+        # Words STT should favour (names, course vocabulary). Empty by default.
         "keyterms_prompt": [],
+        # What the tutor last said, sent to STT as context for the learner's reply.
         "agent_context": "",
         # Off until an eval shows it does not erase learner mistakes.
         "agent_context_enabled": False,
@@ -185,6 +210,8 @@ DEFAULTS = {
         "filter_profanity": True,
     },
     "llm": {
+        # Tutor model on the LLM Gateway. Low temperature for consistent lessons;
+        # max_tokens caps cost and stops runaway replies.
         "model": "gemma-4-31b",
         "temperature": 0.2,
         "max_tokens": 450,
@@ -194,6 +221,7 @@ DEFAULTS = {
         "system_prompt": DEFAULT_SYSTEM_PROMPT,
     },
     "tts": {
+        # TTS output format: 24 kHz PCM16, streamed straight to the browser.
         "sample_rate": 24000,
         "encoding": "pcm_s16le",
         "timeout_s": 30,
@@ -219,10 +247,16 @@ def load_dotenv(path=".env"):
 
 
 def default_settings():
+    """A fresh deep copy of DEFAULTS, safe to modify."""
     return deepcopy(DEFAULTS)
 
 
 def _deep_merge(base, overlay):
+    # Merge dict into dict; anything else (lists, strings) replaces the old value.
+    """Recursively copy `overlay` into `base` (nested dicts are merged, other values replaced).
+
+    Modifies and returns `base`.
+    """
     for key, value in overlay.items():
         if isinstance(value, dict) and isinstance(base.get(key), dict):
             _deep_merge(base[key], value)
@@ -234,6 +268,7 @@ def _deep_merge(base, overlay):
 def parse_scalar(raw):
     """Parse a CLI or env value: JSON, bool, null, number, or a plain string."""
     text = str(raw).strip()
+    # Values starting with [ or { are JSON (lists and objects).
     if text[:1] in "[{":
         return json.loads(text)
     lowered = text.lower()
@@ -241,6 +276,7 @@ def parse_scalar(raw):
         return lowered == "true"
     if lowered in ("null", "none"):
         return None
+    # A dot means float ("0.2"), otherwise try int ("400"), else keep the text.
     try:
         if "." in text:
             return float(text)
@@ -250,15 +286,21 @@ def parse_scalar(raw):
 
 
 def _parse_list(raw):
+    """Parse a list setting: a JSON list, or a comma-separated string ("en,es").
+
+    Empty or null input gives [].
+    """
     parsed = parse_scalar(raw)
     if isinstance(parsed, list):
         return parsed
     if parsed is None or parsed == "":
         return []
+    # Not JSON: split "en, es" on commas.
     return [part.strip() for part in str(raw).split(",") if part.strip()]
 
 
 def _assign(settings, path, value):
+    """Set settings[a] or settings[a][b] from a 1- or 2-part path tuple."""
     if len(path) == 1:
         settings[path[0]] = value
         return
@@ -272,6 +314,7 @@ def apply_set(settings, item):
     path, raw = item.split("=", 1)
     node = settings
     parts = path.split(".")
+    # Walk (and create) nested dicts for every part but the last.
     for part in parts[:-1]:
         child = node.get(part)
         if not isinstance(child, dict):
@@ -282,6 +325,7 @@ def apply_set(settings, item):
     return settings
 
 
+# Environment variable -> settings path. Lists accept JSON or comma-separated values.
 _ENV_LISTS = {
     "PINGO_STT_LANGUAGE_CODES": ("stt", "language_codes"),
     "PINGO_STT_KEYTERMS_PROMPT": ("stt", "keyterms_prompt"),
@@ -315,6 +359,11 @@ _ENV_SCALARS = {
 
 
 def apply_env(settings, env=None):
+    """Copy PINGO_* environment variables into settings (in place) and return them.
+
+    Empty variables are ignored. Voices can be set per language with
+    PINGO_TTS_VOICE_SPANISH or PINGO_TTS_VOICE_ES (either spelling works).
+    """
     env = os.environ if env is None else env
     for name, path in _ENV_SCALARS.items():
         if env.get(name, "") != "":
@@ -346,7 +395,15 @@ def load_settings(path=None, sets=None):
 
 
 def _coerce(settings):
+    """Clean up types after merging: lists are lists, bools are bools, numbers are numbers.
+
+    Values from YAML, env vars and the browser arrive as strings or loose types;
+    this makes every later `if settings[...]` reliable. It also drops a setting
+    the current STT model does not support and validates the Voice Focus values
+    (raising ValueError on bad ones). Modifies and returns `settings`.
+    """
     stt = settings["stt"]
+    # List settings may arrive as a comma-separated string from env/YAML.
     for key in ("language_codes", "keyterms_prompt"):
         value = stt.get(key) or []
         if isinstance(value, str):
@@ -360,6 +417,8 @@ def _coerce(settings):
     stt["voice_focus"] = normalize_voice_focus(stt.get("voice_focus"))
     stt["voice_focus_threshold"] = normalize_voice_focus_threshold(stt.get("voice_focus_threshold"))
     settings["llm"]["temperature"] = float(settings["llm"]["temperature"])
+    # Note: stream defaults to True here only if the key is missing entirely; DEFAULTS
+    # sets it to False.
     settings["llm"]["stream"] = bool(settings["llm"].get("stream", True))
     settings["llm"]["timeout_s"] = float(settings["llm"].get("timeout_s") or 30)
     settings["tts"]["timeout_s"] = float(settings["tts"].get("timeout_s") or 30)
@@ -370,6 +429,8 @@ def _coerce(settings):
     return settings
 
 
+# Keys the Lovable client may send at the top level of `config`; they belong under
+# `stt`.
 _FLAT_STT_KEYS = {
     "language_codes",
     "prompt",
@@ -394,6 +455,7 @@ def _as_bool(value):
     return bool(value)
 
 
+# Accepted Voice Focus presets, and the spellings that mean "off".
 VOICE_FOCUS_VALUES = ("near-field", "far-field")
 VOICE_FOCUS_OFF = ("", "off", "none", "null", "false", "0")
 
@@ -435,6 +497,8 @@ def merge_session_config(settings, config):
     merged = deepcopy(settings)
     if not config:
         return _coerce(merged)
+    # Pull the flat STT keys out of the client config. Empty prompt/agent_context mean
+    # "not set", so they keep the server's value instead of clearing it.
     flat = {key: value for key, value in config.items() if key in _FLAT_STT_KEYS}
     if flat.get("prompt", None) == "":
         flat.pop("prompt")
@@ -442,9 +506,11 @@ def merge_session_config(settings, config):
         flat.pop("agent_context")
     if flat:
         _deep_merge(merged["stt"], flat)
+    # Nested sections are merged as-is.
     for section in ("stt", "llm", "tts"):
         if isinstance(config.get(section), dict):
             _deep_merge(merged[section], config[section])
+    # A few LLM keys are also accepted at the top level for convenience.
     if "model" in config:
         merged["llm"]["model"] = config["model"]
     if "temperature" in config:
@@ -462,6 +528,7 @@ def bind_address(settings, host=None, port=None, env=None):
     """
     env = os.environ if env is None else env
     bind_host = settings["server"]["host"] if host is None else host
+    # Precedence: --port flag, then the PORT env var (Render), then the config.
     if port is not None:
         bind_port = int(port)
     elif env.get("PORT"):
@@ -486,6 +553,8 @@ def normalize_target(value):
 
 
 def target_name(code):
+    """Full TTS language name for a code or name ("es" -> "spanish"). Raises ValueError if unsupported.
+    """
     return TARGET_LANGUAGES[normalize_target(code)]
 
 

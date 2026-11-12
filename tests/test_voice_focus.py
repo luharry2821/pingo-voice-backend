@@ -1,4 +1,11 @@
-"""AssemblyAI Voice Focus: on by default (far-field), configurable, validated, logged."""
+"""AssemblyAI Voice Focus and the profanity filter: on by default, configurable, validated, logged.
+
+Voice Focus suppresses background voices and noise before transcription; it
+is a streaming STT connection parameter, so changes apply on the next
+`start`. These tests cover the defaults and env overrides (server/config.py),
+the STT connection parameters (server/stt.py), the per-turn log config, and
+how a Session reports bad values.
+"""
 
 import os
 import tempfile
@@ -20,13 +27,17 @@ from tests.test_tutor import _run
 
 
 class VoiceFocusConfigTests(unittest.TestCase):
+    """Voice Focus settings: defaults, env vars, validation, per-session overrides, logging."""
     def test_default_is_far_field_without_threshold(self):
+        """Default is far-field with no threshold (server default)."""
         for settings in (load_settings(None), load_settings("configs/baseline.yaml"),
                          load_settings("configs/keyterms_on.yaml")):
             self.assertEqual(settings["stt"]["voice_focus"], "far-field")
             self.assertIsNone(settings["stt"]["voice_focus_threshold"])
 
     def test_env_vars(self):
+        """Env vars set mode and threshold, "off" disables Voice Focus, and an unknown mode raises ValueError.
+        """
         settings = default_settings()
         apply_env(settings, {"PINGO_STT_VOICE_FOCUS": "near-field", "PINGO_STT_VOICE_FOCUS_THRESHOLD": "0.7"})
         self.assertEqual(settings["stt"]["voice_focus"], "near-field")
@@ -44,6 +55,7 @@ class VoiceFocusConfigTests(unittest.TestCase):
             os.environ.update(old)
 
     def test_normalize(self):
+        """Valid spellings normalise, "off" spellings become "", bad values raise ValueError."""
         for value, expected in (("far-field", "far-field"), ("Near_Field", "near-field"), (" FAR-FIELD ", "far-field"),
                                 ("off", ""), ("", ""), (None, ""), (False, ""), ("none", "")):
             with self.subTest(value=value):
@@ -59,6 +71,8 @@ class VoiceFocusConfigTests(unittest.TestCase):
                 normalize_voice_focus_threshold(bad)
 
     def test_session_config_override(self):
+        """Session config (flat or nested) overrides Voice Focus, an empty start config keeps far-field, a bad threshold raises.
+        """
         base = load_settings("configs/baseline.yaml")
         self.assertEqual(merge_session_config(base, {"voice_focus": "off"})["stt"]["voice_focus"], "")
         merged = merge_session_config(base, {"stt": {"voice_focus": "near-field", "voice_focus_threshold": 0.8}})
@@ -70,6 +84,7 @@ class VoiceFocusConfigTests(unittest.TestCase):
             merge_session_config(base, {"voice_focus_threshold": 2})
 
     def test_log_config(self):
+        """The log line records the Voice Focus mode (or "off") and threshold."""
         settings = load_settings("configs/baseline.yaml")
         logged = log_config(settings)
         self.assertEqual(logged["voice_focus"], "far-field")
@@ -79,11 +94,14 @@ class VoiceFocusConfigTests(unittest.TestCase):
 
 
 class VoiceFocusParamsTests(unittest.TestCase):
+    """What reaches the STT connection."""
     def _params(self, **stt):
+        """STT connection params for baseline settings with `stt` overrides merged in."""
         settings = load_settings("configs/baseline.yaml")
         return stt_query_params(merge_session_config(settings, {"stt": stt} if stt else {})["stt"])
 
     def test_on_by_default_threshold_omitted(self):
+        """By default voice_focus is sent and the threshold is not."""
         params = self._params()
         self.assertEqual(params["voice_focus"], "far-field")
         self.assertNotIn("voice_focus_threshold", params)
@@ -91,6 +109,7 @@ class VoiceFocusParamsTests(unittest.TestCase):
         self.assertEqual(str(getattr(sdk.voice_focus, "value", sdk.voice_focus)), "far-field")
 
     def test_off_omits_both(self):
+        """When off, neither voice_focus nor its threshold is sent."""
         for off in ("off", "", None):
             with self.subTest(off=off):
                 params = self._params(voice_focus=off, voice_focus_threshold=0.7)
@@ -98,6 +117,7 @@ class VoiceFocusParamsTests(unittest.TestCase):
                 self.assertNotIn("voice_focus_threshold", params)
 
     def test_threshold_sent_when_set(self):
+        """A configured threshold is sent along with voice_focus."""
         params = self._params(voice_focus="near-field", voice_focus_threshold=0.7)
         self.assertEqual(params["voice_focus"], "near-field")
         self.assertEqual(params["voice_focus_threshold"], 0.7)
@@ -105,7 +125,9 @@ class VoiceFocusParamsTests(unittest.TestCase):
 
 
 class ProfanityFilterTests(unittest.TestCase):
+    """The streaming profanity filter flag."""
     def test_on_by_default_and_sent(self):
+        """filter_profanity is on by default, sent to STT and logged."""
         for path in (None, "configs/baseline.yaml", "configs/keyterms_on.yaml"):
             settings = load_settings(path)
             self.assertIs(settings["stt"]["filter_profanity"], True)
@@ -115,12 +137,14 @@ class ProfanityFilterTests(unittest.TestCase):
             self.assertIs(log_config(settings)["filter_profanity"], True)
 
     def test_off_is_omitted(self):
+        """When off, filter_profanity is not sent at all."""
         settings = merge_session_config(load_settings("configs/baseline.yaml"), {"stt": {"filter_profanity": False}})
         self.assertIs(settings["stt"]["filter_profanity"], False)
         self.assertNotIn("filter_profanity", stt_query_params(settings["stt"]))
         self.assertIs(log_config(settings)["filter_profanity"], False)
 
     def test_env_override_is_coerced_to_bool(self):
+        """String env values like "false" or "0" become real booleans."""
         old = dict(os.environ)
         try:
             for raw, expected in (("false", False), ("0", False), ("off", False), ("no", False),
@@ -134,10 +158,14 @@ class ProfanityFilterTests(unittest.TestCase):
 
 
 class VoiceFocusSessionTests(unittest.TestCase):
+    """Voice Focus through a real Session."""
     _session = test_tutor.PracticeStateTests._session
 
     def test_start_sends_it_and_rejects_bad_values(self):
+        """start sends Voice Focus, honours "off", and rejects an unknown value with a clear error.
+        """
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, _llm, _tts, sent = self._session([], [])
             await session.handle_text({"type": "start", "target_language": "es"})
             self.assertEqual(session.stt_query["voice_focus"], "far-field")
@@ -157,7 +185,9 @@ class VoiceFocusSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_bad_update_keeps_settings(self):
+        """A bad update_config leaves settings unchanged; a valid one is kept for the next start."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, _llm, _tts, sent = self._session([], [])
             await session.handle_text({"type": "start", "target_language": "es"})
             await session.handle_text({"type": "update_config", "config": {"voice_focus_threshold": 5}})

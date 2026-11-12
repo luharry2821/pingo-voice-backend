@@ -1,4 +1,11 @@
-"""Pipeline tests with fake AssemblyAI clients. No network."""
+"""End-to-end pipeline tests with fake AssemblyAI clients. No network, no API key.
+
+Covers the whole path (mic audio -> STT -> LLM tutor -> TTS -> browser) using
+_FakeSTT / _FakeLLM / _FakeTTS stand-ins: config loading and STT parameters,
+WAV handling, lesson JSON parsing and the LLM request shape, the Session
+(file mode log line, audio accounting, barge-in, replay, restarts, chat
+memory) and the real FastAPI WebSocket endpoint.
+"""
 
 import asyncio
 import json
@@ -16,12 +23,16 @@ from server.stt import stt_query_params, update_configuration_message
 
 
 def _settings(**sets):
+    """Baseline settings with `key=value` overrides applied as --set flags."""
     settings = load_settings("configs/baseline.yaml", [f"{key}={value}" for key, value in sets.items()])
     return settings
 
 
 class ConfigTests(unittest.TestCase):
+    """Settings loading and the STT/LLM parameters built from them."""
     def test_baseline_sends_mode_interruption_delay_and_prompt(self):
+        """Baseline config produces the expected STT connect params and LLM/TTS defaults, and omits unsupported fields.
+        """
         settings = load_settings("configs/baseline.yaml")
         params = stt_query_params(settings["stt"])
         self.assertEqual(params["speech_model"], "universal-3-6-pro")
@@ -44,11 +55,14 @@ class ConfigTests(unittest.TestCase):
         )
 
     def test_keyterms_config_sends_terms(self):
+        """The keyterms_on config sends its keyterms to STT."""
         settings = load_settings("configs/keyterms_on.yaml")
         params = stt_query_params(settings["stt"])
         self.assertIn("gracias", params["keyterms_prompt"])
 
     def test_empty_client_prompt_does_not_wipe_the_server_prompt(self):
+        """An empty client prompt keeps the server prompt, while an empty keyterms list does clear keyterms.
+        """
         settings = load_settings("configs/baseline.yaml")
         merged = merge_session_config(
             settings,
@@ -58,6 +72,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(merged["stt"]["keyterms_prompt"], [])
 
     def test_env_and_set_override(self):
+        """--set overrides win over the YAML file and get the right types."""
         settings = load_settings(
             "configs/baseline.yaml",
             ["stt.max_turn_silence=1800", "llm.temperature=0"],
@@ -67,6 +82,8 @@ class ConfigTests(unittest.TestCase):
         self.assertNotIn("end_of_turn_confidence_threshold", settings["stt"])
 
     def test_update_configuration_forwards_supported_fields(self):
+        """UpdateConfiguration carries live-updatable fields but drops mode (set_params has no mode).
+        """
         settings = load_settings("configs/baseline.yaml")
         message = update_configuration_message(
             {"keyterms_prompt": ["hola"], "mode": "max_accuracy", "min_turn_silence": 400},
@@ -80,6 +97,8 @@ class ConfigTests(unittest.TestCase):
         self.assertNotIn("end_of_turn_confidence_threshold", message)
 
     def test_local_bind_stays_on_localhost_until_port_is_set(self):
+        """Bind address defaults to 127.0.0.1:8000; PORT env and --host/--port override it in order.
+        """
         settings = default_settings()
         self.assertEqual(bind_address(settings, env={}), ("127.0.0.1", 8000))
         self.assertEqual(bind_address(settings, env={"PORT": "10000"}), ("127.0.0.1", 10000))
@@ -89,6 +108,7 @@ class ConfigTests(unittest.TestCase):
         )
 
     def test_system_prompt_refuses_silent_correction(self):
+        """The default tutor prompt tells the model never to silently correct the learner."""
         settings = load_settings("configs/baseline.yaml")
         text = settings["llm"]["system_prompt"]
         self.assertIn("Never silently correct", text)
@@ -96,12 +116,15 @@ class ConfigTests(unittest.TestCase):
 
 
 class AudioTests(unittest.TestCase):
+    """WAV reading, resampling and chunking."""
     def test_resample_doubles_an_8k_clip(self):
+        """Resampling 8 kHz to 16 kHz doubles the number of samples."""
         pcm = b"\x00\x10" * 8000
         out = resample_pcm16(pcm, 8000, 16000)
         self.assertEqual(len(out), 16000 * 2)
 
     def test_wav_stereo_becomes_16k_mono(self):
+        """A stereo 8 kHz WAV becomes 16 kHz mono, and 50 ms chunks rejoin to the same bytes."""
         path = os.path.join(tempfile.mkdtemp(), "clip.wav")
         with wave.open(path, "wb") as handle:
             handle.setnchannels(2)
@@ -116,7 +139,9 @@ class AudioTests(unittest.TestCase):
 
 
 class LessonParseTests(unittest.TestCase):
+    """Parsing the tutor's JSON and the shape of the LLM Gateway request."""
     def test_parses_fenced_json_and_stringifies_errors(self):
+        """JSON inside a ``` fence parses, and detected errors become "heard -> issue" strings."""
         text = """```json
         {"translation": "Tengo frío.", "pronunciation": "TEN-go FREE-o", "tip": "Soy is for identity.",
          "detected_errors": [{"heard": "soy", "issue": "tengo"}]}
@@ -126,9 +151,11 @@ class LessonParseTests(unittest.TestCase):
         self.assertEqual(error_strings(parsed["detected_errors"]), ["soy -> tengo"])
 
     def test_plain_text_is_not_spoken(self):
+        """A non-JSON reply parses to None (so it is never spoken)."""
         self.assertIsNone(parse_lesson_text("just say hola"))
 
     def test_newline_inside_a_json_string(self):
+        """A raw newline inside a JSON string value is accepted."""
         raw = (
             '{"translation":"Hola","pronunciation":"OH-la",'
             '"tip":"line one\nline two","detected_errors":[]}'
@@ -138,15 +165,19 @@ class LessonParseTests(unittest.TestCase):
         self.assertEqual(parsed["tip"], "line one\nline two")
 
     def test_playground_post_shape_and_usage(self):
+        """The POST matches the playground request; only gemma gets response_format; token usage is read.
+        """
         import server.llm as llm
 
         captured = {}
 
         class Response:
+            """Minimal fake of a requests.Response with a lesson in it."""
             status_code = 200
             text = ""
 
             def json(self):
+                """Gateway-shaped body: one choice with lesson JSON, plus token usage."""
                 return {
                     "choices": [
                         {
@@ -162,6 +193,7 @@ class LessonParseTests(unittest.TestCase):
                 }
 
         def fake_post(url, headers=None, json=None, timeout=None):
+            """Stand-in for requests.post that records the request and returns the fake response."""
             captured["url"] = url
             captured["headers"] = headers
             captured["json"] = json
@@ -212,7 +244,10 @@ class LessonParseTests(unittest.TestCase):
 
 
 class _FakeSTT:
+    """Fake streaming STT: sends Begin on connect, then one partial and one final Turn on the first audio.
+    """
     def __init__(self, api_key, params, on_event):
+        """Same signature as StreamingSTT; records audio and config messages."""
         self.params = params
         self.on_event = on_event
         self.audio = bytearray()
@@ -220,7 +255,9 @@ class _FakeSTT:
         self.closed = False
 
     async def connect(self):
+        """Pretend to connect and deliver a Begin event shortly after."""
         async def begin():
+            """Deliver the Begin event on the next loop iteration, like a real server would."""
             await asyncio.sleep(0)
             await self.on_event(
                 {
@@ -234,6 +271,8 @@ class _FakeSTT:
         asyncio.create_task(begin())
 
     async def send_audio(self, pcm):
+        """Record audio; the first call also emits a partial and a final turn ("How do I say where is the station?").
+        """
         self.audio.extend(pcm)
         if not getattr(self, "_emitted", False):
             self._emitted = True
@@ -263,17 +302,22 @@ class _FakeSTT:
             )
 
     async def send_json(self, payload):
+        """Record an UpdateConfiguration message."""
         self.sent.append(payload)
 
     async def close(self):
+        """Mark the fake stream closed."""
         self.closed = True
 
 
 class _FakeLLM:
+    """Fake tutor: always returns the same Spanish lesson and records each call's arguments."""
     def __init__(self):
+        """Start with no recorded calls."""
         self.calls = []
 
     async def complete(self, **kwargs):
+        """Record the call and return a fixed lesson ("¿Dónde está la estación?")."""
         self.calls.append(kwargs)
         from server.llm import Lesson
         import time
@@ -293,10 +337,13 @@ class _FakeLLM:
 
 
 class _FakeTTS:
+    """Fake TTS: yields a few fixed PCM chunks for any text."""
     def __init__(self, chunks=(b"\x01\x00" * 12, b"\x02\x00" * 8)):
+        """Chunks to yield for every segment."""
         self.chunks = chunks
 
     async def stream(self, text, language_name, meta):
+        """Fill the usage metadata and yield the fixed chunks."""
         meta["sample_rate"] = 24000
         meta["billed_chars"] = len(text)
         for chunk in self.chunks:
@@ -304,17 +351,23 @@ class _FakeTTS:
 
 
 class _SlowLLM(_FakeLLM):
+    """Fake tutor that takes 1 s, so a test can barge in while it is "thinking"."""
     async def complete(self, **kwargs):
+        """Wait 1 s, then return the normal fake lesson."""
         await asyncio.sleep(1)
         return await super().complete(**kwargs)
 
 
 def _run(coro):
+    """Run a coroutine to completion on a fresh event loop."""
     return asyncio.run(coro)
 
 
 class SessionTests(unittest.TestCase):
+    """Session behaviour: logging, audio accounting, barge-in, replay and restarts."""
     def test_file_mode_writes_the_eval_line_and_appends(self):
+        """File mode writes one complete eval line (STT, LLM, timings, usage, config) and later writes append.
+        """
         from server.__main__ import run_file
 
         folder = tempfile.mkdtemp()
@@ -362,6 +415,8 @@ class SessionTests(unittest.TestCase):
         self.assertIn("llm_first_token", row["timings_ms"])
         self.assertIn("llm_done", row["timings_ms"])
         self.assertIn("tts_first_audio", row["timings_ms"])
+        # All timings are wall-clock ms (larger than 10^12 means a real epoch
+        # timestamp).
         for key in ("speech_end", "stt_final", "llm_first_token", "llm_done", "tts_first_audio"):
             self.assertGreater(row["timings_ms"][key], 1_000_000_000_000)
         # speech_end is the last word's end mapped onto the same wall clock.
@@ -383,8 +438,12 @@ class SessionTests(unittest.TestCase):
             self.assertEqual(len(handle.readlines()), 2)
 
     def test_first_frame_arrival_is_the_origin(self):
+        """The first audio frame's arrival time is the clock origin, and audio before STT is ready is buffered.
+        """
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             async def send(_payload):
+                """Fake browser socket: receives every message the session sends."""
                 return None
 
             session = Session(
@@ -401,6 +460,7 @@ class SessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_audio_seconds_sum_across_turns(self):
+        """Each log line is billed only its own audio, and the lines add up to all audio sent."""
         settings = load_settings("configs/baseline.yaml")
         folder = tempfile.mkdtemp()
         session = Session(settings, "key", self._ignore, log_path=os.path.join(folder, "t.jsonl"))
@@ -415,10 +475,14 @@ class SessionTests(unittest.TestCase):
         self.assertAlmostEqual(sum(row["usage"]["stt_audio_seconds"] for row in rows), 3.0, places=3)
 
     def test_barge_in_cancels_the_lesson(self):
+        """SpeechStarted while the tutor is thinking sends barge_in, keeps no history and logs barge_in.
+        """
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             sent = []
 
             async def send(payload):
+                """Fake browser socket: receives every message the session sends."""
                 sent.append(payload)
 
             settings = load_settings("configs/baseline.yaml")
@@ -453,10 +517,13 @@ class SessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_replay_speaks_without_a_second_lesson(self):
+        """Replay speaks the stored lesson again without another LLM call."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             sent = []
 
             async def send(payload):
+                """Fake browser socket: receives every message the session sends."""
                 sent.append(payload)
 
             settings = load_settings("configs/baseline.yaml")
@@ -485,8 +552,11 @@ class SessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_second_start_closes_the_first_stt_session(self):
+        """A second start closes the first STT stream; update_config and stop act on the new one."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             async def send(payload):
+                """Fake browser socket: receives every message the session sends."""
                 return None
 
             settings = load_settings("configs/baseline.yaml")
@@ -512,15 +582,20 @@ class SessionTests(unittest.TestCase):
         _run(scenario())
 
     async def _ignore(self, payload):
+        """Fake browser socket that drops every message."""
         return None
 
 
 class MemoryTests(unittest.TestCase):
+    """Chat history and turn ids."""
     def test_history_is_included_and_capped_at_six_exchanges(self):
+        """History is sent to the LLM, capped at six exchanges, and cleared by set_target."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             llm = _FakeLLM()
 
             async def send(_payload):
+                """Fake browser socket: receives every message the session sends."""
                 return None
 
             session = Session(
@@ -555,6 +630,7 @@ class MemoryTests(unittest.TestCase):
             await session.job
             self.assertEqual(llm.calls[1]["history"][0]["content"], session.history[0]["content"])
             self.assertIn("estación", llm.calls[1]["history"][1]["content"])
+            # Add 8 more exchanges directly; only the last 6 (12 messages) must remain.
             for index in range(8):
                 lesson = llm.calls[0]
                 lesson = type("Lesson", (), {"translation": f"t{index}", "tip": "tip"})()
@@ -568,10 +644,13 @@ class MemoryTests(unittest.TestCase):
         _run(scenario())
 
     def test_turn_id_climbs_across_a_restart(self):
+        """turn_id keeps counting across a restart, and every message of one turn shares it."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             sent = []
 
             async def send(payload):
+                """Fake browser socket: receives every message the session sends."""
                 sent.append(payload)
 
             session = Session(
@@ -586,6 +665,7 @@ class MemoryTests(unittest.TestCase):
             kinds = ("transcript", "lesson", "agent_text", "tts_start")
 
             async def one_turn():
+                """Run one fake turn and return its turn_id (checking all messages share it)."""
                 sent.clear()
                 await session.stt.send_audio(b"\x00\x00" * 80)
                 await session.job
@@ -606,7 +686,10 @@ class MemoryTests(unittest.TestCase):
 
 
 class WebSocketTests(unittest.TestCase):
+    """The real FastAPI app and /ws endpoint, with fake clients."""
     def test_health_and_a_turn_over_the_socket(self):
+        """/health answers, and one turn over /ws produces status, transcript, lesson, TTS messages and audio.
+        """
         from fastapi.testclient import TestClient
 
         from server.app import create_app
@@ -652,6 +735,7 @@ class WebSocketTests(unittest.TestCase):
         self.assertGreater(binary, 0)
 
     def test_missing_key_is_a_clean_error(self):
+        """With no API key, start returns a clear error message instead of crashing."""
         from fastapi.testclient import TestClient
 
         from server.app import create_app

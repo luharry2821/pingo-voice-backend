@@ -1,36 +1,87 @@
 """Score raw_outputs.jsonl against cases.jsonl -> results.json + RESULTS.md.
+
 Usage (repo root): .venv/bin/python test_cases/score.py [raw_outputs.jsonl] [--no-judge]
-Needs: pip install jiwer whisper-normalizer requests. Semantic WER uses ASSEMBLYAI_API_KEY (LLM Gateway)."""
+Needs: pip install jiwer whisper-normalizer requests. Semantic WER uses ASSEMBLYAI_API_KEY (LLM Gateway).
+
+This is the end of the eval pipeline: make_cases.py builds the clips and
+ground truth, run_render.py plays them through the live backend (mic audio ->
+STT -> LLM tutor -> TTS) and saves what STT wrote, and this script compares
+the two. KPIs it reports (error rates: lower is better):
+
+  WER            word error rate, (S+D+I)/N after normalisation, where S/D/I
+                 are substituted/deleted/inserted words and N reference words
+  Semantic WER   only the errors an LLM judge says change the meaning
+  FWER           "formatted" WER on the raw text (case and punctuation kept)
+  match error rate (mer_rate, "MER (jiwer.mer)" in RESULTS.md)
+                 (S+D+I)/(S+D+I+H), H = correct words; capped at 100%
+  cpWER          WER for two-speaker clips, best assignment of turns to speakers
+  CER            character error rate, for Japanese/Chinese/Korean
+  Sentence error rate   share of cases with at least one error
+  Code-switching WER    WER on English-Hindi and English-Spanish mixed clips
+  Missed entity rate    share of names/places/numbers/dates not found in the
+                 transcript (this is the "MER" shown on the Lovable evals page)
+  Mistake-preservation rate   share of planted learner mistakes kept
+                 verbatim (higher is better: STT must not silently fix them)
+
+The script runs top to bottom (no main function): helpers first, then one
+row per case, then the aggregate KPIs, then the two output files.
+"""
 import itertools, json, os, re, sys, unicodedata
 import jiwer
 from whisper_normalizer.english import EnglishTextNormalizer
+# Command line: optional raw outputs path; --no-judge skips the LLM call (and Semantic
+# WER).
 D = os.path.dirname(os.path.abspath(__file__))
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 RAW = args[0] if args else f"{D}/raw_outputs.jsonl"
 JUDGE = "--no-judge" not in sys.argv
+# Languages scored by characters (CER) instead of words.
 CJK = {"ja", "zh", "ko"}
 en_norm = EnglishTextNormalizer()
 
 def basic(text):
+    """Whisper-style basic normaliser: NFKC, lowercase, drop [tags]/(asides), punctuation and symbols -> spaces.
+
+    Unlike Whisper's version it keeps combining marks, which Hindi (Devanagari)
+    needs to keep words intact.
+    """
     # Whisper's basic normalizer, minus its removal of combining marks (that splits Devanagari words).
     t = unicodedata.normalize("NFKC", text).lower()
+    # Drop <tags>, [tags] and (parenthesised asides), as Whisper's normaliser does.
     t = re.sub(r"[<\[][^>\]]*[>\]]|\(([^)]+?)\)", "", t)
     return "".join(" " if unicodedata.category(ch)[0] in "PS" else ch for ch in t)
 
 def norm(text, langs):
+    """Normalise text for WER: Whisper's English normaliser for English-only cases, basic() otherwise.
+
+    Normalisation makes "Don't" vs "do not", "21" vs "twenty-one" or a missing
+    comma not count as errors in plain WER (FWER keeps them).
+    """
     # English-only text: Whisper English normalizer (AssemblyAI's convention for normalized WER).
     # Everything else: Whisper-style basic normalizer (NFKC, lowercase, strip punctuation/symbols).
     t = en_norm(text) if langs == ["en"] else basic(text)
     return re.sub(r"\s+", " ", t).strip()
 
 def chars(text):
+    """Character sequence for CER: normalised text with spaces removed, one "word" per character.
+
+    Japanese, Chinese and Korean do not separate words with spaces, so errors are
+    counted per character instead.
+    """
     return " ".join(re.sub(r"\s+", "", basic(text)))
 
 def counts(ref, hyp):
+    """Align reference vs hypothesis with jiwer and count errors.
+
+    Returns S (substitutions), D (deletions), I (insertions), H (hits), N
+    (reference length = S+D+H) and a readable list like "S: pero→perro", or
+    None when the reference is empty. An empty hypothesis counts every word deleted.
+    """
     if not ref.strip():
         return None
     o = jiwer.process_words(ref, hyp if hyp.strip() else "")
     errs = []
+    # Walk the alignment and list each error for RESULTS.md and the judge.
     for chunk in o.alignments[0]:
         r = o.references[0][chunk.ref_start_idx:chunk.ref_end_idx]
         h = o.hypotheses[0][chunk.hyp_start_idx:chunk.hyp_end_idx]
@@ -40,21 +91,41 @@ def counts(ref, hyp):
     return {"S": o.substitutions, "D": o.deletions, "I": o.insertions, "H": o.hits, "N": o.substitutions + o.deletions + o.hits, "errors": errs}
 
 def rate(rows, key="E", n="N"):
+    """Pooled error rate over rows: 100 * sum(rows[key]) / sum(rows[n]), plus case and unit counts.
+
+    Pooled (total errors / total words), not an average of per-case rates, so
+    long sentences weigh more, the standard way WER is reported.
+    """
     N = sum(r[n] for r in rows)
     return {"value_pct": round(100 * sum(r[key] for r in rows) / N, 2) if N else None, "n_cases": len(rows), "n_units": N}
 
 def mer_rate(rows):
+    """Match error rate (jiwer.mer): errors / (errors + hits) over the same rows as WER.
+
+    Unlike WER it cannot exceed 100% when STT inserts many extra words.
+    """
     # jiwer.mer = (S+D+I)/(S+D+I+H) on the same alignment and clip set as WER
     den = sum(r["H"] + r["E"] for r in rows)
     return {"value_pct": round(100 * sum(r["E"] for r in rows) / den, 2) if den else None, "n_cases": len(rows), "n_units": den}
 
 def entity_in_hyp(ent, hyp, langs):
+    """True if an entity (name, place, number, date) appears in the transcript after normalisation.
+
+    For CJK text, plain substring match with spaces removed; otherwise a
+    whole-word match (padded with spaces) so "Ana" does not match "Anaheim".
+    """
     if CJK & set(langs):
         return re.sub(r"\s+", "", basic(ent)) in re.sub(r"\s+", "", basic(hyp))
     ne, nh = norm(ent, langs), norm(hyp, langs)
     return bool(ne) and f" {ne} " in f" {nh} "
 
 def cpwer(case, turns):
+    """Concatenated minimum-permutation WER for a two-speaker case: (errors, reference words).
+
+    Every way of assigning STT turns to the reference speakers is tried and the
+    lowest total error count is kept, so the score is not hurt by turn order.
+    No turns at all = every reference word missed.
+    """
     refs = [norm(s["text"], ["en"]) for s in case["speakers"]]
     hyps = [norm(t["text"], ["en"]) for t in turns]
     best = None
@@ -71,6 +142,9 @@ def cpwer(case, turns):
 def judge(items):
     """One batched LLM-Gateway call: how many of each case's word errors change the meaning."""
     import requests
+    # The judge prompt: what counts as a meaning-changing error vs a harmless variant.
+    # Learner words silently replaced by a different real word count as meaning-
+    # changing, because that hides the learner's mistake.
     prompt = ("You grade speech-to-text errors for a language-learning app. For each case you get the reference "
               "(what was said), the hypothesis (what STT wrote) and the list of word errors after normalization "
               "(S=substituted, D=deleted, I=inserted). Count how many of those errors change the meaning for the learner. "
@@ -85,17 +159,22 @@ def judge(items):
                             "messages": [{"role": "user", "content": prompt}]})
     r.raise_for_status()
     text = r.json()["choices"][0]["message"]["content"]
+    # Keep only the JSON object (the model may add text around it).
     text = text[text.find("{"): text.rfind("}") + 1]
     return {x["id"]: int(x["meaning_errors"]) for x in json.loads(text)["results"]}
 
+# Load ground truth and STT outputs, both keyed by case id.
 cases = {json.loads(l)["id"]: json.loads(l) for l in open(f"{D}/cases.jsonl")}
 raw = {json.loads(l)["id"]: json.loads(l) for l in open(RAW)}
 rows = []
+# One row per case: errors, pass/fail, entities and planted mistakes.
 for cid, c in cases.items():
     r = raw.get(cid, {}); hyp = r.get("hypothesis", ""); langs = c["languages"]
     cjk = bool(CJK & set(langs))
     row = {"id": cid, "category": c["category"], "languages": langs, "reference": c["reference"], "hypothesis": hyp,
            "turns": len(r.get("turns", [])), "detected_language": [t.get("language_code") for t in r.get("turns", [])]}
+    # CJK cases are scored per character; everything else per word (normalised for WER,
+    # raw for FWER).
     if cjk:
         k = counts(chars(c["reference"]), chars(hyp)); row["metric"] = "CER"
     else:
@@ -103,11 +182,15 @@ for cid, c in cases.items():
         f = counts(c["reference"], hyp)  # raw: case + punctuation kept
         row.update(F_E=f["S"] + f["D"] + f["I"], F_N=f["N"])
     row.update(S=k["S"], D=k["D"], I=k["I"], H=k["H"], N=k["N"], E=k["S"] + k["D"] + k["I"], errors=k["errors"])
+    # Per-case rate for the tables; a case passes only with zero errors.
     row["rate_pct"] = round(100 * row["E"] / row["N"], 2)
     row["pass"] = row["E"] == 0
+    # Two-speaker clips also get cpWER.
     if c["category"] == "two_speaker":
         row["cp_E"], row["cp_N"] = cpwer(c, r.get("turns", []))
+    # Hard-set flag (kept in results.json for the hard-only numbers).
     row["hard"] = bool(c.get("hard"))
+    # Entities tagged in the case, and the ones not found in the transcript.
     ents = c.get("entities") or []
     row["entities"] = ents
     row["entities_missed"] = [e for e in ents if not entity_in_hyp(e, hyp, langs)]
@@ -117,33 +200,50 @@ for cid, c in cases.items():
         planted = c["planted_mistake"] if isinstance(c["planted_mistake"], list) else [c["planted_mistake"]]
         amb = set(c.get("audio_ambiguous_mistakes") or (planted if c.get("audio_ambiguous") else []))
         row.update(intended_correct=c["intended_correct"], planted_mistake=c["planted_mistake"],
+                   # Each planted mistake is "preserved" if it appears in the transcript
+                   # after the same normalisation; if STT corrected it, the learner's
+                   # mistake was hidden.
                    mistakes=[{"mistake": m, "preserved": f" {fold(m).strip()} " in fold(hyp) if not cjk else fold(m) in fold(hyp),
                               "audio_ambiguous": m in amb} for m in planted])
         row["mistake_preserved"] = all(x["preserved"] for x in row["mistakes"])
         if c.get("audio_ambiguous"): row["audio_ambiguous"] = c["audio_ambiguous"]
     rows.append(row)
 
+# Semantic WER: one batched LLM call over every case with errors. A failure only blanks
+# this KPI.
 word = [r for r in rows if r["metric"] == "WER"]
 semantic = {"value_pct": None, "note": "judge not run"}
 if JUDGE:
     try:
         m = judge([{"id": r["id"], "reference": r["reference"], "hypothesis": r["hypothesis"], "errors": r["errors"]} for r in word if r["E"]])
+        # The judge cannot report more meaning errors than there are errors.
         for r in word: r["meaning_errors"] = min(r["E"], m.get(r["id"], r["E"])) if r["E"] else 0
         semantic = {**rate(word, "meaning_errors"), "judge": "AssemblyAI LLM Gateway gemma-4-31b, temperature 0, one batched call"}
     except Exception as exc:
         semantic = {"value_pct": None, "note": f"judge failed: {exc}"}
 
+# by(f): the rows matching a filter.
 by = lambda f: [r for r in rows if f(r)]
 
 def mpr(sel, exclude_ambiguous=False):
+    """Mistake-preservation rate: share of planted learner mistakes STT kept verbatim (higher is better).
+
+    exclude_ambiguous drops mistakes whose audio genuinely sounds like the
+    correct word, so they do not count against STT.
+    """
     ms = [m for r in sel if "mistakes" in r for m in r["mistakes"] if not (exclude_ambiguous and m["audio_ambiguous"])]
     return {"value_pct": round(100 * sum(m["preserved"] for m in ms) / len(ms), 2) if ms else None, "n_mistakes": len(ms),
             "n_preserved": sum(m["preserved"] for m in ms), "n_cases": len([r for r in sel if "mistakes" in r]), "higher_is_better": True}
 
 def ser(sel):
+    """Sentence error rate: percent of cases with at least one word/character error."""
     return {"value_pct": round(100 * sum(not r["pass"] for r in sel) / len(sel), 2) if sel else None, "n_cases": len(sel)}
 
 def missed_entity_rate(sel):
+    """Missed entity rate: percent of tagged entities not found in the transcript, with the list of misses.
+
+    This is the KPI shown as "MER (missed entity rate)" on the Lovable evals page.
+    """
     pairs = [(r, e) for r in sel for e in r["entities"]]
     missed = [(r, e) for r in sel for e in r["entities_missed"]]
     n = len(pairs)
@@ -151,6 +251,9 @@ def missed_entity_rate(sel):
             "n_cases": len([r for r in sel if r["entities"]]),
             "missed": [{"id": r["id"], "entity": e, "hypothesis": r["hypothesis"], "reference": r["reference"]} for r, e in missed]}
 
+# Aggregate KPIs. Per-language WER uses only the plain single-language categories
+# (english, german, other) and per-language CER skips planted-mistake cases, so each
+# language's score is not mixed with code-switching, entity or mistake clips.
 hard = by(lambda r: r["hard"]); hard_word = [r for r in hard if r["metric"] == "WER"]
 entity_cats = sorted({r["category"] for r in rows if r["entities"]})
 res = {
@@ -181,7 +284,10 @@ res = {
   "missed_entity_rate_by_category": {cat: missed_entity_rate(by(lambda r, cat=cat: r["category"] == cat)) for cat in entity_cats},
   "cases": rows,
 }
+# Machine-readable results (also used for the Notion/Lovable tables).
 json.dump(res, open(f"{D}/results.json", "w"), ensure_ascii=False, indent=1)
+# Human-readable RESULTS.md: KPI table, hard-set table, missed entities, planted
+# mistakes and failed cases.
 p = lambda x: "n/a" if x.get("value_pct") is None else f"{x['value_pct']}%"
 L = ["# STT results (live Pingo on Render)", "", f"{len(rows)} cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER).", "",
      "| KPI | Value | n |", "|---|---|---|",

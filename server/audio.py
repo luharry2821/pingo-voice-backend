@@ -1,9 +1,19 @@
-"""Turn a WAV file into 16 kHz mono PCM16, the format streaming STT expects."""
+"""Audio helpers: turn a WAV file into 16 kHz mono PCM16, the format streaming STT expects.
+
+Pipeline position: used by file mode (python -m server --input clip.wav) and
+the eval scripts to feed recorded clips into the same pipeline as a live mic
+(mic audio -> STT -> LLM tutor -> TTS -> browser). Live browsers already send
+16 kHz PCM16, so they skip this file. Pure standard library, no numpy.
+
+PCM16 = signed 16-bit samples, little-endian, 2 bytes per sample (mono).
+"""
 
 import array
 import sys
 import wave
 
+# Streaming STT is configured for 16 kHz audio (see stt.sample_rate in
+# server/config.py).
 TARGET_RATE = 16000
 
 
@@ -14,6 +24,7 @@ def read_pcm16_mono(path, target_rate=TARGET_RATE):
         sampwidth = handle.getsampwidth()
         rate = handle.getframerate()
         frames = handle.readframes(handle.getnframes())
+    # Only 16-bit WAVs are supported; 8/24/32-bit files would need conversion first.
     if sampwidth != 2:
         raise ValueError(
             f"{path} is {sampwidth * 8}-bit PCM. Export 16-bit PCM WAV."
@@ -22,10 +33,12 @@ def read_pcm16_mono(path, target_rate=TARGET_RATE):
 
 
 def _downmix(pcm, channels):
+    """Average interleaved channels into mono PCM16 (no-op for mono input)."""
     if channels == 1:
         return pcm
     samples = _from_le(pcm)
     mixed = array.array("h")
+    # Interleaved frames: [L, R, L, R, ...]; average each group of `channels` samples.
     for index in range(0, len(samples), channels):
         group = samples[index : index + channels]
         mixed.append(int(round(sum(group) / float(len(group)))))
@@ -41,10 +54,13 @@ def resample_pcm16(pcm, src_rate, dst_rate):
     src = _from_le(pcm)
     if len(src) == 0:
         return b""
+    # Number of output samples for the same duration at the new rate.
     n_dst = max(1, int(round(len(src) * float(dst_rate) / float(src_rate))))
     if n_dst == 1 or len(src) == 1:
         return _to_le(array.array("h", [src[0]]))
     dst = array.array("h", [0]) * n_dst
+    # Map each output sample to a fractional input position and interpolate between the
+    # two nearest input samples; clamp to the 16-bit range.
     scale = (len(src) - 1) / float(n_dst - 1)
     for index in range(n_dst):
         position = index * scale
@@ -58,6 +74,7 @@ def resample_pcm16(pcm, src_rate, dst_rate):
 
 def iter_chunks(pcm, sample_rate=TARGET_RATE, chunk_ms=50):
     """Yield ~chunk_ms slices. 50 ms at 16 kHz mono s16 is 1600 bytes."""
+    # Bytes per chunk: samples per chunk times 2 bytes per sample.
     size = sample_rate * chunk_ms // 1000 * 2
     if size <= 0:
         raise ValueError("chunk_ms is too small")
@@ -66,10 +83,15 @@ def iter_chunks(pcm, sample_rate=TARGET_RATE, chunk_ms=50):
 
 
 def silence(ms, sample_rate=TARGET_RATE):
+    """`ms` milliseconds of PCM16 silence (zero samples) at sample_rate.
+
+    File mode appends this after a clip so STT sees the pause that ends a turn.
+    """
     return b"\x00\x00" * (sample_rate * ms // 1000)
 
 
 def _from_le(pcm):
+    """Little-endian PCM16 bytes -> array of ints (an odd trailing byte is dropped)."""
     samples = array.array("h")
     samples.frombytes(pcm[: len(pcm) - (len(pcm) % 2)])
     if sys.byteorder != "little":
@@ -78,6 +100,7 @@ def _from_le(pcm):
 
 
 def _to_le(samples):
+    """Array of 16-bit ints -> little-endian PCM16 bytes (byteswaps on big-endian machines)."""
     if sys.byteorder != "little":
         samples.byteswap()
     return samples.tobytes()

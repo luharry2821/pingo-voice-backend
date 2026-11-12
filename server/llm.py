@@ -1,4 +1,12 @@
-"""Tutor turns from the AssemblyAI LLM Gateway, using the playground request.
+"""The LLM tutor: turns one learner transcript into one tutor turn (a "lesson").
+
+Pipeline position: mic audio -> streaming STT -> **LLM tutor (this file)** ->
+TTS -> browser. server/session.py calls GatewayLLM.complete() with the final
+transcript, the detected language and the practice state; it gets back a
+Lesson with the phrase to teach, a respelling, syllables, a tip, a verdict on
+practice attempts and what to say next.
+
+The request is the same one the AssemblyAI LLM Gateway playground makes:
 
     response = requests.post(
         "https://llm-gateway.assemblyai.com/v1/chat/completions",
@@ -14,8 +22,12 @@
     text = response.json()["choices"][0]["message"]["content"]
 
 The POST runs in a thread so the asyncio session is not blocked. The default
-model is gemma-4-31b, which gets response_format. qwen3.5-4b-32k-fast is the
-same request without response_format.
+model is gemma-4-31b, which gets response_format (strict JSON schema).
+qwen3.5-4b-32k-fast is the same request without response_format.
+
+Most of this file is defensive parsing: small models sometimes return broken
+JSON, control characters, copied template slots or a stray word at the end.
+Each cleanup function names the live failure it was written for.
 """
 
 import asyncio
@@ -28,10 +40,14 @@ import requests
 
 logger = logging.getLogger("pingo.llm")
 
+# Gateway endpoint and model names. Only gemma gets the strict JSON schema
+# (response_format); other models are asked for JSON by the prompt alone.
 LLM_URL = "https://llm-gateway.assemblyai.com/v1/chat/completions"
 DEFAULT_MODEL = "gemma-4-31b"
 GEMMA_MODEL = "gemma-4-31b"
 
+# What kind of turn the model says this is, and its judgement on practice attempts.
+# Anything else from the model is mapped back to a default by _choice().
 INTENTS = ("teach_phrase", "pronunciation", "practice_attempt", "correction", "chat")
 VERDICTS = ("correct", "close", "try_again", "none")
 
@@ -86,6 +102,7 @@ LESSON_SCHEMA = {
 
 def _auto_schema():
     """LESSON_SCHEMA plus `target_language`: the language the learner asked for this turn."""
+    # Deep copy via JSON so the base schema is not modified.
     schema = json.loads(json.dumps(LESSON_SCHEMA))
     body = schema["json_schema"]["schema"]
     schema["json_schema"]["name"] = "pingo_tutor_turn_auto"
@@ -114,6 +131,7 @@ language they want to learn and return it as target_language:
   ("In German, that's"), never say "the target language".
 """
 
+# Lesson fields beyond the original schema, passed to Lesson(**turn).
 TURN_FIELDS = ("intent", "reply", "syllables", "verdict", "verdict_reason", "next_prompt", "target_language")
 
 # Control characters and the replacement character. Seen live from the model:
@@ -123,6 +141,10 @@ BAD_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ufffd]")
 
 
 class LLMError(RuntimeError):
+    """Raised when the tutor model cannot be reached, times out or returns no text.
+
+    The session catches it and shows the message to the learner as an error.
+    """
     pass
 
 
@@ -131,6 +153,14 @@ class Lesson:
     its old name for the eval scorer and older clients)."""
 
     def __init__(self, translation, pronunciation, tip, detected_errors, model, tokens_in, tokens_out, first_token_at, done_at, streamed, **turn):
+        """Store one parsed tutor turn.
+
+        The positional fields are the original lesson schema; **turn carries the
+        newer tutor-turn fields (intent, reply, syllables, verdict, verdict_reason,
+        next_prompt, target_language, corrupt). Missing ones get safe defaults: an
+        intent of teach_phrase if there is a phrase (else chat), verdict "none".
+        unparsed / raw_text / retried / salvaged are set later by the caller.
+        """
         self.translation = translation
         self.pronunciation = pronunciation
         self.tip = tip
@@ -157,9 +187,11 @@ class Lesson:
 
     @property
     def target_phrase(self):
+        """The target-language phrase (same value as `translation`, newer name)."""
         return self.translation
 
     def as_json(self):
+        """The lesson as a plain dict for the browser/tests (both phrase names included)."""
         return {
             "intent": self.intent,
             "reply": self.reply,
@@ -196,7 +228,13 @@ def error_strings(errors):
 
 
 class GatewayLLM:
+    """Client for the AssemblyAI LLM Gateway (OpenAI-style chat completions).
+
+    Built with the API key and the "llm" section of the config (model,
+    system_prompt, max_tokens, temperature, timeout_s).
+    """
     def __init__(self, api_key, llm_settings):
+        """Keep the key and the LLM settings; no connection is opened here."""
         self.api_key = api_key
         self.settings = llm_settings
 
@@ -215,6 +253,15 @@ class GatewayLLM:
         previous_target="",
         other_language="",
     ):
+        # Overall time budget for this tutor call, in seconds.
+        """Ask the tutor model for one turn; returns a Lesson.
+
+        Inputs: the learner transcript, STT's detected language and its confidence,
+        the target and native language names, recent chat history, and routing hints
+        from the session (practice phrase and check, new_phrase, other_language,
+        auto-target fields). The blocking HTTP call runs in a worker thread, wrapped
+        in an overall timeout (timeout_s + 1 s). Raises LLMError on timeout.
+        """
         seconds = float(self.settings.get("timeout_s") or 30)
         try:
             return await asyncio.wait_for(
@@ -255,6 +302,17 @@ class GatewayLLM:
         previous_target="",
         other_language="",
     ):
+        """Build the prompt and request body, send it, and retry/salvage bad replies.
+
+        Runs in a worker thread. Retry policy (at most one retry, and only if the
+        first answer came back within a third of the time budget, so a slow model
+        never doubles the wait):
+          * not JSON at all -> retry once; keep the retry if it parses.
+          * JSON but control characters in the phrase/syllables -> retry once;
+            otherwise keep the cleaned first answer.
+          * still not JSON -> salvage the fields that were complete before the
+            model got cut off (salvage_lesson).
+        """
         prompt = system_prompt(self.settings.get("system_prompt") or "", target_name, native_name, auto_target)
         user_text = build_user_text(
             transcript,
@@ -269,6 +327,8 @@ class GatewayLLM:
             previous_target=previous_target,
             other_language=other_language,
         )
+        # Request body: system prompt, recent history, then this turn. Low temperature
+        # keeps answers consistent between runs.
         model = self.settings.get("model") or DEFAULT_MODEL
         body = {
             "model": model,
@@ -278,6 +338,7 @@ class GatewayLLM:
         }
         if model == GEMMA_MODEL:
             body["response_format"] = AUTO_LESSON_SCHEMA if auto_target else LESSON_SCHEMA
+        # Timestamp used by the retry rule below (retry only if there is time left).
         started = time.time()
         lesson = self._send(body, model, seconds)
         if lesson.unparsed and time.time() - started < seconds / 3:
@@ -295,6 +356,7 @@ class GatewayLLM:
             if not retry.unparsed and not retry.corrupt:
                 retry.retried = True
                 return retry
+        # Still not JSON after any retry: keep whatever fields were complete.
         if lesson.unparsed:
             salvaged = salvage_lesson(lesson)
             if salvaged is not None:
@@ -303,6 +365,12 @@ class GatewayLLM:
         return lesson
 
     def _send(self, body, model, seconds):
+        """One HTTP POST to the gateway; returns a Lesson (possibly marked unparsed).
+
+        Network errors, timeouts and HTTP >= 400 become LLMError with a readable
+        message. The body is decoded as UTF-8 by hand, then the message text is
+        parsed into a Lesson together with token usage for cost tracking.
+        """
         try:
             response = requests.post(
                 LLM_URL,
@@ -326,6 +394,8 @@ class GatewayLLM:
             text = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMError("The tutor model returned a lesson with no text.") from exc
+        # Token usage is logged per turn for cost tracking. first_token_at is None
+        # because this is not a streamed response.
         usage = data.get("usage") if isinstance(data, dict) else None
         lesson = _lesson(text or "", model, usage, None, time.time(), streamed=False)
         lesson.raw_text = text or ""
@@ -334,9 +404,13 @@ class GatewayLLM:
 
 def system_prompt(template, target_name, native_name="english", auto_target=False):
     """Fill {target} and {native}. Auto-target mode appends how to pick the target."""
+    # Auto-target: the language is not known yet, so the prompt says "the target
+    # language" and the appended block explains how to pick it.
     if auto_target:
         target = "the target language"
     else:
+        # Capitalise names like "spanish" for the prompt; leave already-styled names
+        # alone.
         target = target_name.capitalize() if target_name.islower() else target_name
     prompt = template.replace("{target}", target).replace("{native}", (native_name or "english").capitalize())
     if auto_target:
@@ -357,6 +431,15 @@ def build_user_text(
     previous_target="",
     other_language="",
 ):
+    # The first lines are context; the transcript always comes last.
+    """Build the user message for this turn: context lines, then the verbatim transcript.
+
+    The context lines tell the model the target and native languages, what STT
+    detected, the current practice phrase and, depending on routing, one extra
+    instruction: trust the automatic practice check, or teach this new native
+    phrase, or treat it as speech in another language. The transcript is passed
+    verbatim so the model can spot (and not silently fix) learner mistakes.
+    """
     confidence = "unknown" if language_confidence is None else language_confidence
     if auto_target:
         target_line = f"Previous target language: {previous_target or 'none'}."
@@ -368,6 +451,8 @@ def build_user_text(
         f"Detected language of this turn: {source_language or 'unknown'} (confidence {confidence}).",
         f"Current practice phrase: {practice_target or '(none yet)'}.",
     ]
+    # Routing hint 1: a deterministic practice check matched this turn to the pending
+    # phrase. The model is told to trust its verdict.
     if practice_check:
         low = ", ".join(
             f"{w['text']} ({w['confidence']})" for w in practice_check.get("low_confidence_words") or []
@@ -381,12 +466,16 @@ def build_user_text(
             f"language (not {target_name or 'the target language'}) instead of trying the phrase: then use "
             "intent teach_phrase and teach what it means."
         )
+        # After earlier misses, tell the model a slow syllable read follows so its reply
+        # can lead into it.
         misses = practice_check.get("misses_before")
         if misses:
             lines.append(
                 f"Misses on this phrase before this turn: {misses}. If this one is not correct either, "
                 "the syllables are read slowly after your reply, so lead into that."
             )
+    # Routing hint 2: a new phrase in the learner's own language, to be taught, not
+    # judged.
     elif new_phrase:
         lines.append(
             f"Routing (automatic): this turn is an everyday {native_name or 'english'} phrase, not an attempt "
@@ -394,6 +483,8 @@ def build_user_text(
             f"{target_name or 'target language'} equivalent, unless it is a question about pronunciation or "
             "repeating the current phrase, or meta talk about the lesson."
         )
+    # Routing hint 3: clear speech in some third language; teach its meaning instead of
+    # saying "I didn't catch that".
     elif other_language:
         native = native_name or "english"
         if auto_target:
@@ -417,6 +508,7 @@ def build_user_text(
 
 
 def _has_bad_chars(value):
+    """True if the value contains control characters or the U+FFFD replacement character."""
     return bool(BAD_CHARS.search(str(value or "")))
 
 
@@ -433,7 +525,10 @@ def _field(value):
     it is dropped, and so are stray closing braces at the end.
     """
     text = _clean_chars(value).strip()
+    # Drop an unclosed '{' or '[' and everything after it.
     text = re.sub(r"\s*[{\[][^{}\[\]]*$", "", text)
+    # Strip trailing quote/comma/brace debris; repeat (max 3 times) until nothing
+    # changes.
     for _ in range(3):
         before = text
         text = re.sub(r"""['"]?\s*,?\s*['"]?\s*[{}\[\]]+\s*$""", "", text)
@@ -452,6 +547,8 @@ def _drop_junk_tail(text):
     corticosteroids". A real sentence after "?", "!" or "." has more than one
     word or ends with punctuation of its own.
     """
+    # Group 1: everything up to the last sentence end. Group 2: one trailing word with
+    # no punctuation of its own.
     match = re.match(r"^(.*[.!?])\s+([^\s.!?]+)$", text or "", re.S)
     if match and len(match.group(2)) > 1:
         logger.warning("dropping a stray word after the sentence: %r", match.group(2))
@@ -461,6 +558,7 @@ def _drop_junk_tail(text):
 
 def _spoken(value):
     """Text a voice will read: drop template slots like {target_phrase} the model sometimes copies."""
+    # Remove {slots}, then tidy the spacing and punctuation left behind.
     text = re.sub(r"\{[^{}]*\}", "", _field(value))
     text = re.sub(r"\s*\.\.\.\s*([.!?:,]|$)", r"\1", text)
     text = re.sub(r"\s+([.!?:,])", r"\1", text)
@@ -469,6 +567,8 @@ def _spoken(value):
 
 
 def _letters(text):
+    """Lowercase letters and digits only (punctuation, spaces and _ removed), for comparing texts.
+    """
     return re.sub(r"[^\w]|_", "", (text or "").lower())
 
 
@@ -484,6 +584,8 @@ def _trim_phrase(phrase, syllables):
     spelled = _letters(syllables)
     if not spelled or _letters(phrase) == spelled:
         return phrase
+    # Look for a sentence end followed by more words; if the syllables spell exactly the
+    # text before it, the rest is junk.
     for match in re.finditer(r"[.!?…]+(?=\s+\S)", phrase):
         head = phrase[: match.end()].strip()
         if _letters(head) == spelled:
@@ -493,6 +595,8 @@ def _trim_phrase(phrase, syllables):
 
 
 def _choice(value, allowed, default):
+    """Normalise an enum-like field ("Try again" -> "try_again"); fall back to default if not allowed.
+    """
     text = str(value or "").strip().lower().replace(" ", "_").replace("-", "_")
     return text if text in allowed else default
 
@@ -504,12 +608,15 @@ def parse_lesson_text(text):
     (`translation` instead of `target_phrase`).
     """
     raw = (text or "").strip()
+    # Some models wrap the JSON in a ``` code fence; unwrap it.
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
     data = _load_object(raw)
     if data is None:
         return None
     errors = []
+    # detected_errors may be plain strings or dicts with older key names; normalise to
+    # {heard, issue}.
     for item in data.get("detected_errors") or []:
         if isinstance(item, str):
             errors.append({"heard": item, "issue": ""})
@@ -520,15 +627,19 @@ def parse_lesson_text(text):
                     "issue": str(item.get("issue") or item.get("difference") or ""),
                 }
             )
+    # Remember whether the raw phrase had control characters (triggers one retry), then
+    # clean it and cut any tail the syllables do not cover.
     raw_phrase = data.get("target_phrase") or data.get("translation")
     corrupt = _has_bad_chars(raw_phrase) or _has_bad_chars(data.get("syllables"))
     phrase = _trim_phrase(_field(raw_phrase), _field(data.get("syllables")))
     intent = _choice(data.get("intent"), INTENTS, "teach_phrase" if phrase else "chat")
     verdict = _choice(data.get("verdict"), VERDICTS, "none")
+    # A verdict only makes sense for a practice attempt.
     if intent != "practice_attempt":
         verdict = "none"
     reply = _spoken(data.get("reply") or data.get("reply_native"))
     next_prompt = _spoken(data.get("next_prompt"))
+    # Do not say the next prompt twice if the model also appended it to the reply.
     if next_prompt and len(reply) > len(next_prompt) and reply.lower().endswith(next_prompt.lower()):
         reply = reply[: -len(next_prompt)].rstrip(" ,;-")
     return {
@@ -562,6 +673,8 @@ def salvage_lesson(lesson):
     """
     raw = getattr(lesson, "raw_text", "") or ""
     data = {}
+    # Keep the first complete value of each key; a cut-off string never matches the
+    # regex.
     for key, value in _COMPLETE_FIELD.findall(raw):
         try:
             data.setdefault(key, json.loads(value, strict=False))
@@ -569,6 +682,7 @@ def salvage_lesson(lesson):
             continue
     if not str(data.get("target_phrase") or "").strip():
         return None
+    # The errors list is usually the part that got cut off; drop it.
     data["detected_errors"] = []
     fixed = _lesson(json.dumps(data), lesson.model, None, lesson.first_token_at, lesson.done_at, lesson.streamed)
     if fixed.unparsed:
@@ -580,6 +694,11 @@ def salvage_lesson(lesson):
 
 
 def _load_object(raw):
+    """Parse a JSON object from the model text; None if there is none.
+
+    Falls back to the outermost {...} span, for replies with chatter around the
+    JSON. Anything that is not a dict counts as unusable.
+    """
     # strict=False accepts the raw newline qwen sometimes puts inside a string.
     try:
         data = json.loads(raw, strict=False)
@@ -597,6 +716,11 @@ def _load_object(raw):
 
 
 def _tokens(usage):
+    """Read (input_tokens, output_tokens) from a usage dict or object.
+
+    Accepts both naming styles (input/output_tokens and prompt/completion_tokens).
+    Returns (None, None) when usage is missing.
+    """
     if not usage:
         return None, None
     if not isinstance(usage, dict):
@@ -616,6 +740,8 @@ def _tokens(usage):
 
 
 def _lesson(text, model, usage, first_token_at, done_at, streamed):
+    """Turn the model's text into a Lesson. Unusable text gives an empty Lesson with unparsed=True.
+    """
     parsed = parse_lesson_text(text)
     tokens_in, tokens_out = _tokens(usage)
     if parsed is None:

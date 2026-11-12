@@ -282,7 +282,7 @@ Every other model, including `gemini-2.5-flash-lite`, returns HTTP 400: `Your ac
 | `interruption_delay` | Validated. A value outside 0–1000 ms returns error 3006, `must be between 0 and 1000 ms`. It is not in the SessionBegins echo. |
 | `prompt` | Not rejected, and not echoed. Unconfirmed: the server may be applying it or ignoring it. |
 
-The server sends `mode` (default `balanced`) and `interruption_delay` (default 500), and sends `prompt` when it is non-empty. It does not send `end_of_turn_confidence_threshold`. The SDK's `set_params` model has no `mode` field, so a mid-session mode change waits for the next `start`.
+The server sends `mode` (default `balanced`) and `interruption_delay` (default 250; the balanced preset is 500), and sends `prompt` when it is non-empty. It does not send `end_of_turn_confidence_threshold`. The SDK's `set_params` model has no `mode` field, so a mid-session mode change waits for the next `start`.
 
 Re-check with a key:
 

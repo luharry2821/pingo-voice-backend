@@ -1,4 +1,9 @@
-"""Practice state and the deterministic check of a learner's attempt.
+"""Practice state helpers and the deterministic check of a learner's attempt.
+
+Pipeline position: runs inside server/session.py between STT and the LLM
+tutor. After a final STT turn, the session asks this module "is this a try at
+the phrase we just taught, and how good was it?" before the LLM is called, so
+the verdict does not depend on the model's mood.
 
 The tutor keeps one practice phrase per session: the last phrase it taught,
 corrected or broke into syllables. When the learner then says something short
@@ -10,12 +15,18 @@ request. Two signals:
   a few letters speech-to-text swaps) and compared with difflib.
 - confidence: AssemblyAI's per-word confidence on the final turn. A match that
   the model heard with low confidence is downgraded from correct to close.
+
+It also holds the routing helpers (is_native_phrase, is_other_script) and
+slow_text(), which builds the syllable-by-syllable "slow read".
 """
 
 import difflib
 import re
 import unicodedata
 
+# Score thresholds (0..1, from match_score): >= CORRECT_AT is correct, >= CLOSE_AT is
+# close, below is try again. A word under LOW_CONFIDENCE turns a correct match into
+# close.
 CORRECT_AT = 0.85
 CLOSE_AT = 0.6
 LOW_CONFIDENCE = 0.5
@@ -62,11 +73,13 @@ def is_native_phrase(utterance, target, native="en"):
     least one of them must not be a word of the practice phrase itself (so "no"
     for "No" or "pizza" for "Pizza" still count as attempts).
     """
+    # Only English has a word list; for other native languages this check is off.
     if native not in (None, "", "en", "english"):
         return False
     words = fold(utterance).split()
     if not words or any(word not in ENGLISH_WORDS for word in words):
         return False
+    # Words of the practice phrase itself ("no", "pizza") are still attempts.
     target_words = set(fold(target).split())
     return any(word not in target_words for word in words)
 
@@ -83,14 +96,17 @@ def is_other_script(utterance):
     if not letters:
         return False
     other = sum(1 for ch in letters if not unicodedata.name(ch, "").startswith("LATIN"))
+    # More than half the letters are non-Latin.
     return other * 2 > len(letters)
 
 
 def fold(text):
     """Lowercase, strip accents and punctuation, collapse spaces."""
+    # NFKD splits "é" into "e" + accent; dropping the combining marks removes accents.
     text = unicodedata.normalize("NFKD", text or "")
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.lower().replace("ß", "ss")
+    # Punctuation becomes spaces; apostrophes are removed so "dov'è" and "dove" match.
     text = re.sub(r"[^\w\s']", " ", text)
     text = text.replace("'", "")
     return re.sub(r"\s+", " ", text).strip()
@@ -103,14 +119,17 @@ def sound_key(text, language="es"):
         # Silent h: hola / ola, hablar / ablar. Keep ch, sh, lh, nh.
         key = re.sub(r"(?<![csln])h", "", key)
     if language == "es":
+        # Spanish letters that sound alike: v/b, z/s, ll/y, soft c (ce/ci) = s, qu = k.
         key = key.replace("v", "b").replace("z", "s").replace("ll", "y")
         key = re.sub(r"c(?=[ei])", "s", key)
         key = key.replace("qu", "k")
+    # Collapse doubled letters ("holla" -> "hola").
     key = re.sub(r"(.)\1+", r"\1", key)
     return key
 
 
 def _ratio(a, b):
+    """difflib similarity of two strings, 0..1 (0 if either is empty)."""
     if not a or not b:
         return 0.0
     return difflib.SequenceMatcher(None, a, b).ratio()
@@ -126,6 +145,8 @@ def match_score(attempt, target, language="es"):
     attempt_key = sound_key(attempt, language)
     if not target_key or not attempt_key:
         return 0.0
+    # Start with the whole attempt, then slide windows of the target's word count (-1,
+    # 0, +1) over it and keep the best score.
     best = _ratio(attempt_key, target_key)
     words = attempt_key.split()
     size = len(target_key.split())
@@ -146,6 +167,7 @@ def looks_like_attempt(attempt, target, language="es", native="en"):
         return False
     if is_native_phrase(attempt, target, native):
         return False
+    # Too many extra words means a question or a new sentence, not an attempt.
     attempt_words = fold(attempt).split()
     target_words = fold(target).split()
     if len(attempt_words) > len(target_words) + EXTRA_WORDS:
@@ -154,6 +176,11 @@ def looks_like_attempt(attempt, target, language="es", native="en"):
 
 
 def low_confidence_words(words, threshold=LOW_CONFIDENCE):
+    """Words STT was unsure of (confidence below threshold), as {text, confidence} dicts.
+
+    These are shown to the learner and passed to the LLM, and they downgrade a
+    spelling match from "correct" to "close".
+    """
     out = []
     for word in words or []:
         confidence = word.get("confidence")
@@ -166,11 +193,13 @@ def check_attempt(attempt, target, language="es", words=None):
     """The verdict for one attempt. Returns a dict the prompt and UI both use."""
     score = match_score(attempt, target, language)
     low = low_confidence_words(words)
+    # Average word confidence, kept for the UI and the log.
     confidences = [w.get("confidence") for w in words or [] if isinstance(w.get("confidence"), (int, float))]
     mean = round(sum(confidences) / len(confidences), 3) if confidences else None
     if score >= CORRECT_AT:
         verdict = "correct"
         reason = "matches the phrase"
+        # Spelled right but STT was unsure of some words: call it close, not correct.
         if low:
             verdict = "close"
             reason = "the words matched, but the speech model was unsure of " + ", ".join(
@@ -200,6 +229,8 @@ def slow_text(target_phrase, syllables):
     TTSConfig has no speed field), so slowness comes from splitting the phrase
     into syllables with ellipses between them.
     """
+    # Split syllables written as "ho - la", "ho·la", "ho|la"; with no usable syllables
+    # fall back to the words; a single word with no syllables has no slow read.
     parts = [p.strip() for p in re.split(r"\s*[-·•|]\s*", syllables or "") if p.strip()]
     if len(parts) < 2:
         words = (target_phrase or "").split()

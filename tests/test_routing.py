@@ -1,4 +1,11 @@
-"""Native-language turns are new phrases to teach, not attempts or small talk."""
+"""Native-language turns are new phrases to teach, not attempts or small talk.
+
+When a practice phrase is pending, the session must decide whether the next
+turn is an attempt at it or something new. These tests cover that routing
+(server/practice.py is_native_phrase / looks_like_attempt), the matching
+prompt rules (server/config.py, server/llm.py), cleanup of brace fragments
+in model text, and the slow read after two misses (server/session.py).
+"""
 
 import unittest
 
@@ -11,7 +18,10 @@ from tests.test_tutor import _run, _turn
 
 
 class NativePhraseRoutingTests(unittest.TestCase):
+    """Telling new English phrases apart from attempts at the practice phrase."""
     def test_english_phrases_are_new_phrases_not_attempts(self):
+        """Everyday English phrases are new phrases, even when spelled a bit like the practice phrase.
+        """
         cases = [
             ("Hello", "Hola"),
             ("Hello.", "Hola"),
@@ -30,6 +40,7 @@ class NativePhraseRoutingTests(unittest.TestCase):
                 self.assertFalse(looks_like_attempt(heard, target, "es", "en"))
 
     def test_attempts_at_the_practice_phrase_still_route_to_the_check(self):
+        """Real attempts (including words shared with the phrase) still go to the practice check."""
         cases = [
             ("hola", "Hola"),
             ("Ola.", "Hola"),
@@ -46,10 +57,12 @@ class NativePhraseRoutingTests(unittest.TestCase):
                 self.assertTrue(looks_like_attempt(heard, target, "es", "en"))
 
     def test_only_english_has_a_word_list(self):
+        """Only English learners get the native-phrase word list check."""
         self.assertFalse(is_native_phrase("Guten Morgen", "Hola", "de"))
         self.assertFalse(is_native_phrase("hello", "Hola", "de"))
 
     def test_user_text_routes_a_new_phrase(self):
+        """A new native phrase adds the "teach_phrase" routing line to the user prompt."""
         text = build_user_text("Good morning", "en", 0.9, "spanish", "english", "Hola", None, True)
         self.assertIn("Use intent teach_phrase", text)
         self.assertTrue(text.endswith("Good morning"))
@@ -57,7 +70,10 @@ class NativePhraseRoutingTests(unittest.TestCase):
 
 
 class PromptTests(unittest.TestCase):
+    """The system prompt's rules for native-language turns."""
     def test_prompt_teaches_everything_said_in_the_native_language(self):
+        """The prompt has its sections, treats native-language speech as "how do I say this?", and lists every JSON field.
+        """
         for text in (
             "# Personality", "# Environment", "# Tone", "# Goal", "# Guardrails",
             "If they say anything in {native} (a word, a greeting, a question, a feeling, a full",
@@ -75,7 +91,10 @@ class PromptTests(unittest.TestCase):
 
 
 class BraceFragmentTests(unittest.TestCase):
+    """Cleanup of JSON debris the model leaves inside text fields."""
     def test_unclosed_brace_fragment_is_dropped(self):
+        """Unclosed { fragments, stray closing braces and a trailing dash at the end of a field are removed.
+        """
         parsed = parse_lesson_text(
             '{"intent":"teach_phrase","reply":"In Spanish, hello is","target_phrase":"Hola",'
             '"tip":"The H is always silent in Spanish. {C","next_prompt":"Now you say it. {",'
@@ -88,23 +107,29 @@ class BraceFragmentTests(unittest.TestCase):
         self.assertEqual(parse_lesson_text('{"verdict_reason":"sound is off.-"}')["verdict_reason"], "sound is off.")
 
     def test_clean_text_is_untouched(self):
+        """Normal text is not changed by the cleanup."""
         parsed = parse_lesson_text('{"intent":"teach_phrase","target_phrase":"¿Cómo estás?","tip":"Rising tone, like a question."}')
         self.assertEqual(parsed["translation"], "¿Cómo estás?")
         self.assertEqual(parsed["tip"], "Rising tone, like a question.")
 
 
 class SlowAfterTwoMissesTests(unittest.TestCase):
+    """Speech plan after repeated misses."""
     def test_slow_read_after_misses(self):
+        """With slow_read, a missed attempt reads syllables slowly, then the phrase."""
         plan = speech_plans(_turn("practice_attempt", reply="Not quite.", verdict="try_again", next_prompt="Try it once more."),
                             "english", "spanish", slow_read=True)
         self.assertEqual([kind for _t, _l, kind in plan["all"]], ["reply", "slow", "phrase", "next"])
 
 
 class NativeTurnSessionTests(unittest.TestCase):
+    """Native-language turns through a real Session."""
     _session = test_tutor.PracticeStateTests._session
 
     def test_new_native_phrase_while_practising_is_taught(self):
+        """A new English phrase while "Hola" is pending is taught as a new phrase, not judged."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [
                     ("How do I say hello in Spanish?", "en", 0.99),
@@ -145,7 +170,9 @@ class NativeTurnSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_two_misses_read_the_phrase_slowly(self):
+        """After two misses on the same phrase, the reply includes the slow syllable read."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [("How do I say hello?", "en", 0.99), ("hora", "es", 0.9), ("hora", "es", 0.9)],
                 [

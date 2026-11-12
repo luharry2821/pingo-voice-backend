@@ -1,8 +1,24 @@
-"""Build the STT test set: cases.jsonl + 16 kHz mono WAV per case (edge-tts neural voices).
-Run from the repo root: .venv/bin/python test_cases/make_cases.py"""
+"""Build the STT test set: cases.jsonl + one 16 kHz mono WAV per case (edge-tts neural voices).
+
+Run from the repo root: .venv/bin/python test_cases/make_cases.py
+
+First step of the eval pipeline: this script synthesises each test sentence
+with a neural voice, converts it with ffmpeg to the exact format the browser
+mic sends (16 kHz, mono, 16-bit PCM), and writes the ground truth to
+cases.jsonl. run_render.py then plays the WAVs through Pingo (mic audio ->
+STT -> LLM tutor -> TTS) and score.py compares the transcripts with the
+ground truth. Existing WAVs are reused, so re-running only fills gaps.
+
+Case groups: C (plain sentences by language, code-switching, formatting),
+ENTITY (names/places/dates, for missed entity rate), PLANTED (learner
+mistakes STT must not silently fix), HARD (harder variants), PAUSES and
+pause() (real silences and fillers), TWO (two speakers, for cpWER).
+Needs ffmpeg on PATH and the edge-tts package.
+"""
 import asyncio, json, os, subprocess, tempfile
 import edge_tts
 D = os.path.dirname(os.path.abspath(__file__))
+# Default English voices (others are named per case to vary accents).
 EN, EN2 = "en-US-JennyNeural", "en-US-GuyNeural"
 # (id, category, languages, text, voice, notes)
 C = [
@@ -71,6 +87,8 @@ ENTITY = [
  ("ent09","entity",["en"],"Dr. Nguyen booked a flight to São Paulo on November 3rd.",EN2,"name + place + date"),
  ("ent10","entity",["zh"],"王芳在北京的华为公司工作。","zh-CN-XiaoxiaoNeural","name + place + brand"),
 ]
+# Entities per case id: the names, places, numbers and dates the transcript must
+# contain. Used by score.py for missed entity rate.
 ENTITIES = {
  "en08": ["Berlin"],
  "fm01": ["7:30", "Monday"],
@@ -117,7 +135,10 @@ PLANTED = [
  ("pm15",["en","es"],"I want los tacos, pero no quiero la frijoles.","I want los tacos, pero no quiero los frijoles.","la frijoles","en-US-AvaMultilingualNeural"),
 ]
 async def planted(c):
+    """Build a planted-mistake case: the clip says the wrong form; also record the intended correct sentence.
+    """
     cid, langs, text, good, bad, voice = c
+    # Same as a plain case, plus the intended sentence and the mistake to look for.
     r = await one((cid, "planted_mistake", langs, text, voice, "planted learner mistake"))
     r.update(intended_correct=good, planted_mistake=bad); return r
 # hard set, round 2: (id, category, languages, spoken, voice, intended_correct or None, planted mistake(s) or None, notes)
@@ -149,18 +170,24 @@ PAUSES = [
  ("h14",["en"],["I want to","um","I mean, I need to practice the past tense."],"en-US-JennyNeural","I want to... um... I mean, I need to practice the past tense."),
 ]
 async def hard(c):
+    """Build a hard-set case (marked hard=True), with its planted mistake(s) if it has any."""
     cid, cat, langs, text, voice, good, bad, notes = c
     r = await one((cid, cat, langs, text, voice, notes)); r["hard"] = True
     if bad: r.update(intended_correct=good, planted_mistake=bad)
     return r
 async def multipause(c):
+    """Build a clip with real silences between segments (1.2 s gaps) by joining separately synthesised pieces.
+    """
     cid, langs, segs, voice, ref = c
     wav = f"{D}/audio/{cid}.wav"
     if not os.path.exists(wav):
         parts = []
         for i, t in enumerate(segs):
+            # Each piece gets its own lead-in silence: 500 ms before the first, 1.2 s
+            # before the rest; 250 ms after the last.
             mp3 = f"{D}/audio/{cid}_{i}.mp3"; await tts(t, voice, mp3)
             q = f"{D}/audio/{cid}_{i}.wav"; to_wav(mp3, q, 500 if i == 0 else 1200, 250 if i == len(segs) - 1 else 0); os.remove(mp3); parts.append(q)
+        # ffmpeg's concat demuxer reads a list file of the pieces to join.
         lst = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False); lst.write("".join(f"file '{q}'\n" for q in parts)); lst.close()
         subprocess.run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0","-i",lst.name,"-c","copy",wav], check=True)
         for q in parts: os.remove(q)
@@ -174,21 +201,32 @@ TWO = [
  ("sp04",["That was really hard.","You did well, keep going."],[EN2,EN]),
 ]
 def to_wav(src, dst, pre=500, post=250):
+    # adelay adds silence before the speech, apad after; then resample to 16 kHz mono
+    # s16.
+    """ffmpeg: convert src to 16 kHz mono PCM16 WAV, with `pre` ms of leading and `post` ms of trailing silence.
+    """
     subprocess.run(["ffmpeg","-y","-loglevel","error","-i",src,"-af",f"adelay={pre},apad=pad_dur={post/1000}",
                     "-ar","16000","-ac","1","-sample_fmt","s16",dst], check=True)
 async def tts(text, voice, out):
+    """Synthesise `text` with an edge-tts voice to an MP3, retrying up to 4 times.
+
+    voice may carry a rate suffix, "voice|+40%", for the fast-speech cases.
+    """
     voice, _, rate = voice.partition("|")  # "voice|+40%" = faster speech
     for a in range(4):
         try: await edge_tts.Communicate(text, voice, rate=rate or "+0%").save(out); return
         except Exception: await asyncio.sleep(2)
     raise RuntimeError(f"tts failed {voice}")
 async def one(c):
+    """Build a one-speaker case: synthesise the WAV if missing and return its cases.jsonl row."""
     cid, cat, langs, text, voice, notes = c
     wav = f"{D}/audio/{cid}.wav"
+    # Skip synthesis if the WAV already exists (keeps runs reproducible and fast).
     if not os.path.exists(wav):
         mp3 = wav[:-4]+".mp3"; await tts(text, voice, mp3); to_wav(mp3, wav); os.remove(mp3)
     return {"id":cid,"category":cat,"languages":langs,"reference":text,"speakers":[{"speaker":"A","voice":voice,"text":text}],"audio":f"audio/{cid}.wav","notes":notes}
 async def two(c):
+    """Build a two-speaker case: learner line then tutor line in different voices, 0.9 s apart."""
     cid, texts, voices = c
     wav = f"{D}/audio/{cid}.wav"
     if not os.path.exists(wav):
@@ -216,12 +254,17 @@ async def pause():
             "speakers": [{"speaker": "A", "voice": "es-MX-JorgeNeural", "text": "Quiero... um... un café."}], "audio": f"audio/{cid}.wav",
             "notes": "1.5 s silence before and after the filler; checks the turn is not cut and the filler is kept"}
 async def main():
+    """Build every case (8 at a time), add hard/ambiguous flags and entities, write cases.jsonl."""
     sem = asyncio.Semaphore(8)
     async def g(f, c):
+        """Run one case builder under the semaphore so at most 8 TTS/ffmpeg jobs run at once."""
         async with sem: return await f(c)
     rows = await asyncio.gather(*[g(one,c) for c in C], *[g(two,c) for c in TWO], *[g(planted,c) for c in PLANTED], pause(), *[g(hard,c) for c in HARD], *[g(multipause,c) for c in PAUSES], *[g(one,c) for c in ENTITY])
+    # Clips where the audio itself is ambiguous (homophones, or the voice really sounds
+    # like another word). score.py can exclude these from mistake preservation.
     AMBIGUOUS = {"pm17": "allée/allé are homophones", "pm20": "TTS audio sounds like 'go' (Whisper + AssemblyAI pre-recorded)", "pm18": "Whisper heard 'Ellas son' (would be correct)"}
     for r in rows:
+        # Mark the harder round-1 cases as hard too.
         if r["id"] in ("pm16","pm17","pm18","pm19","pm20","pm21","pm22","fm05","fm06","ps01"): r["hard"] = True
         if r["id"] in AMBIGUOUS: r["audio_ambiguous"] = AMBIGUOUS[r["id"]]
         if r["id"] == "h21": r["audio_ambiguous_mistakes"] = ["una manzanas"]  # Whisper heard "una manzana"

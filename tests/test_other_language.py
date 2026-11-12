@@ -4,6 +4,10 @@ Seen live with target Spanish: STT heard "मुझे पानी पीना
 but the prompt only routed the learner's own language to teaching, so the model
 answered "I'm sorry, I didn't quite catch that." STT's language_code was also
 wrong on some turns (Japanese tagged "hi", Chinese tagged "ja").
+
+These tests cover the routing between STT and the LLM tutor: the script
+check in server/practice.py, the "other language" hint in the user prompt
+(server/llm.py) and how server/session.py classifies each turn.
 """
 
 import unittest
@@ -16,25 +20,34 @@ from tests.test_tutor import _run
 
 
 class OtherScriptTests(unittest.TestCase):
+    """is_other_script(): detecting non-Latin writing."""
     def test_non_latin_scripts(self):
+        """Devanagari, Japanese, Chinese, Cyrillic and Arabic text is another script and never a practice attempt.
+        """
         for text in ("मुझे पानी पीना है।", "水が飲みたいです。", "我想喝水。", "Где вокзал?", "أين المحطة؟"):
             with self.subTest(text=text):
                 self.assertTrue(is_other_script(text))
                 self.assertFalse(looks_like_attempt(text, "Quiero agua", "es", "en"))
 
     def test_latin_scripts_and_empty(self):
+        """Latin-script text (with accents) and empty text do not."""
         for text in ("Hola.", "Où est la gare ?", "Straße", "I'm hungry", "", "123 ?"):
             with self.subTest(text=text):
                 self.assertFalse(is_other_script(text))
 
 
 class OtherLanguageUserTextTests(unittest.TestCase):
+    """The routing lines added to the per-turn user prompt."""
     def test_practice_check_line_allows_another_language(self):
+        """The practice-check line lets the model treat a clearly foreign sentence as a new phrase.
+        """
         check = {"target": "Quisiera un café", "score": 0.73, "verdict": "close", "reason": "r", "low_confidence_words": []}
         text = build_user_text("Vorrei un caffè", "it", 0.4, "spanish", "english", "Quisiera un café", check)
         self.assertIn("clearly saying a sentence in another language (not spanish)", text)
 
     def test_fixed_target_routing_line(self):
+        """With a fixed target, the other-language line tells the model to teach it in that target.
+        """
         text = build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", "", None, other_language="ja")
         self.assertIn("clear speech in another language", text)
         self.assertIn("Do not ask them to repeat it", text)
@@ -44,6 +57,7 @@ class OtherLanguageUserTextTests(unittest.TestCase):
         self.assertNotIn("Routing", build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", ""))
 
     def test_auto_target_routing_line(self):
+        """In auto-target mode, the line refers to the requested or previous target instead."""
         text = build_user_text("स्पेनिश में मैं कैसे कहूँ कि मुझे पानी चाहिए?", "hi", 0.76, "", "english", "",
                                None, auto_target=True, previous_target="", other_language="hi")
         self.assertIn("the language they ask for", text)
@@ -54,6 +68,8 @@ class OtherLanguageUserTextTests(unittest.TestCase):
         self.assertNotIn("ask which one", text)
 
     def test_prompt_teaches_other_languages(self):
+        """The system prompt says speech in any other language is taught, never a reason to ask again.
+        """
         self.assertIn("If they speak any other language", DEFAULT_SYSTEM_PROMPT)
         self.assertIn("A sentence in another language is never a practice attempt", DEFAULT_SYSTEM_PROMPT)
         self.assertIn("never a reason to ask them to repeat", DEFAULT_SYSTEM_PROMPT)
@@ -61,10 +77,13 @@ class OtherLanguageUserTextTests(unittest.TestCase):
 
 
 class OtherLanguageSessionTests(unittest.TestCase):
+    """How a Session routes turns in other languages."""
     _session = test_tutor.PracticeStateTests._session
 
     def test_other_language_turns_are_routed_to_teaching(self):
+        """Hindi and Chinese turns reach the LLM with an other_language hint and get taught."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [
                     ("मुझे पानी पीना है।", "hi", 0.52),
@@ -94,6 +113,8 @@ class OtherLanguageSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_any_code_outside_native_and_target_counts(self):
+        """Any STT language outside native and target counts as other, at any confidence; non-Latin script always does.
+        """
         session, _llm, _tts, _sent = self._session([], [])
         session.target = "es"
         check = session._other_language
@@ -112,6 +133,7 @@ class OtherLanguageSessionTests(unittest.TestCase):
     def test_foreign_sentence_close_to_the_phrase_is_not_an_attempt(self):
         """Live: French/Italian/Portuguese coffee orders were judged "Almost!" against the Spanish one."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [
                     ("Quisiera una taza de café, por favor.", "en", 0.9),
@@ -146,6 +168,7 @@ class OtherLanguageSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_spoken_elsewhere_needs_confidence(self):
+        """_spoken_elsewhere needs a confident foreign code; target and native codes never count."""
         session, _llm, _tts, _sent = self._session([], [])
         session.target = "es"
         self.assertTrue(session._spoken_elsewhere({"language_code": "fr", "language_confidence": 0.56}))
@@ -155,7 +178,9 @@ class OtherLanguageSessionTests(unittest.TestCase):
         self.assertFalse(session._spoken_elsewhere({"language_code": "en", "language_confidence": 0.99}))
 
     def test_attempt_at_the_practice_phrase_is_still_checked(self):
+        """After teaching from another language, a real attempt at the phrase is still checked."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [("मुझे पानी पीना है।", "hi", 0.8), ("quiero agua", "es", 0.9)],
                 [dict(intent="teach_phrase", phrase="Quiero agua", reply="In Spanish, that's", next_prompt="Now you say it."),

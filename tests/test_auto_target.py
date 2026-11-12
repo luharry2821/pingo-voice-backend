@@ -1,4 +1,12 @@
-"""Auto-target mode: the learner names the language they want while they speak."""
+"""Tests for auto-target mode: the learner names the language they want while they speak.
+
+In auto-target mode the browser sends `start` without a target language. The
+LLM tutor returns `target_language` each turn, and server/session.py checks
+it (resolve_auto_target), switches voices, or answers with a canned question
+when no teachable language is known. These tests drive a Session through
+that flow with scripted STT/LLM fakes, and check the prompt and schema parts
+in server/llm.py. No network.
+"""
 
 import time
 import unittest
@@ -12,6 +20,8 @@ from tests.test_tutor import _run
 
 def _auto_turn(intent="teach_phrase", phrase="", reply="", target="", next_prompt="", syllables="",
                verdict="none", pronunciation="", tip=""):
+    """Build a Lesson that also carries target_language (what the model says the learner asked for).
+    """
     return Lesson(
         translation=phrase, pronunciation=pronunciation, tip=tip, detected_errors=[],
         model="gemma-4-31b", tokens_in=1, tokens_out=1, first_token_at=time.time(), done_at=time.time(),
@@ -21,29 +31,37 @@ def _auto_turn(intent="teach_phrase", phrase="", reply="", target="", next_promp
 
 
 class _AutoLLM(test_tutor._ScriptedLLM):
+    """Scripted tutor whose lessons include target_language."""
     async def complete(self, **kwargs):
+        """Record the call and return the next scripted auto-target lesson."""
         self.calls.append(kwargs)
         return _auto_turn(**self.replies.pop(0))
 
 
 def _lessons(sent):
+    """Only the `lesson` messages the session sent to the browser."""
     return [p for p in sent if isinstance(p, dict) and p.get("type") == "lesson"]
 
 
 class AutoTargetSessionTests(unittest.TestCase):
+    """Auto-target mode through a real Session."""
     def _session(self, script, replies):
+        """A scripted Session (from test_tutor) with the auto-target LLM fake swapped in."""
         session, _llm, tts, sent = test_tutor.PracticeStateTests._session(self, script, [])
         llm = _AutoLLM(replies)
         session.llm = llm
         return session, llm, tts, sent
 
     async def _turns(self, session, count):
+        """Play `count` scripted learner turns and wait for each reply."""
         for _ in range(count):
             await session.stt.send_audio(b"\x00\x00")
             await session.job
 
     def test_start_without_a_target_is_accepted(self):
+        """start with auto_target and no language is accepted, with no target set yet."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             for value in (None, "", "auto"):
                 session, llm, tts, sent = self._session([], [])
                 start = {"type": "start", "auto_target": True}
@@ -58,7 +76,9 @@ class AutoTargetSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_named_language_sets_the_target_and_the_voice(self):
+        """Naming a language sets the target and the phrase is spoken in that language's voice."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [("How do I say thank you very much in French?", "en", 0.99)],
                 [dict(phrase="Merci beaucoup", target="fr", reply="In French, that's",
@@ -82,7 +102,9 @@ class AutoTargetSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_no_language_and_no_previous_target_asks(self):
+        """With no language named and none before, Pingo asks which language (canned reply)."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [("How do I say good morning?", "en", 0.99), ("In Italian please.", "en", 0.99)],
                 [
@@ -109,7 +131,9 @@ class AutoTargetSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_unsupported_language_is_a_chat(self):
+        """A language TTS cannot speak becomes a chat explaining which languages Pingo teaches."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [("How do I say thank you in Japanese?", "en", 0.99)],
                 [dict(phrase="Arigatou", target="ja", reply="In Japanese, that's")],
@@ -126,7 +150,10 @@ class AutoTargetSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_target_follows_requests_and_native_follows_the_learner(self):
+        """The target follows each request while the native language follows what the learner speaks.
+        """
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
                 [
                     ("How do I say thank you very much in French?", "en", 0.99),
@@ -164,7 +191,9 @@ class AutoTargetSessionTests(unittest.TestCase):
         _run(scenario())
 
     def test_fixed_target_mode_is_unchanged(self):
+        """Without auto_target, the fixed target language behaves as before."""
         async def scenario():
+            """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = test_tutor.PracticeStateTests._session(
                 self,
                 [("How do I say hello in French?", "en", 0.99)],
@@ -185,7 +214,10 @@ class AutoTargetSessionTests(unittest.TestCase):
 
 
 class AutoTargetPartsTests(unittest.TestCase):
+    """The pure helpers behind auto-target mode."""
     def test_resolve(self):
+        """resolve_auto_target accepts codes and names, keeps the previous target on blanks, flags unsupported ones.
+        """
         self.assertEqual(resolve_auto_target("fr", None), ("fr", False))
         self.assertEqual(resolve_auto_target("German", "fr"), ("de", False))
         self.assertEqual(resolve_auto_target("", "es"), ("es", False))
@@ -195,6 +227,7 @@ class AutoTargetPartsTests(unittest.TestCase):
         self.assertEqual(resolve_auto_target("the target language", "it"), ("it", False))
 
     def test_parse_and_schema(self):
+        """target_language is parsed and normalised, and is required only in the auto schema."""
         parsed = parse_lesson_text('{"intent":"teach_phrase","target_phrase":"Danke","target_language":" DE "}')
         self.assertEqual(parsed["target_language"], "de")
         self.assertEqual(parse_lesson_text('{"intent":"chat"}')["target_language"], "")
@@ -203,6 +236,8 @@ class AutoTargetPartsTests(unittest.TestCase):
         self.assertNotIn("target_language", LESSON_SCHEMA["json_schema"]["schema"]["required"])
 
     def test_prompt_and_user_text(self):
+        """The auto-target prompt block and "Previous target language" line appear only in auto mode.
+        """
         prompt = system_prompt(DEFAULT_SYSTEM_PROMPT, "", "english", auto_target=True)
         self.assertIn("# Auto-target mode", prompt)
         self.assertNotIn("{target}", prompt)
