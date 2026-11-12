@@ -54,6 +54,8 @@ C = [
  ("fm01","formatting",["en"],"My class is at 7:30 on Monday.",EN,"time"),
  ("fm02","formatting",["en"],"The course costs $49.99 a month.",EN2,"currency"),
  ("fm03","formatting",["en"],"I've learned 250 words in 3 weeks.",EN,"numbers"),
+ ("fm05","formatting",["es"],"Son veintiún euros.","es-ES-AlvaroNeural","Spanish number"),
+ ("fm06","formatting",["es"],"Mi examen es el 15 de julio.","es-MX-DaliaNeural","Spanish date"),
  ("fm04","formatting",["en"],"My lesson is on March 5th, 2027.",EN2,"date"),
 ]
 # planted learner mistakes: (id, languages, spoken-with-mistake, intended_correct, planted_mistake, voice)
@@ -72,12 +74,65 @@ PLANTED = [
  ("pm12",["en"],"Yesterday I go to the library.","Yesterday I went to the library.","I go","en-IN-PrabhatNeural"),
  ("pm13",["ja"],"私は学生をです。","私は学生です。","学生をです","ja-JP-KeitaNeural"),
  ("pm14",["en","hi"],"मेरी brother बहुत smart है।","मेरा brother बहुत smart है।","मेरी","hi-IN-MadhurNeural"),
+ ("pm16",["es"],"Yo tango hambre.","Yo tengo hambre.","tango","es-ES-AlvaroNeural"),
+ ("pm17",["fr"],"Je suis allée au cinéma.","Je suis allé au cinéma.","allée","fr-FR-HenriNeural"),
+ ("pm18",["es"],"Ella son muy simpática.","Ella es muy simpática.","Ella son","es-MX-DaliaNeural"),
+ ("pm19",["es"],"Nosotros va al parque.","Nosotros vamos al parque.","Nosotros va","es-ES-AlvaroNeural"),
+ ("pm20",["en"],"I goed to school yesterday.","I went to school yesterday.","goed","en-US-GuyNeural"),
+ ("pm21",["es"],"Tengo un pero en casa.","Tengo un perro en casa.","pero","es-MX-JorgeNeural"),
+ ("pm22",["es"],"Feliz ano nuevo.","Feliz año nuevo.","ano","es-ES-ElviraNeural"),
  ("pm15",["en","es"],"I want los tacos, pero no quiero la frijoles.","I want los tacos, pero no quiero los frijoles.","la frijoles","en-US-AvaMultilingualNeural"),
 ]
 async def planted(c):
     cid, langs, text, good, bad, voice = c
     r = await one((cid, "planted_mistake", langs, text, voice, "planted learner mistake"))
     r.update(intended_correct=good, planted_mistake=bad); return r
+# hard set, round 2: (id, category, languages, spoken, voice, intended_correct or None, planted mistake(s) or None, notes)
+HARD = [
+ ("h01","planted_mistake",["es"],"Quiero un caro rojo.","es-MX-JorgeNeural","Quiero un carro rojo.","caro","real-word swap caro/carro"),
+ ("h02","planted_mistake",["es"],"Vamos a la caza de mi abuela.","es-ES-AlvaroNeural","Vamos a la casa de mi abuela.","caza","real-word swap casa/caza (Castilian voice)"),
+ ("h03","planted_mistake",["fr"],"Je voudrais une café.","fr-FR-DeniseNeural","Je voudrais un café.","une café","gender"),
+ ("h04","planted_mistake",["de"],"Ich gehe in die Park.","de-DE-ConradNeural","Ich gehe in den Park.","die Park","article/case"),
+ ("h05","planted_mistake",["ja"],"私を日本へ行きます。","ja-JP-KeitaNeural","私は日本へ行きます。","私を","particle swap"),
+ ("h06","planted_mistake",["ja"],"私は寿司が食べます。","ja-JP-NanamiNeural","私は寿司を食べます。","寿司が","particle swap"),
+ ("h07","planted_mistake",["zh"],"我有三个书。","zh-CN-YunxiNeural","我有三本书。","三个书","measure word"),
+ ("h08","planted_mistake",["zh"],"我买了一只车。","zh-CN-XiaoxiaoNeural","我买了一辆车。","一只车","measure word"),
+ ("h09","planted_mistake",["ko"],"할머니, 밥 먹어?","ko-KR-InJoonNeural","할머니, 진지 드셨어요?","밥 먹어","honorific: casual speech to a grandmother"),
+ ("h10","planted_mistake",["en","hi"],"मैं कल school जाएगा था।","hi-IN-MadhurNeural","मैं कल school गया था।","जाएगा","Hinglish wrong verb form"),
+ ("h11","codeswitch_en_es",["en","es"],"Te voy a textear later, okay?","en-US-AndrewMultilingualNeural",None,None,"mid-word switch (textear)"),
+ ("h12","codeswitch_en_es",["en","es"],"Voy a lunchear con mi friend.","en-US-AvaMultilingualNeural",None,None,"mid-word switch (lunchear)"),
+ ("h15","fast_speech",["en"],"Can you repeat the last sentence and then give me a new one?","en-US-GuyNeural|+40%",None,None,"+40% speaking rate"),
+ ("h16","fast_speech",["es"],"No entiendo lo que dijiste, ¿puedes repetirlo más despacio?","es-MX-DaliaNeural|+40%",None,None,"+40% speaking rate"),
+ ("h17","one_word",["es"],"Sí.","es-ES-ElviraNeural",None,None,"one-word turn"),
+ ("h18","one_word",["de"],"Danke.","de-DE-KatjaNeural",None,None,"one-word turn"),
+ ("h19","accented",["en"],"I am very hungry, I want to eat now.","es-MX-JorgeNeural",None,None,"Spanish-accented English (Spanish voice reading English)"),
+ ("h20","accented",["es"],"Quiero un café, por favor.","hi-IN-MadhurNeural",None,None,"Hindi-accented Spanish"),
+ ("h21","planted_mistake",["es"],"Ayer yo va al mercado y compré una manzanas y la tomates porque mi madre es muy hambre.","es-ES-AlvaroNeural",
+  "Ayer yo fui al mercado y compré unas manzanas y los tomates porque mi madre tiene mucha hambre.",["yo va","una manzanas","la tomates","es muy hambre"],"long run-on, 4 mistakes"),
+]
+# multi-pause clips with real silence: (id, languages, segments, voice, reference)
+PAUSES = [
+ ("h13",["es"],["Yo","eh","yo fui, no, yo voy al mercado."],"es-MX-JorgeNeural","Yo... eh... yo fui, no, yo voy al mercado."),
+ ("h14",["en"],["I want to","um","I mean, I need to practice the past tense."],"en-US-JennyNeural","I want to... um... I mean, I need to practice the past tense."),
+]
+async def hard(c):
+    cid, cat, langs, text, voice, good, bad, notes = c
+    r = await one((cid, cat, langs, text, voice, notes)); r["hard"] = True
+    if bad: r.update(intended_correct=good, planted_mistake=bad)
+    return r
+async def multipause(c):
+    cid, langs, segs, voice, ref = c
+    wav = f"{D}/audio/{cid}.wav"
+    if not os.path.exists(wav):
+        parts = []
+        for i, t in enumerate(segs):
+            mp3 = f"{D}/audio/{cid}_{i}.mp3"; await tts(t, voice, mp3)
+            q = f"{D}/audio/{cid}_{i}.wav"; to_wav(mp3, q, 500 if i == 0 else 1200, 250 if i == len(segs) - 1 else 0); os.remove(mp3); parts.append(q)
+        lst = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False); lst.write("".join(f"file '{q}'\n" for q in parts)); lst.close()
+        subprocess.run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0","-i",lst.name,"-c","copy",wav], check=True)
+        for q in parts: os.remove(q)
+    return {"id": cid, "category": "pause_filler", "languages": langs, "reference": ref, "hard": True,
+            "speakers": [{"speaker": "A", "voice": voice, "text": ref}], "audio": f"audio/{cid}.wav", "notes": "1.2 s silences, filler + self-correction"}
 # two-speaker clips: learner then tutor, different voices, 0.9 s gap
 TWO = [
  ("sp01",["Can we practice ordering food?","Sure, let's start with the drinks."],[EN,EN2]),
@@ -89,8 +144,9 @@ def to_wav(src, dst, pre=500, post=250):
     subprocess.run(["ffmpeg","-y","-loglevel","error","-i",src,"-af",f"adelay={pre},apad=pad_dur={post/1000}",
                     "-ar","16000","-ac","1","-sample_fmt","s16",dst], check=True)
 async def tts(text, voice, out):
+    voice, _, rate = voice.partition("|")  # "voice|+40%" = faster speech
     for a in range(4):
-        try: await edge_tts.Communicate(text, voice).save(out); return
+        try: await edge_tts.Communicate(text, voice, rate=rate or "+0%").save(out); return
         except Exception: await asyncio.sleep(2)
     raise RuntimeError(f"tts failed {voice}")
 async def one(c):
@@ -112,11 +168,30 @@ async def two(c):
         for p in parts: os.remove(p)
     return {"id":cid,"category":"two_speaker","languages":["en"],"reference":" ".join(texts),
             "speakers":[{"speaker":s,"voice":v,"text":t} for s,t,v in zip("AB",texts,voices)],"audio":f"audio/{cid}.wav","notes":"learner then tutor, 0.9 s gap"}
+async def pause():
+    """Quiero... um... un café with 1.5 s of real silence around the filler."""
+    cid = "ps01"; wav = f"{D}/audio/{cid}.wav"; segs = ["Quiero", "um", "un café"]
+    if not os.path.exists(wav):
+        parts = []
+        for i, t in enumerate(segs):
+            mp3 = f"{D}/audio/{cid}_{i}.mp3"; await tts(t, "es-MX-JorgeNeural", mp3)
+            q = f"{D}/audio/{cid}_{i}.wav"; to_wav(mp3, q, 500 if i == 0 else 1500, 250 if i == 2 else 0); os.remove(mp3); parts.append(q)
+        lst = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False); lst.write("".join(f"file '{q}'\n" for q in parts)); lst.close()
+        subprocess.run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0","-i",lst.name,"-c","copy",wav], check=True)
+        for q in parts: os.remove(q)
+    return {"id": cid, "category": "pause_filler", "languages": ["es"], "reference": "Quiero... um... un café.",
+            "speakers": [{"speaker": "A", "voice": "es-MX-JorgeNeural", "text": "Quiero... um... un café."}], "audio": f"audio/{cid}.wav",
+            "notes": "1.5 s silence before and after the filler; checks the turn is not cut and the filler is kept"}
 async def main():
     sem = asyncio.Semaphore(8)
     async def g(f, c):
         async with sem: return await f(c)
-    rows = await asyncio.gather(*[g(one,c) for c in C], *[g(two,c) for c in TWO], *[g(planted,c) for c in PLANTED])
+    rows = await asyncio.gather(*[g(one,c) for c in C], *[g(two,c) for c in TWO], *[g(planted,c) for c in PLANTED], pause(), *[g(hard,c) for c in HARD], *[g(multipause,c) for c in PAUSES])
+    AMBIGUOUS = {"pm17": "allée/allé are homophones", "pm20": "TTS audio sounds like 'go' (Whisper + AssemblyAI pre-recorded)", "pm18": "Whisper heard 'Ellas son' (would be correct)"}
+    for r in rows:
+        if r["id"] in ("pm16","pm17","pm18","pm19","pm20","pm21","pm22","fm05","fm06","ps01"): r["hard"] = True
+        if r["id"] in AMBIGUOUS: r["audio_ambiguous"] = AMBIGUOUS[r["id"]]
+        if r["id"] == "h21": r["audio_ambiguous_mistakes"] = ["una manzanas"]  # Whisper heard "una manzana"
     with open(f"{D}/cases.jsonl","w") as f:
         for r in rows: f.write(json.dumps(r, ensure_ascii=False)+"\n")
     print(len(rows), "cases")

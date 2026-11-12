@@ -66,3 +66,34 @@
 {"id": "pm13", "turns": [{"text": "私は学生王です。", "language_code": "en", "language_confidence": 0.870774}], "hypothesis": "私は学生王です。"}
 {"id": "pm14", "turns": [{"text": "मेरी ब्रदर बहुत स्मार्ट है।", "language_code": "en", "language_confidence": 0.853618}], "hypothesis": "मेरी ब्रदर बहुत स्मार्ट है।"}
 {"id": "pm15", "turns": [{"text": "Iguan los tacos, pero no quiero la frijoles.", "language_code": "es", "language_confidence": 0.820777}], "hypothesis": "Iguan los tacos, pero no quiero la frijoles."}
+{"id": "fm05", "turns": [{"text": "Son 21 euros.", "language_code": "es", "language_confidence": 0.214055}], "hypothesis": "Son 21 euros."}
+{"id": "fm06", "turns": [{"text": "Mi examen es el 15 de julio.", "language_code": "es", "language_confidence": 0.267302}], "hypothesis": "Mi examen es el 15 de julio."}
+{"id": "pm16", "turns": [{"text": "Yo tengo hambre.", "language_code": "es", "language_confidence": 0.442362}], "hypothesis": "Yo tengo hambre."}
+{"id": "pm17", "turns": [{"text": "Je suis allé au cinéma.", "language_code": "fr", "language_confidence": 0.647201}], "hypothesis": "Je suis allé au cinéma."}
+{"id": "pm18", "turns": [{"text": "Ella son muy simpática.", "language_code": "fr", "language_confidence": 0.530655}], "hypothesis": "Ella son muy simpática."}
+{"id": "pm19", "turns": [{"text": "Nosotros va al parque.", "language_code": "es", "language_confidence": 0.818038}], "hypothesis": "Nosotros va al parque."}
+{"id": "pm20", "turns": [{"text": "I go to school yesterday.", "language_code": "es", "language_confidence": 0.880234}], "hypothesis": "I go to school yesterday."}
+{"id": "pm21", "turns": [{"text": "Tengo un perro en casa.", "language_code": "en", "language_confidence": 0.302449}], "hypothesis": "Tengo un perro en casa."}
+{"id": "pm22", "turns": [{"text": "Feliz año nuevo.", "language_code": "es", "language_confidence": 0.457917}], "hypothesis": "Feliz año nuevo."}
+{"id": "ps01", "turns": [{"text": "Quiero.", "language_code": "es", "language_confidence": 0.69066}, {"text": "Ume.", "language_code": "es", "language_confidence": 0.848315}, {"text": "Un café.", "language_code": "es", "language_confidence": 0.835971}], "hypothesis": "Quiero. Ume. Un café."}
+{"id": "h01", "turns": [{"text": "Quiero un carro rojo.", "language_code": "hi", "language_confidence": 0.622754}], "hypothesis": "Quiero un carro rojo."}
+{"id": "h02", "turns": [{"text": "Vamos a la casa de mi abuela.", "language_code": "es", "language_confidence": 0.855461}], "hypothesis": "Vamos a la casa de mi abuela."}
+{"id": "h03", "turns": [{"text": "Je voudrais une café.", "language_code": "fr", "language_confidence": 0.29927}], "hypothesis": "Je voudrais une café."}
+{"id": "h04", "turns": [{"text": "Ich gehe in die Park.", "language_code": "nl", "language_confidence": 0.288636}], "hypothesis": "Ich gehe in die Park."}
+{"id": "h05", "turns": [{"text": "私は日本へ行きます。", "language_code": "nl", "language_confidence": 0.284323}], "hypothesis": "私は日本へ行きます。"}
+{"id": "h06", "turns": [{"text": "私は寿司が食べます。", "language_code": "ja", "language_confidence": 1.0}], "hypothesis": "私は寿司が食べます。"}
+{"id": "h07", "turns": [{"text": "我有三个叔。", "language_code": "zh", "language_confidence": 1.0}], "hypothesis": "我有三个叔。"}
+{"id": "h08", "turns": [{"text": "我买了一只车。", "language_code": "zh", "language_confidence": 1.0}], "hypothesis": "我买了一只车。"}
+{"id": "h09", "turns": [{"text": "할머니, 밥 먹어?", "language_code": "zh", "language_confidence": 1.0}], "hypothesis": "할머니, 밥 먹어?"}
+{"id": "h10", "turns": [{"text": "मैं कल स्कूल जाएगा था।", "language_code": "zh", "language_confidence": 1.0}], "hypothesis": "मैं कल स्कूल जाएगा था।"}
+{"id": "h11", "turns": [{"text": "Te voy a testear la ter, ¿ok?", "language_code": "en", "language_confidence": 0.189684}], "hypothesis": "Te voy a testear la ter, ¿ok?"}
+{"id": "h12", "turns": [{"text": "Voy a lunchear con mi friend.", "language_code": "en", "language_confidence": 0.420431}], "hypothesis": "Voy a lunchear con mi friend."}
+{"id": "h15", "turns": [{"text": "Can you repeat the last sentence and then give me a new one?", "language_code": "en", "language_confidence": 0.674856}], "hypothesis": "Can you repeat the last sentence and then give me a new one?"}
+{"id": "h16", "turns": [{"text": "No entiendo lo que dijiste, ¿puedes repetirlo más despacio?", "language_code": "es", "language_confidence": 0.988911}], "hypothesis": "No entiendo lo que dijiste, ¿puedes repetirlo más despacio?"}
+{"id": "h17", "turns": [{"text": "Sí.", "language_code": "es", "language_confidence": 0.988653}], "hypothesis": "Sí."}
+{"id": "h18", "turns": [{"text": "Danke!", "language_code": "es", "language_confidence": 0.988113}], "hypothesis": "Danke!"}
+{"id": "h19", "turns": [{"text": "I am very hungry, I want to eat now.", "language_code": "en", "language_confidence": 0.46327}], "hypothesis": "I am very hungry, I want to eat now."}
+{"id": "h20", "turns": [{"text": "Quiero un café, por favor.", "language_code": "es", "language_confidence": 0.401797}], "hypothesis": "Quiero un café, por favor."}
+{"id": "h21", "turns": [{"text": "Ayer yo va al mercado y compré una manzana si la tomates porque mi madre es muy hambre.", "language_code": "es", "language_confidence": 0.790379}], "hypothesis": "Ayer yo va al mercado y compré una manzana si la tomates porque mi madre es muy hambre."}
+{"id": "h13", "turns": [{"text": "Yo.", "language_code": "es", "language_confidence": 0.716213}, {"text": "Yo fui, no, yo voy al mercado.", "language_code": "es", "language_confidence": 0.686822}], "hypothesis": "Yo. Yo fui, no, yo voy al mercado."}
+{"id": "h14", "turns": [{"text": "I want to.", "language_code": "es", "language_confidence": 0.442537}, {"text": "Um.", "language_code": "es", "language_confidence": 0.346639}, {"text": "I mean, I need to practice the past tense.", "language_code": "en", "language_confidence": 0.727264}], "hypothesis": "I want to. Um. I mean, I need to practice the past tense."}

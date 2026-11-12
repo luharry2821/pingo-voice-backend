@@ -1,24 +1,24 @@
 {
- "n_cases": 68,
+ "n_cases": 99,
  "wer_overall": {
-  "value_pct": 5.43,
-  "n_cases": 54,
-  "n_units": 368
+  "value_pct": 7.05,
+  "n_cases": 80,
+  "n_units": 525
  },
  "semantic_wer": {
-  "value_pct": 1.09,
-  "n_cases": 54,
-  "n_units": 368,
+  "value_pct": 2.67,
+  "n_cases": 80,
+  "n_units": 525,
   "judge": "AssemblyAI LLM Gateway gemma-4-31b, temperature 0, one batched call"
  },
  "fwer": {
-  "value_pct": 7.06,
-  "n_cases": 54,
-  "n_units": 354
+  "value_pct": 9.57,
+  "n_cases": 80,
+  "n_units": 512
  },
  "mer_overall": {
-  "value_pct": 5.43,
-  "n_cases": 54
+  "value_pct": 7.03,
+  "n_cases": 80
  },
  "cpwer": {
   "value_pct": 17.78,
@@ -70,8 +70,8 @@
   }
  },
  "sentence_error_rate": {
-  "value_pct": 16.18,
-  "n_cases": 68
+  "value_pct": 26.26,
+  "n_cases": 99
  },
  "codeswitch_wer": {
   "en_hi": {
@@ -80,25 +80,75 @@
    "n_units": 28
   },
   "en_es": {
-   "value_pct": 6.06,
-   "n_cases": 5,
-   "n_units": 33
+   "value_pct": 13.33,
+   "n_cases": 7,
+   "n_units": 45
   }
  },
  "mistake_preservation_rate": {
-  "value_pct": 93.33,
-  "n_cases": 15,
+  "value_pct": 69.44,
+  "n_mistakes": 36,
+  "n_preserved": 25,
+  "n_cases": 33,
   "higher_is_better": true
  },
+ "mistake_preservation_rate_excl_ambiguous_audio": {
+  "value_pct": 75.0,
+  "n_mistakes": 32,
+  "n_preserved": 24,
+  "n_cases": 33,
+  "higher_is_better": true
+ },
+ "hard_only": {
+  "n_cases": 31,
+  "wer": {
+   "value_pct": 10.83,
+   "n_cases": 26,
+   "n_units": 157
+  },
+  "fwer": {
+   "value_pct": 15.19,
+   "n_cases": 26,
+   "n_units": 158
+  },
+  "semantic_wer": {
+   "value_pct": 6.37,
+   "n_cases": 26,
+   "n_units": 157
+  },
+  "cer": {
+   "value_pct": 5.71,
+   "n_cases": 5,
+   "n_units": 35
+  },
+  "sentence_error_rate": {
+   "value_pct": 48.39,
+   "n_cases": 31
+  },
+  "mistake_preservation_rate": {
+   "value_pct": 52.38,
+   "n_mistakes": 21,
+   "n_preserved": 11,
+   "n_cases": 18,
+   "higher_is_better": true
+  },
+  "mistake_preservation_rate_excl_ambiguous_audio": {
+   "value_pct": 58.82,
+   "n_mistakes": 17,
+   "n_preserved": 10,
+   "n_cases": 18,
+   "higher_is_better": true
+  }
+ },
  "formatting_fwer": {
-  "value_pct": 0.0,
-  "n_cases": 4,
-  "n_units": 27
+  "value_pct": 2.7,
+  "n_cases": 6,
+  "n_units": 37
  },
  "formatting_wer": {
-  "value_pct": 0.0,
-  "n_cases": 4,
-  "n_units": 29
+  "value_pct": 2.56,
+  "n_cases": 6,
+  "n_units": 39
  },
  "cases": [
   {
@@ -125,6 +175,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -151,6 +202,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -177,6 +229,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -203,6 +256,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -229,6 +283,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -255,6 +310,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -281,6 +337,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -307,6 +364,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -333,6 +391,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -359,6 +418,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -385,6 +445,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -413,6 +474,7 @@
    ],
    "rate_pct": 16.67,
    "pass": false,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -439,6 +501,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -465,6 +528,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -491,6 +555,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -517,6 +582,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -540,7 +606,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ja02",
@@ -563,7 +630,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ja03",
@@ -586,7 +654,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ja04",
@@ -609,7 +678,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ja05",
@@ -632,7 +702,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "zh01",
@@ -655,7 +726,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "zh02",
@@ -678,7 +750,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "zh03",
@@ -701,7 +774,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "zh04",
@@ -724,7 +798,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ko01",
@@ -747,7 +822,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ko02",
@@ -770,7 +846,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ko03",
@@ -793,7 +870,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "ko04",
@@ -816,7 +894,8 @@
    "E": 0,
    "errors": [],
    "rate_pct": 0.0,
-   "pass": true
+   "pass": true,
+   "hard": false
   },
   {
    "id": "es01",
@@ -842,6 +921,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -868,6 +948,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -894,6 +975,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -920,6 +1002,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -946,6 +1029,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -974,6 +1058,7 @@
    ],
    "rate_pct": 16.67,
    "pass": false,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1004,6 +1089,7 @@
    ],
    "rate_pct": 40.0,
    "pass": false,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1035,6 +1121,7 @@
    ],
    "rate_pct": 60.0,
    "pass": false,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1065,6 +1152,7 @@
    ],
    "rate_pct": 25.0,
    "pass": false,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1095,6 +1183,7 @@
    ],
    "rate_pct": 40.0,
    "pass": false,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1126,6 +1215,7 @@
    ],
    "rate_pct": 60.0,
    "pass": false,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1153,6 +1243,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1183,6 +1274,7 @@
    ],
    "rate_pct": 25.0,
    "pass": false,
+   "hard": false,
    "meaning_errors": 2
   },
   {
@@ -1210,6 +1302,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1237,6 +1330,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1264,6 +1358,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1290,6 +1385,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1316,6 +1412,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1342,6 +1439,63 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fm05",
+   "category": "formatting",
+   "languages": [
+    "es"
+   ],
+   "reference": "Son veintiún euros.",
+   "hypothesis": "Son 21 euros.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 3,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 2,
+   "N": 3,
+   "E": 1,
+   "errors": [
+    "S: veintiún→21"
+   ],
+   "rate_pct": 33.33,
+   "pass": false,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fm06",
+   "category": "formatting",
+   "languages": [
+    "es"
+   ],
+   "reference": "Mi examen es el 15 de julio.",
+   "hypothesis": "Mi examen es el 15 de julio.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
    "meaning_errors": 0
   },
   {
@@ -1368,6 +1522,7 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1397,6 +1552,7 @@
    "pass": true,
    "cp_E": 0,
    "cp_N": 12,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1425,6 +1581,7 @@
    "pass": true,
    "cp_E": 8,
    "cp_N": 12,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1454,6 +1611,7 @@
    "pass": true,
    "cp_E": 0,
    "cp_N": 12,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1483,6 +1641,7 @@
    "pass": true,
    "cp_E": 0,
    "cp_N": 9,
+   "hard": false,
    "meaning_errors": 0
   },
   {
@@ -1509,8 +1668,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Yo tengo hambre.",
    "planted_mistake": "es",
+   "mistakes": [
+    {
+     "mistake": "es",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1538,8 +1705,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "El problema es muy difícil.",
    "planted_mistake": "La problema",
+   "mistakes": [
+    {
+     "mistake": "La problema",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1567,8 +1742,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Ayer yo comí pizza con mis amigos.",
    "planted_mistake": "como",
+   "mistakes": [
+    {
+     "mistake": "como",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1596,8 +1779,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Mi madre está muy cansada hoy.",
    "planted_mistake": "es muy cansada",
+   "mistakes": [
+    {
+     "mistake": "es muy cansada",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1625,8 +1816,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Ich habe keinen Hunger.",
    "planted_mistake": "Hunger nicht",
+   "mistakes": [
+    {
+     "mistake": "Hunger nicht",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1654,8 +1853,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Das Mädchen ist sehr nett.",
    "planted_mistake": "Der Mädchen",
+   "mistakes": [
+    {
+     "mistake": "Der Mädchen",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1683,8 +1890,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Gestern bin ich ins Kino gegangen.",
    "planted_mistake": "Gestern ich bin",
+   "mistakes": [
+    {
+     "mistake": "Gestern ich bin",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1712,8 +1927,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Le garçon est très grand.",
    "planted_mistake": "La garçon",
+   "mistakes": [
+    {
+     "mistake": "La garçon",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1741,8 +1964,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Je suis allé au marché ce matin.",
    "planted_mistake": "J'ai allé",
+   "mistakes": [
+    {
+     "mistake": "J'ai allé",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1770,8 +2001,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Io ho fame.",
    "planted_mistake": "sono fame",
+   "mistakes": [
+    {
+     "mistake": "sono fame",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1799,8 +2038,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "She doesn't like coffee.",
    "planted_mistake": "don't",
+   "mistakes": [
+    {
+     "mistake": "don't",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1828,8 +2075,16 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
+   "hard": false,
    "intended_correct": "Yesterday I went to the library.",
    "planted_mistake": "I go",
+   "mistakes": [
+    {
+     "mistake": "I go",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
   },
@@ -1857,8 +2112,16 @@
    ],
    "rate_pct": 14.29,
    "pass": false,
+   "hard": false,
    "intended_correct": "私は学生です。",
    "planted_mistake": "学生をです",
+   "mistakes": [
+    {
+     "mistake": "学生をです",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": false
   },
   {
@@ -1889,10 +2152,290 @@
    ],
    "rate_pct": 40.0,
    "pass": false,
+   "hard": false,
    "intended_correct": "मेरा brother बहुत smart है।",
    "planted_mistake": "मेरी",
+   "mistakes": [
+    {
+     "mistake": "मेरी",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 0
+  },
+  {
+   "id": "pm16",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Yo tango hambre.",
+   "hypothesis": "Yo tengo hambre.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 3,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 2,
+   "N": 3,
+   "E": 1,
+   "errors": [
+    "S: tango→tengo"
+   ],
+   "rate_pct": 33.33,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "Yo tengo hambre.",
+   "planted_mistake": "tango",
+   "mistakes": [
+    {
+     "mistake": "tango",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false,
+   "meaning_errors": 1
+  },
+  {
+   "id": "pm17",
+   "category": "planted_mistake",
+   "languages": [
+    "fr"
+   ],
+   "reference": "Je suis allée au cinéma.",
+   "hypothesis": "Je suis allé au cinéma.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 5,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 5,
+   "E": 1,
+   "errors": [
+    "S: allée→allé"
+   ],
+   "rate_pct": 20.0,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "Je suis allé au cinéma.",
+   "planted_mistake": "allée",
+   "mistakes": [
+    {
+     "mistake": "allée",
+     "preserved": false,
+     "audio_ambiguous": true
+    }
+   ],
+   "mistake_preserved": false,
+   "audio_ambiguous": "allée/allé are homophones",
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm18",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Ella son muy simpática.",
+   "hypothesis": "Ella son muy simpática.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "intended_correct": "Ella es muy simpática.",
+   "planted_mistake": "Ella son",
+   "mistakes": [
+    {
+     "mistake": "Ella son",
+     "preserved": true,
+     "audio_ambiguous": true
+    }
+   ],
+   "mistake_preserved": true,
+   "audio_ambiguous": "Whisper heard 'Ellas son' (would be correct)",
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm19",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Nosotros va al parque.",
+   "hypothesis": "Nosotros va al parque.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "intended_correct": "Nosotros vamos al parque.",
+   "planted_mistake": "Nosotros va",
+   "mistakes": [
+    {
+     "mistake": "Nosotros va",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm20",
+   "category": "planted_mistake",
+   "languages": [
+    "en"
+   ],
+   "reference": "I goed to school yesterday.",
+   "hypothesis": "I go to school yesterday.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 5,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 5,
+   "E": 1,
+   "errors": [
+    "S: goed→go"
+   ],
+   "rate_pct": 20.0,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "I went to school yesterday.",
+   "planted_mistake": "goed",
+   "mistakes": [
+    {
+     "mistake": "goed",
+     "preserved": false,
+     "audio_ambiguous": true
+    }
+   ],
+   "mistake_preserved": false,
+   "audio_ambiguous": "TTS audio sounds like 'go' (Whisper + AssemblyAI pre-recorded)",
+   "meaning_errors": 1
+  },
+  {
+   "id": "pm21",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Tengo un pero en casa.",
+   "hypothesis": "Tengo un perro en casa.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 5,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 5,
+   "E": 1,
+   "errors": [
+    "S: pero→perro"
+   ],
+   "rate_pct": 20.0,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "Tengo un perro en casa.",
+   "planted_mistake": "pero",
+   "mistakes": [
+    {
+     "mistake": "pero",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false,
+   "meaning_errors": 1
+  },
+  {
+   "id": "pm22",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Feliz ano nuevo.",
+   "hypothesis": "Feliz año nuevo.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 3,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 2,
+   "N": 3,
+   "E": 1,
+   "errors": [
+    "S: ano→año"
+   ],
+   "rate_pct": 33.33,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "Feliz año nuevo.",
+   "planted_mistake": "ano",
+   "mistakes": [
+    {
+     "mistake": "ano",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false,
+   "meaning_errors": 1
   },
   {
    "id": "pm15",
@@ -1922,10 +2465,757 @@
    ],
    "rate_pct": 22.22,
    "pass": false,
+   "hard": false,
    "intended_correct": "I want los tacos, pero no quiero los frijoles.",
    "planted_mistake": "la frijoles",
+   "mistakes": [
+    {
+     "mistake": "la frijoles",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
    "mistake_preserved": true,
    "meaning_errors": 2
+  },
+  {
+   "id": "ps01",
+   "category": "pause_filler",
+   "languages": [
+    "es"
+   ],
+   "reference": "Quiero... um... un café.",
+   "hypothesis": "Quiero. Ume. Un café.",
+   "turns": 3,
+   "detected_language": [
+    "es",
+    "es",
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 3,
+   "F_N": 4,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 3,
+   "N": 4,
+   "E": 1,
+   "errors": [
+    "S: um→ume"
+   ],
+   "rate_pct": 25.0,
+   "pass": false,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h01",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Quiero un caro rojo.",
+   "hypothesis": "Quiero un carro rojo.",
+   "turns": 1,
+   "detected_language": [
+    "hi"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 4,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 3,
+   "N": 4,
+   "E": 1,
+   "errors": [
+    "S: caro→carro"
+   ],
+   "rate_pct": 25.0,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "Quiero un carro rojo.",
+   "planted_mistake": "caro",
+   "mistakes": [
+    {
+     "mistake": "caro",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false,
+   "meaning_errors": 1
+  },
+  {
+   "id": "h02",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Vamos a la caza de mi abuela.",
+   "hypothesis": "Vamos a la casa de mi abuela.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 7,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 7,
+   "E": 1,
+   "errors": [
+    "S: caza→casa"
+   ],
+   "rate_pct": 14.29,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "Vamos a la casa de mi abuela.",
+   "planted_mistake": "caza",
+   "mistakes": [
+    {
+     "mistake": "caza",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false,
+   "meaning_errors": 1
+  },
+  {
+   "id": "h03",
+   "category": "planted_mistake",
+   "languages": [
+    "fr"
+   ],
+   "reference": "Je voudrais une café.",
+   "hypothesis": "Je voudrais une café.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "intended_correct": "Je voudrais un café.",
+   "planted_mistake": "une café",
+   "mistakes": [
+    {
+     "mistake": "une café",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h04",
+   "category": "planted_mistake",
+   "languages": [
+    "de"
+   ],
+   "reference": "Ich gehe in die Park.",
+   "hypothesis": "Ich gehe in die Park.",
+   "turns": 1,
+   "detected_language": [
+    "nl"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 5,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 5,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "intended_correct": "Ich gehe in den Park.",
+   "planted_mistake": "die Park",
+   "mistakes": [
+    {
+     "mistake": "die Park",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h05",
+   "category": "planted_mistake",
+   "languages": [
+    "ja"
+   ],
+   "reference": "私を日本へ行きます。",
+   "hypothesis": "私は日本へ行きます。",
+   "turns": 1,
+   "detected_language": [
+    "nl"
+   ],
+   "metric": "CER",
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 9,
+   "E": 1,
+   "errors": [
+    "S: を→は"
+   ],
+   "rate_pct": 11.11,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "私は日本へ行きます。",
+   "planted_mistake": "私を",
+   "mistakes": [
+    {
+     "mistake": "私を",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false
+  },
+  {
+   "id": "h06",
+   "category": "planted_mistake",
+   "languages": [
+    "ja"
+   ],
+   "reference": "私は寿司が食べます。",
+   "hypothesis": "私は寿司が食べます。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "intended_correct": "私は寿司を食べます。",
+   "planted_mistake": "寿司が",
+   "mistakes": [
+    {
+     "mistake": "寿司が",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": true
+  },
+  {
+   "id": "h07",
+   "category": "planted_mistake",
+   "languages": [
+    "zh"
+   ],
+   "reference": "我有三个书。",
+   "hypothesis": "我有三个叔。",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "CER",
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 5,
+   "E": 1,
+   "errors": [
+    "S: 书→叔"
+   ],
+   "rate_pct": 20.0,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "我有三本书。",
+   "planted_mistake": "三个书",
+   "mistakes": [
+    {
+     "mistake": "三个书",
+     "preserved": false,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false
+  },
+  {
+   "id": "h08",
+   "category": "planted_mistake",
+   "languages": [
+    "zh"
+   ],
+   "reference": "我买了一只车。",
+   "hypothesis": "我买了一只车。",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "intended_correct": "我买了一辆车。",
+   "planted_mistake": "一只车",
+   "mistakes": [
+    {
+     "mistake": "一只车",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": true
+  },
+  {
+   "id": "h09",
+   "category": "planted_mistake",
+   "languages": [
+    "ko"
+   ],
+   "reference": "할머니, 밥 먹어?",
+   "hypothesis": "할머니, 밥 먹어?",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "intended_correct": "할머니, 진지 드셨어요?",
+   "planted_mistake": "밥 먹어",
+   "mistakes": [
+    {
+     "mistake": "밥 먹어",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": true
+  },
+  {
+   "id": "h10",
+   "category": "planted_mistake",
+   "languages": [
+    "en",
+    "hi"
+   ],
+   "reference": "मैं कल school जाएगा था।",
+   "hypothesis": "मैं कल स्कूल जाएगा था।",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 5,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 5,
+   "E": 1,
+   "errors": [
+    "S: school→स्कूल"
+   ],
+   "rate_pct": 20.0,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "मैं कल school गया था।",
+   "planted_mistake": "जाएगा",
+   "mistakes": [
+    {
+     "mistake": "जाएगा",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h11",
+   "category": "codeswitch_en_es",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "Te voy a textear later, okay?",
+   "hypothesis": "Te voy a testear la ter, ¿ok?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 4,
+   "F_N": 6,
+   "S": 3,
+   "D": 0,
+   "I": 1,
+   "H": 3,
+   "N": 6,
+   "E": 4,
+   "errors": [
+    "I: testear",
+    "S: textear→la",
+    "S: later→ter",
+    "S: okay→ok"
+   ],
+   "rate_pct": 66.67,
+   "pass": false,
+   "hard": true,
+   "meaning_errors": 3
+  },
+  {
+   "id": "h12",
+   "category": "codeswitch_en_es",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "Voy a lunchear con mi friend.",
+   "hypothesis": "Voy a lunchear con mi friend.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h15",
+   "category": "fast_speech",
+   "languages": [
+    "en"
+   ],
+   "reference": "Can you repeat the last sentence and then give me a new one?",
+   "hypothesis": "Can you repeat the last sentence and then give me a new one?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 13,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 13,
+   "N": 13,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h16",
+   "category": "fast_speech",
+   "languages": [
+    "es"
+   ],
+   "reference": "No entiendo lo que dijiste, ¿puedes repetirlo más despacio?",
+   "hypothesis": "No entiendo lo que dijiste, ¿puedes repetirlo más despacio?",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 9,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h17",
+   "category": "one_word",
+   "languages": [
+    "es"
+   ],
+   "reference": "Sí.",
+   "hypothesis": "Sí.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 1,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 1,
+   "N": 1,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h18",
+   "category": "one_word",
+   "languages": [
+    "de"
+   ],
+   "reference": "Danke.",
+   "hypothesis": "Danke!",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 1,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 1,
+   "N": 1,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h19",
+   "category": "accented",
+   "languages": [
+    "en"
+   ],
+   "reference": "I am very hungry, I want to eat now.",
+   "hypothesis": "I am very hungry, I want to eat now.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 9,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h20",
+   "category": "accented",
+   "languages": [
+    "es"
+   ],
+   "reference": "Quiero un café, por favor.",
+   "hypothesis": "Quiero un café, por favor.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 5,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 5,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h21",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Ayer yo va al mercado y compré una manzanas y la tomates porque mi madre es muy hambre.",
+   "hypothesis": "Ayer yo va al mercado y compré una manzana si la tomates porque mi madre es muy hambre.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 18,
+   "S": 2,
+   "D": 0,
+   "I": 0,
+   "H": 16,
+   "N": 18,
+   "E": 2,
+   "errors": [
+    "S: manzanas→manzana",
+    "S: y→si"
+   ],
+   "rate_pct": 11.11,
+   "pass": false,
+   "hard": true,
+   "intended_correct": "Ayer yo fui al mercado y compré unas manzanas y los tomates porque mi madre tiene mucha hambre.",
+   "planted_mistake": [
+    "yo va",
+    "una manzanas",
+    "la tomates",
+    "es muy hambre"
+   ],
+   "mistakes": [
+    {
+     "mistake": "yo va",
+     "preserved": true,
+     "audio_ambiguous": false
+    },
+    {
+     "mistake": "una manzanas",
+     "preserved": false,
+     "audio_ambiguous": true
+    },
+    {
+     "mistake": "la tomates",
+     "preserved": true,
+     "audio_ambiguous": false
+    },
+    {
+     "mistake": "es muy hambre",
+     "preserved": true,
+     "audio_ambiguous": false
+    }
+   ],
+   "mistake_preserved": false,
+   "meaning_errors": 1
+  },
+  {
+   "id": "h13",
+   "category": "pause_filler",
+   "languages": [
+    "es"
+   ],
+   "reference": "Yo... eh... yo fui, no, yo voy al mercado.",
+   "hypothesis": "Yo. Yo fui, no, yo voy al mercado.",
+   "turns": 2,
+   "detected_language": [
+    "es",
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 3,
+   "F_N": 9,
+   "S": 0,
+   "D": 1,
+   "I": 0,
+   "H": 8,
+   "N": 9,
+   "E": 1,
+   "errors": [
+    "D: eh"
+   ],
+   "rate_pct": 11.11,
+   "pass": false,
+   "hard": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "h14",
+   "category": "pause_filler",
+   "languages": [
+    "en"
+   ],
+   "reference": "I want to... um... I mean, I need to practice the past tense.",
+   "hypothesis": "I want to. Um. I mean, I need to practice the past tense.",
+   "turns": 3,
+   "detected_language": [
+    "es",
+    "es",
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 13,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 12,
+   "N": 12,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": true,
+   "meaning_errors": 0
   }
  ]
 }

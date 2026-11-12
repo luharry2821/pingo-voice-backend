@@ -65,7 +65,8 @@ def judge(items):
               "(S=substituted, D=deleted, I=inserted). Count how many of those errors change the meaning for the learner. "
               "Harmless: spelling or script variants (e.g. Hindi written in Roman vs Devanagari, same word), contractions, "
               "number written as digits vs words, fillers, compound-word splits. Meaning-changing: different word, missing "
-              "content word, flipped polarity, wrong number. The count must be between 0 and the number of errors. "
+              "content word, flipped polarity, wrong number. A learner's wrong word silently replaced by a different real word "
+              "(pero->perro, caro->carro, tango->tengo) IS meaning-changing: the learner said something else. The count must be between 0 and the number of errors. "
               'Reply with JSON only: {"results":[{"id":"...","meaning_errors":0}]}.\n\n' + json.dumps(items, ensure_ascii=False))
     r = requests.post("https://llm-gateway.assemblyai.com/v1/chat/completions",
                       headers={"authorization": os.environ["ASSEMBLYAI_API_KEY"]}, timeout=120,
@@ -95,11 +96,17 @@ for cid, c in cases.items():
     row["pass"] = row["E"] == 0
     if c["category"] == "two_speaker":
         row["cp_E"], row["cp_N"] = cpwer(c, r.get("turns", []))
+    row["hard"] = bool(c.get("hard"))
     if c.get("planted_mistake"):
         # caught = the planted mistake appears verbatim (after the same normalization) in the transcript
         fold = (lambda t: re.sub(r"\s+", "", basic(t))) if cjk else (lambda t: " " + norm(t, langs) + " ")
+        planted = c["planted_mistake"] if isinstance(c["planted_mistake"], list) else [c["planted_mistake"]]
+        amb = set(c.get("audio_ambiguous_mistakes") or (planted if c.get("audio_ambiguous") else []))
         row.update(intended_correct=c["intended_correct"], planted_mistake=c["planted_mistake"],
-                   mistake_preserved=fold(c["planted_mistake"]).strip() in fold(hyp))
+                   mistakes=[{"mistake": m, "preserved": f" {fold(m).strip()} " in fold(hyp) if not cjk else fold(m) in fold(hyp),
+                              "audio_ambiguous": m in amb} for m in planted])
+        row["mistake_preserved"] = all(x["preserved"] for x in row["mistakes"])
+        if c.get("audio_ambiguous"): row["audio_ambiguous"] = c["audio_ambiguous"]
     rows.append(row)
 
 word = [r for r in rows if r["metric"] == "WER"]
@@ -113,6 +120,16 @@ if JUDGE:
         semantic = {"value_pct": None, "note": f"judge failed: {exc}"}
 
 by = lambda f: [r for r in rows if f(r)]
+
+def mpr(sel, exclude_ambiguous=False):
+    ms = [m for r in sel if "mistakes" in r for m in r["mistakes"] if not (exclude_ambiguous and m["audio_ambiguous"])]
+    return {"value_pct": round(100 * sum(m["preserved"] for m in ms) / len(ms), 2) if ms else None, "n_mistakes": len(ms),
+            "n_preserved": sum(m["preserved"] for m in ms), "n_cases": len([r for r in sel if "mistakes" in r]), "higher_is_better": True}
+
+def ser(sel):
+    return {"value_pct": round(100 * sum(not r["pass"] for r in sel) / len(sel), 2) if sel else None, "n_cases": len(sel)}
+
+hard = by(lambda r: r["hard"]); hard_word = [r for r in hard if r["metric"] == "WER"]
 res = {
   "n_cases": len(rows),
   "wer_overall": rate(word),
@@ -126,8 +143,12 @@ res = {
   "sentence_error_rate": {"value_pct": round(100 * sum(not r["pass"] for r in rows) / len(rows), 2), "n_cases": len(rows)},
   "codeswitch_wer": {"en_hi": rate(by(lambda r: r["category"] == "codeswitch_en_hi")),
                      "en_es": rate(by(lambda r: r["category"] == "codeswitch_en_es"))},
-  "mistake_preservation_rate": {"value_pct": round(100 * sum(r["mistake_preserved"] for r in by(lambda r: "planted_mistake" in r)) / max(1, len(by(lambda r: "planted_mistake" in r))), 2),
-                                "n_cases": len(by(lambda r: "planted_mistake" in r)), "higher_is_better": True},
+  "mistake_preservation_rate": mpr(rows),
+  "mistake_preservation_rate_excl_ambiguous_audio": mpr(rows, True),
+  "hard_only": {"n_cases": len(hard), "wer": rate(hard_word), "fwer": rate(hard_word, "F_E", "F_N"),
+                "semantic_wer": rate(hard_word, "meaning_errors") if JUDGE and "value_pct" in semantic and semantic["value_pct"] is not None else None,
+                "cer": rate([r for r in hard if r["metric"] == "CER"]), "sentence_error_rate": ser(hard),
+                "mistake_preservation_rate": mpr(hard), "mistake_preservation_rate_excl_ambiguous_audio": mpr(hard, True)},
   "formatting_fwer": rate(by(lambda r: r["category"] == "formatting"), "F_E", "F_N"),
   "formatting_wer": rate(by(lambda r: r["category"] == "formatting")),
   "cases": rows,
@@ -140,14 +161,24 @@ L = ["# STT results (live Pingo on Render)", "", f"{len(rows)} cases. Error rate
      f"| Semantic WER (LLM judge) | {p(semantic)} | {semantic.get('n_cases','-')} |",
      f"| FWER (raw, no normalization) | {p(res['fwer'])} | {res['fwer']['n_cases']} / {res['fwer']['n_units']} |",
      f"| cpWER (2-speaker) | {p(res['cpwer'])} | {res['cpwer']['n_cases']} / {res['cpwer']['n_units']} |",
-     f"| Mistake-preservation rate (higher is better) | {p(res['mistake_preservation_rate'])} | {res['mistake_preservation_rate']['n_cases']} |",
+     f"| Mistake-preservation rate (higher is better) | {p(res['mistake_preservation_rate'])} | {res['mistake_preservation_rate']['n_mistakes']} mistakes |",
+     f"| Mistake-preservation, ambiguous audio excluded | {p(res['mistake_preservation_rate_excl_ambiguous_audio'])} | {res['mistake_preservation_rate_excl_ambiguous_audio']['n_mistakes']} mistakes |",
      f"| Sentence error rate | {p(res['sentence_error_rate'])} | {len(rows)} |"]
 for l, v in res["wer_by_language"].items(): L.append(f"| WER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")
 for l, v in res["cer_by_language"].items(): L.append(f"| CER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")
 for l, v in res["codeswitch_wer"].items(): L.append(f"| Code-switching WER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")
 L.append(f"| Formatting cases: FWER / WER | {p(res['formatting_fwer'])} / {p(res['formatting_wer'])} | {res['formatting_fwer']['n_cases']} |")
+h = res["hard_only"]
+L += ["", f"## Hard set only ({h['n_cases']} cases)", "", "| KPI | Value | n |", "|---|---|---|",
+      f"| WER | {p(h['wer'])} | {h['wer']['n_cases']} / {h['wer']['n_units']} |",
+      f"| Semantic WER | {p(h['semantic_wer'] or {})} | {h['wer']['n_cases']} |",
+      f"| FWER | {p(h['fwer'])} | {h['fwer']['n_cases']} / {h['fwer']['n_units']} |",
+      f"| CER | {p(h['cer'])} | {h['cer']['n_cases']} / {h['cer']['n_units']} |",
+      f"| Sentence error rate | {p(h['sentence_error_rate'])} | {h['n_cases']} |",
+      f"| Mistake preservation | {p(h['mistake_preservation_rate'])} | {h['mistake_preservation_rate']['n_mistakes']} |",
+      f"| Mistake preservation, ambiguous excluded | {p(h['mistake_preservation_rate_excl_ambiguous_audio'])} | {h['mistake_preservation_rate_excl_ambiguous_audio']['n_mistakes']} |"]
 L += ["", "## Planted mistakes", "", "| id | said (with mistake) | intended | Pingo heard | caught? |", "|---|---|---|---|---|"]
-L += [f"| {r['id']} | {r['reference']} | {r['intended_correct']} | {r['hypothesis']} | {'yes' if r['mistake_preserved'] else 'no'} |" for r in rows if "planted_mistake" in r]
+L += [f"| {r['id']} | {r['reference']} | {r['intended_correct']} | {r['hypothesis']} | {', '.join(('yes' if m['preserved'] else 'no') + (' (ambiguous audio)' if m['audio_ambiguous'] else '') + (f' [{m["mistake"]}]' if len(r['mistakes']) > 1 else '') for m in r['mistakes'])} |" for r in rows if "mistakes" in r]
 L += ["", "## Failed cases", "", "| id | reference | Pingo heard | errors |", "|---|---|---|---|"]
 L += [f"| {r['id']} | {r['reference']} | {r['hypothesis']} | {'; '.join(r['errors'])} |" for r in rows if not r["pass"]]
 open(f"{D}/RESULTS.md", "w").write("\n".join(L) + "\n")
