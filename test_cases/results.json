@@ -261,6 +261,304 @@
    "missed": []
   }
  },
+ "language_id_accuracy": {
+  "value_pct": 80.34,
+  "n_correct": 94,
+  "n_turns": 117,
+  "higher_is_better": true,
+  "n_cases": 109
+ },
+ "confident_wrong_rate": {
+  "value_pct": 13.68,
+  "n_confident_wrong": 16,
+  "n_turns": 117,
+  "cutoff": 0.6
+ },
+ "n_wrong_at_practice_cutoff": {
+  "n_wrong": 17,
+  "n_turns": 117,
+  "cutoff": 0.5
+ },
+ "language_id_accuracy_by_language": {
+  "en": {
+   "value_pct": 87.1,
+   "n_correct": 27,
+   "n_turns": 31,
+   "higher_is_better": true
+  },
+  "de": {
+   "value_pct": 75.0,
+   "n_correct": 9,
+   "n_turns": 12,
+   "higher_is_better": true
+  },
+  "es": {
+   "value_pct": 81.48,
+   "n_correct": 22,
+   "n_turns": 27,
+   "higher_is_better": true
+  },
+  "fr": {
+   "value_pct": 100.0,
+   "n_correct": 7,
+   "n_turns": 7,
+   "higher_is_better": true
+  },
+  "it": {
+   "value_pct": 100.0,
+   "n_correct": 3,
+   "n_turns": 3,
+   "higher_is_better": true
+  },
+  "hi": {
+   "value_pct": 100.0,
+   "n_correct": 1,
+   "n_turns": 1,
+   "higher_is_better": true
+  },
+  "ja": {
+   "value_pct": 77.78,
+   "n_correct": 7,
+   "n_turns": 9,
+   "higher_is_better": true
+  },
+  "zh": {
+   "value_pct": 57.14,
+   "n_correct": 4,
+   "n_turns": 7,
+   "higher_is_better": true
+  },
+  "ko": {
+   "value_pct": 40.0,
+   "n_correct": 2,
+   "n_turns": 5,
+   "higher_is_better": true
+  },
+  "en+hi": {
+   "value_pct": 71.43,
+   "n_correct": 5,
+   "n_turns": 7,
+   "higher_is_better": true
+  },
+  "en+es": {
+   "value_pct": 87.5,
+   "n_correct": 7,
+   "n_turns": 8,
+   "higher_is_better": true
+  }
+ },
+ "language_id_mislabeled": [
+  {
+   "id": "zh01",
+   "text": "我想喝水。",
+   "expected": [
+    "zh"
+   ],
+   "got": "ja",
+   "confidence": 1.0
+  },
+  {
+   "id": "zh02",
+   "text": "请问洗手间在哪里？",
+   "expected": [
+    "zh"
+   ],
+   "got": "ja",
+   "confidence": 1.0
+  },
+  {
+   "id": "zh03",
+   "text": "我在学习中文。",
+   "expected": [
+    "zh"
+   ],
+   "got": "ja",
+   "confidence": 1.0
+  },
+  {
+   "id": "ko01",
+   "text": "물 주세요.",
+   "expected": [
+    "ko"
+   ],
+   "got": "zh",
+   "confidence": 1.0
+  },
+  {
+   "id": "ko02",
+   "text": "화장실이 어디예요?",
+   "expected": [
+    "ko"
+   ],
+   "got": "zh",
+   "confidence": 1.0
+  },
+  {
+   "id": "es01",
+   "text": "¿Dónde está el baño?",
+   "expected": [
+    "es"
+   ],
+   "got": "ko",
+   "confidence": 1.0
+  },
+  {
+   "id": "hi01",
+   "text": "मुझे एक कॉफ़ी चाहिए, प्लीज़।",
+   "expected": [
+    "en",
+    "hi"
+   ],
+   "got": "it",
+   "confidence": 0.812307
+  },
+  {
+   "id": "cs01",
+   "text": "Quiero un café, please.",
+   "expected": [
+    "en",
+    "es"
+   ],
+   "got": "hi",
+   "confidence": 0.624842
+  },
+  {
+   "id": "pm01",
+   "text": "Yo es hambre.",
+   "expected": [
+    "es"
+   ],
+   "got": "fr",
+   "confidence": 0.255212
+  },
+  {
+   "id": "pm05",
+   "text": "Ich habe Hunger nicht.",
+   "expected": [
+    "de"
+   ],
+   "got": "es",
+   "confidence": 0.64365
+  },
+  {
+   "id": "pm13",
+   "text": "私は学生王です。",
+   "expected": [
+    "ja"
+   ],
+   "got": "en",
+   "confidence": 0.870774
+  },
+  {
+   "id": "pm18",
+   "text": "Ella son muy simpática.",
+   "expected": [
+    "es"
+   ],
+   "got": "fr",
+   "confidence": 0.530655
+  },
+  {
+   "id": "pm20",
+   "text": "I go to school yesterday.",
+   "expected": [
+    "en"
+   ],
+   "got": "es",
+   "confidence": 0.880234
+  },
+  {
+   "id": "pm21",
+   "text": "Tengo un perro en casa.",
+   "expected": [
+    "es"
+   ],
+   "got": "en",
+   "confidence": 0.302449
+  },
+  {
+   "id": "h01",
+   "text": "Quiero un carro rojo.",
+   "expected": [
+    "es"
+   ],
+   "got": "hi",
+   "confidence": 0.622754
+  },
+  {
+   "id": "h04",
+   "text": "Ich gehe in die Park.",
+   "expected": [
+    "de"
+   ],
+   "got": "nl",
+   "confidence": 0.288636
+  },
+  {
+   "id": "h05",
+   "text": "私は日本へ行きます。",
+   "expected": [
+    "ja"
+   ],
+   "got": "nl",
+   "confidence": 0.284323
+  },
+  {
+   "id": "h09",
+   "text": "할머니, 밥 먹어?",
+   "expected": [
+    "ko"
+   ],
+   "got": "zh",
+   "confidence": 1.0
+  },
+  {
+   "id": "h10",
+   "text": "मैं कल स्कूल जाएगा था।",
+   "expected": [
+    "en",
+    "hi"
+   ],
+   "got": "zh",
+   "confidence": 1.0
+  },
+  {
+   "id": "h18",
+   "text": "Danke!",
+   "expected": [
+    "de"
+   ],
+   "got": "es",
+   "confidence": 0.988113
+  },
+  {
+   "id": "h14",
+   "text": "I want to.",
+   "expected": [
+    "en"
+   ],
+   "got": "es",
+   "confidence": 0.442537
+  },
+  {
+   "id": "h14",
+   "text": "Um.",
+   "expected": [
+    "en"
+   ],
+   "got": "es",
+   "confidence": 0.346639
+  },
+  {
+   "id": "ent09",
+   "text": "Dr. Nguyen booked a flight to São Paulo on November 3rd.",
+   "expected": [
+    "en"
+   ],
+   "got": "ja",
+   "confidence": 1.0
+  }
+ ],
  "cases": [
   {
    "id": "en01",

@@ -1,6 +1,6 @@
 # STT results (live Pingo on Render)
 
-109 cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER).
+109 cases. Error rates: lower is better, except language-ID accuracy (higher is better). n = cases / reference units (words, or characters for CER); language-ID metrics are per final turn.
 
 | KPI | Value | n |
 |---|---|---|
@@ -14,6 +14,20 @@
 | Sentence error rate | 24.77% | 109 |
 | Missed entity rate | 5.88% (2/34) | 18 cases |
 | Missed entity rate, entity set only | 4.17% (1/24) | 10 cases |
+| Language-ID accuracy (higher is better) | 80.34% | 94 / 117 turns |
+| Confident-wrong rate (wrong label, confidence ≥ 0.6) | 13.68% | 16 / 117 turns |
+| Wrong labels at confidence ≥ 0.5 | 17 | 17 / 117 turns |
+| Language-ID accuracy en | 87.1% | 27 / 31 turns |
+| Language-ID accuracy de | 75.0% | 9 / 12 turns |
+| Language-ID accuracy es | 81.48% | 22 / 27 turns |
+| Language-ID accuracy fr | 100.0% | 7 / 7 turns |
+| Language-ID accuracy it | 100.0% | 3 / 3 turns |
+| Language-ID accuracy hi | 100.0% | 1 / 1 turns |
+| Language-ID accuracy ja | 77.78% | 7 / 9 turns |
+| Language-ID accuracy zh | 57.14% | 4 / 7 turns |
+| Language-ID accuracy ko | 40.0% | 2 / 5 turns |
+| Language-ID accuracy en+hi | 71.43% | 5 / 7 turns |
+| Language-ID accuracy en+es | 87.5% | 7 / 8 turns |
 | WER en | 0.0% | 10 / 84 |
 | WER de | 2.86% | 6 / 35 |
 | WER es | 0.0% | 3 / 18 |
@@ -56,6 +70,38 @@
 |---|---|---|
 | fm05 | veintiún euros | Son 21 euros. |
 | ent02 | Siobhán | Mi profesora se llama Siobhan. |
+
+## Mislabeled language ID
+
+Final turns whose language_code did not match the case's expected language. Code-switching cases count either expected language as correct.
+
+23 of 117 turns.
+
+| id | text | expected | got | confidence |
+|---|---|---|---|---|
+| zh01 | 我想喝水。 | zh | ja | 1.0 |
+| zh02 | 请问洗手间在哪里？ | zh | ja | 1.0 |
+| zh03 | 我在学习中文。 | zh | ja | 1.0 |
+| ko01 | 물 주세요. | ko | zh | 1.0 |
+| ko02 | 화장실이 어디예요? | ko | zh | 1.0 |
+| es01 | ¿Dónde está el baño? | es | ko | 1.0 |
+| hi01 | मुझे एक कॉफ़ी चाहिए, प्लीज़। | en, hi | it | 0.812307 |
+| cs01 | Quiero un café, please. | en, es | hi | 0.624842 |
+| pm01 | Yo es hambre. | es | fr | 0.255212 |
+| pm05 | Ich habe Hunger nicht. | de | es | 0.64365 |
+| pm13 | 私は学生王です。 | ja | en | 0.870774 |
+| pm18 | Ella son muy simpática. | es | fr | 0.530655 |
+| pm20 | I go to school yesterday. | en | es | 0.880234 |
+| pm21 | Tengo un perro en casa. | es | en | 0.302449 |
+| h01 | Quiero un carro rojo. | es | hi | 0.622754 |
+| h04 | Ich gehe in die Park. | de | nl | 0.288636 |
+| h05 | 私は日本へ行きます。 | ja | nl | 0.284323 |
+| h09 | 할머니, 밥 먹어? | ko | zh | 1.0 |
+| h10 | मैं कल स्कूल जाएगा था। | en, hi | zh | 1.0 |
+| h18 | Danke! | de | es | 0.988113 |
+| h14 | I want to. | en | es | 0.442537 |
+| h14 | Um. | en | es | 0.346639 |
+| ent09 | Dr. Nguyen booked a flight to São Paulo on November 3rd. | en | ja | 1.0 |
 
 ## Planted mistakes
 
