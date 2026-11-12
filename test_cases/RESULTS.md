@@ -1,0 +1,59 @@
+# STT results (live Pingo on Render)
+
+68 cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER).
+
+| KPI | Value | n |
+|---|---|---|
+| WER (normalized, all word-based cases) | 5.43% | 54 / 368 |
+| Semantic WER (LLM judge) | 1.09% | 54 |
+| FWER (raw, no normalization) | 7.06% | 54 / 354 |
+| cpWER (2-speaker) | 17.78% | 4 / 45 |
+| Mistake-preservation rate (higher is better) | 93.33% | 15 |
+| Sentence error rate | 16.18% | 68 |
+| WER en | 0.0% | 10 / 84 |
+| WER de | 2.86% | 6 / 35 |
+| WER es | 0.0% | 3 / 18 |
+| WER fr | 0.0% | 2 / 14 |
+| WER it | 16.67% | 1 / 6 |
+| CER ja | 0.0% | 5 / 45 |
+| CER zh | 0.0% | 4 / 23 |
+| CER ko | 0.0% | 4 / 32 |
+| Code-switching WER en_hi | 42.86% | 5 / 28 |
+| Code-switching WER en_es | 6.06% | 5 / 33 |
+| Formatting cases: FWER / WER | 0.0% / 0.0% | 4 |
+
+## Planted mistakes
+
+| id | said (with mistake) | intended | Pingo heard | caught? |
+|---|---|---|---|---|
+| pm01 | Yo es hambre. | Yo tengo hambre. | Yo es hambre. | yes |
+| pm02 | La problema es muy difícil. | El problema es muy difícil. | La problema es muy difícil. | yes |
+| pm03 | Ayer yo como pizza con mis amigos. | Ayer yo comí pizza con mis amigos. | Ayer yo como pizza con mis amigos. | yes |
+| pm04 | Mi madre es muy cansada hoy. | Mi madre está muy cansada hoy. | Mi madre es muy cansada hoy. | yes |
+| pm05 | Ich habe Hunger nicht. | Ich habe keinen Hunger. | Ich habe Hunger nicht. | yes |
+| pm06 | Der Mädchen ist sehr nett. | Das Mädchen ist sehr nett. | Der Mädchen ist sehr nett. | yes |
+| pm07 | Gestern ich bin ins Kino gegangen. | Gestern bin ich ins Kino gegangen. | Gestern ich bin ins Kino gegangen. | yes |
+| pm08 | La garçon est très grand. | Le garçon est très grand. | La garçon est très grand. | yes |
+| pm09 | J'ai allé au marché ce matin. | Je suis allé au marché ce matin. | J'ai allé au marché ce matin. | yes |
+| pm10 | Io sono fame. | Io ho fame. | Io sono fame. | yes |
+| pm11 | She don't like coffee. | She doesn't like coffee. | She don't like coffee. | yes |
+| pm12 | Yesterday I go to the library. | Yesterday I went to the library. | Yesterday I go to the library. | yes |
+| pm13 | 私は学生をです。 | 私は学生です。 | 私は学生王です。 | no |
+| pm14 | मेरी brother बहुत smart है। | मेरा brother बहुत smart है। | मेरी ब्रदर बहुत स्मार्ट है। | yes |
+| pm15 | I want los tacos, pero no quiero la frijoles. | I want los tacos, pero no quiero los frijoles. | Iguan los tacos, pero no quiero la frijoles. | yes |
+
+## Failed cases
+
+| id | reference | Pingo heard | errors |
+|---|---|---|---|
+| de02 | Ich lerne seit drei Monaten Deutsch. | Ich lerne seit 3 Monaten Deutsch. | S: drei→3 |
+| it01 | Dov'è la stazione dei treni? | Dove è la stazione dei treni? | S: dov→dove |
+| hi01 | मुझे एक coffee चाहिए, please. | मुझे एक कॉफ़ी चाहिए, प्लीज़। | S: coffee→कॉफ़ी; S: please→प्लीज़ |
+| hi02 | Aaj मेरी Spanish class है। | आज मेरी स्पैनिश क्लास है। | S: aaj→आज; S: spanish→स्पैनिश; S: class→क्लास |
+| hi03 | मैं weekend पर movie देखने जा रहा हूँ। | मैं वीकेंड पर मूवी देखने जा रहा हूँ। | S: weekend→वीकेंड; S: movie→मूवी |
+| hi04 | यह sentence बहुत difficult है। | यह सेंटेंस बहुत डिफिकल्ट है। | S: sentence→सेंटेंस; S: difficult→डिफिकल्ट |
+| hi05 | Please मुझे next lesson दिखाओ। | प्लीज़ मुझे नेक्स्ट लेसन दिखाओ। | S: please→प्लीज़; S: next→नेक्स्ट; S: lesson→लेसन |
+| cs02 | How do you say tengo hambre in English? | How do you say tango hambra in English? | S: tengo→tango; S: hambre→hambra |
+| pm13 | 私は学生をです。 | 私は学生王です。 | S: を→王 |
+| pm14 | मेरी brother बहुत smart है। | मेरी ब्रदर बहुत स्मार्ट है। | S: brother→ब्रदर; S: smart→स्मार्ट |
+| pm15 | I want los tacos, pero no quiero la frijoles. | Iguan los tacos, pero no quiero la frijoles. | S: i→iguan; D: want |

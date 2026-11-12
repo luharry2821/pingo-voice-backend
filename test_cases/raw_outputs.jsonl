@@ -1,0 +1,68 @@
+{"id": "en01", "turns": [{"text": "How do I say I'm hungry in Spanish?", "language_code": "en", "language_confidence": 0.725229}], "hypothesis": "How do I say I'm hungry in Spanish?"}
+{"id": "en02", "turns": [{"text": "Can you teach me how to order a coffee in French?", "language_code": "en", "language_confidence": 0.816583}], "hypothesis": "Can you teach me how to order a coffee in French?"}
+{"id": "en03", "turns": [{"text": "What's the difference between ser and estar?", "language_code": "en", "language_confidence": 0.959359}], "hypothesis": "What's the difference between ser and estar?"}
+{"id": "en04", "turns": [{"text": "I keep forgetting the word for library.", "language_code": "en", "language_confidence": 0.974247}], "hypothesis": "I keep forgetting the word for library."}
+{"id": "en05", "turns": [{"text": "Please say that one more time, but slower.", "language_code": "en", "language_confidence": 0.915254}], "hypothesis": "Please say that one more time, but slower."}
+{"id": "en06", "turns": [{"text": "Let's practice greetings for a job interview.", "language_code": "en", "language_confidence": 0.873342}], "hypothesis": "Let's practice greetings for a job interview."}
+{"id": "en07", "turns": [{"text": "Was my pronunciation of croissant okay?", "language_code": "en", "language_confidence": 0.839799}], "hypothesis": "Was my pronunciation of croissant okay?"}
+{"id": "en08", "turns": [{"text": "I want to learn German before my trip to Berlin.", "language_code": "en", "language_confidence": 0.519197}], "hypothesis": "I want to learn German before my trip to Berlin."}
+{"id": "en09", "turns": [{"text": "Yes, I'm ready for the next lesson.", "language_code": "en", "language_confidence": 0.779321}], "hypothesis": "Yes, I'm ready for the next lesson."}
+{"id": "en10", "turns": [{"text": "Could you give me a harder sentence this time?", "language_code": "en", "language_confidence": 0.801999}], "hypothesis": "Could you give me a harder sentence this time?"}
+{"id": "de01", "turns": [{"text": "Wie spät ist es?", "language_code": "de", "language_confidence": 0.187569}], "hypothesis": "Wie spät ist es?"}
+{"id": "de02", "turns": [{"text": "Ich lerne seit 3 Monaten Deutsch.", "language_code": "de", "language_confidence": 0.964177}], "hypothesis": "Ich lerne seit 3 Monaten Deutsch."}
+{"id": "de03", "turns": [{"text": "Können Sie das bitte langsamer sagen?", "language_code": "de", "language_confidence": 0.990293}], "hypothesis": "Können Sie das bitte langsamer sagen?"}
+{"id": "de04", "turns": [{"text": "Wo ist die nächste U-Bahn-Station?", "language_code": "de", "language_confidence": 0.993792}], "hypothesis": "Wo ist die nächste U-Bahn-Station?"}
+{"id": "de05", "turns": [{"text": "Ich hätte gern ein Glas Wasser.", "language_code": "de", "language_confidence": 0.976674}], "hypothesis": "Ich hätte gern ein Glas Wasser."}
+{"id": "de06", "turns": [{"text": "Das Wetter ist heute sehr schön.", "language_code": "de", "language_confidence": 0.889891}], "errors": ["Speech synthesis failed: Too many sessions opened for this account in the last minute (allowance 5 per minute); retry in 26 s."], "hypothesis": "Das Wetter ist heute sehr schön."}
+{"id": "ja01", "turns": [{"text": "お水をください。", "language_code": "ja", "language_confidence": 1.0}], "errors": ["Speech synthesis failed: Too many sessions opened for this account in the last minute (allowance 5 per minute); retry in 20 s."], "hypothesis": "お水をください。"}
+{"id": "ja02", "turns": [{"text": "駅はどこですか。", "language_code": "ja", "language_confidence": 1.0}], "errors": ["Speech synthesis failed: Too many sessions opened for this account in the last minute (allowance 5 per minute); retry in 12 s."], "hypothesis": "駅はどこですか。"}
+{"id": "ja03", "turns": [{"text": "日本語を勉強しています。", "language_code": "ja", "language_confidence": 1.0}], "errors": ["Speech synthesis failed: Too many sessions opened for this account in the last minute (allowance 5 per minute); retry in 6 s."], "hypothesis": "日本語を勉強しています。"}
+{"id": "ja04", "turns": [{"text": "もう一度言ってください。", "language_code": "ja", "language_confidence": 1.0}], "hypothesis": "もう一度言ってください。"}
+{"id": "ja05", "turns": [{"text": "これはいくらですか。", "language_code": "ja", "language_confidence": 1.0}], "hypothesis": "これはいくらですか。"}
+{"id": "zh01", "turns": [{"text": "我想喝水。", "language_code": "ja", "language_confidence": 1.0}], "hypothesis": "我想喝水。"}
+{"id": "zh02", "turns": [{"text": "请问洗手间在哪里？", "language_code": "ja", "language_confidence": 1.0}], "hypothesis": "请问洗手间在哪里？"}
+{"id": "zh03", "turns": [{"text": "我在学习中文。", "language_code": "ja", "language_confidence": 1.0}], "hypothesis": "我在学习中文。"}
+{"id": "zh04", "turns": [{"text": "这个多少钱？", "language_code": "zh", "language_confidence": 1.0}], "hypothesis": "这个多少钱？"}
+{"id": "ko01", "turns": [{"text": "물 주세요.", "language_code": "zh", "language_confidence": 1.0}], "hypothesis": "물 주세요."}
+{"id": "ko02", "turns": [{"text": "화장실이 어디예요?", "language_code": "zh", "language_confidence": 1.0}], "hypothesis": "화장실이 어디예요?"}
+{"id": "ko03", "turns": [{"text": "한국어를 공부하고 있어요.", "language_code": "ko", "language_confidence": 1.0}], "hypothesis": "한국어를 공부하고 있어요."}
+{"id": "ko04", "turns": [{"text": "다시 한번 말해 주세요", "language_code": "ko", "language_confidence": 1.0}], "hypothesis": "다시 한번 말해 주세요"}
+{"id": "es01", "turns": [{"text": "¿Dónde está el baño?", "language_code": "ko", "language_confidence": 1.0}], "hypothesis": "¿Dónde está el baño?"}
+{"id": "es02", "turns": [{"text": "Quiero aprender a pedir comida en un restaurante.", "language_code": "es", "language_confidence": 0.72419}], "hypothesis": "Quiero aprender a pedir comida en un restaurante."}
+{"id": "es03", "turns": [{"text": "Mañana tengo una clase de inglés.", "language_code": "es", "language_confidence": 0.929032}], "hypothesis": "Mañana tengo una clase de inglés."}
+{"id": "fr01", "turns": [{"text": "Je voudrais un croissant, s'il vous plaît.", "language_code": "fr", "language_confidence": 0.927741}], "hypothesis": "Je voudrais un croissant, s'il vous plaît."}
+{"id": "fr02", "turns": [{"text": "Comment dit-on merci en allemand?", "language_code": "fr", "language_confidence": 0.983803}], "hypothesis": "Comment dit-on merci en allemand?"}
+{"id": "it01", "turns": [{"text": "Dove è la stazione dei treni?", "language_code": "it", "language_confidence": 0.862087}], "hypothesis": "Dove è la stazione dei treni?"}
+{"id": "hi01", "turns": [{"text": "मुझे एक कॉफ़ी चाहिए, प्लीज़।", "language_code": "it", "language_confidence": 0.812307}], "hypothesis": "मुझे एक कॉफ़ी चाहिए, प्लीज़।"}
+{"id": "hi02", "turns": [{"text": "आज मेरी स्पैनिश क्लास है।", "language_code": "hi", "language_confidence": 0.585896}], "hypothesis": "आज मेरी स्पैनिश क्लास है।"}
+{"id": "hi03", "turns": [{"text": "मैं वीकेंड पर मूवी देखने जा रहा हूँ।", "language_code": "hi", "language_confidence": 0.788031}], "hypothesis": "मैं वीकेंड पर मूवी देखने जा रहा हूँ।"}
+{"id": "hi04", "turns": [{"text": "यह सेंटेंस बहुत डिफिकल्ट है।", "language_code": "hi", "language_confidence": 0.777355}], "hypothesis": "यह सेंटेंस बहुत डिफिकल्ट है।"}
+{"id": "hi05", "turns": [{"text": "प्लीज़ मुझे नेक्स्ट लेसन दिखाओ।", "language_code": "hi", "language_confidence": 0.740061}], "hypothesis": "प्लीज़ मुझे नेक्स्ट लेसन दिखाओ।"}
+{"id": "cs01", "turns": [{"text": "Quiero un café, please.", "language_code": "hi", "language_confidence": 0.624842}], "hypothesis": "Quiero un café, please."}
+{"id": "cs02", "turns": [{"text": "How do you say tango hambra in English?", "language_code": "en", "language_confidence": 0.351618}], "hypothesis": "How do you say tango hambra in English?"}
+{"id": "cs03", "turns": [{"text": "Mi hermano is coming to visit next week.", "language_code": "en", "language_confidence": 0.497787}], "hypothesis": "Mi hermano is coming to visit next week."}
+{"id": "cs04", "turns": [{"text": "I think the answer is muy bien.", "language_code": "en", "language_confidence": 0.663547}], "hypothesis": "I think the answer is muy bien."}
+{"id": "cs05", "turns": [{"text": "Vamos a la playa this weekend.", "language_code": "en", "language_confidence": 0.447705}], "hypothesis": "Vamos a la playa this weekend."}
+{"id": "fm01", "turns": [{"text": "My class is at 7:30 on Monday.", "language_code": "en", "language_confidence": 0.56688}], "hypothesis": "My class is at 7:30 on Monday."}
+{"id": "fm02", "turns": [{"text": "The course costs $49.99 a month.", "language_code": "en", "language_confidence": 0.882667}], "hypothesis": "The course costs $49.99 a month."}
+{"id": "fm03", "turns": [{"text": "I've learned 250 words in 3 weeks.", "language_code": "en", "language_confidence": 0.896013}], "hypothesis": "I've learned 250 words in 3 weeks."}
+{"id": "fm04", "turns": [{"text": "My lesson is on March 5th, 2027.", "language_code": "en", "language_confidence": 0.514076}], "hypothesis": "My lesson is on March 5th, 2027."}
+{"id": "sp01", "turns": [{"text": "Can we practice ordering food?", "language_code": "en", "language_confidence": 0.740873}, {"text": "Sure, let's start with the drinks.", "language_code": "en", "language_confidence": 0.798414}], "hypothesis": "Can we practice ordering food? Sure, let's start with the drinks."}
+{"id": "sp02", "turns": [{"text": "How do I say good night in German? You say Gute Nacht.", "language_code": "en", "language_confidence": 0.441409}], "hypothesis": "How do I say good night in German? You say Gute Nacht."}
+{"id": "sp03", "turns": [{"text": "I'm ready for the quiz.", "language_code": "en", "language_confidence": 0.511344}, {"text": "Great, here is your first question.", "language_code": "en", "language_confidence": 0.779817}], "hypothesis": "I'm ready for the quiz. Great, here is your first question."}
+{"id": "sp04", "turns": [{"text": "That was really hard.", "language_code": "en", "language_confidence": 0.924981}, {"text": "You did well, keep going!", "language_code": "en", "language_confidence": 0.957373}], "hypothesis": "That was really hard. You did well, keep going!"}
+{"id": "pm01", "turns": [{"text": "Yo es hambre.", "language_code": "fr", "language_confidence": 0.255212}], "hypothesis": "Yo es hambre."}
+{"id": "pm02", "turns": [{"text": "La problema es muy difícil.", "language_code": "es", "language_confidence": 0.667784}], "hypothesis": "La problema es muy difícil."}
+{"id": "pm03", "turns": [{"text": "Ayer yo como pizza con mis amigos.", "language_code": "es", "language_confidence": 0.680089}], "hypothesis": "Ayer yo como pizza con mis amigos."}
+{"id": "pm04", "turns": [{"text": "Mi madre es muy cansada hoy.", "language_code": "es", "language_confidence": 0.752324}], "hypothesis": "Mi madre es muy cansada hoy."}
+{"id": "pm05", "turns": [{"text": "Ich habe Hunger nicht.", "language_code": "es", "language_confidence": 0.64365}], "hypothesis": "Ich habe Hunger nicht."}
+{"id": "pm06", "turns": [{"text": "Der Mädchen ist sehr nett.", "language_code": "de", "language_confidence": 0.851937}], "hypothesis": "Der Mädchen ist sehr nett."}
+{"id": "pm07", "turns": [{"text": "Gestern ich bin ins Kino gegangen.", "language_code": "de", "language_confidence": 0.972909}], "hypothesis": "Gestern ich bin ins Kino gegangen."}
+{"id": "pm08", "turns": [{"text": "La garçon est très grand.", "language_code": "fr", "language_confidence": 0.305803}], "hypothesis": "La garçon est très grand."}
+{"id": "pm09", "turns": [{"text": "J'ai allé au marché ce matin.", "language_code": "fr", "language_confidence": 0.843754}], "hypothesis": "J'ai allé au marché ce matin."}
+{"id": "pm10", "turns": [{"text": "Io sono fame.", "language_code": "it", "language_confidence": 0.280909}], "hypothesis": "Io sono fame."}
+{"id": "pm11", "turns": [{"text": "She don't like coffee.", "language_code": "en", "language_confidence": 0.348061}], "hypothesis": "She don't like coffee."}
+{"id": "pm12", "turns": [{"text": "Yesterday I go to the library.", "language_code": "en", "language_confidence": 0.875677}], "hypothesis": "Yesterday I go to the library."}
+{"id": "pm13", "turns": [{"text": "私は学生王です。", "language_code": "en", "language_confidence": 0.870774}], "hypothesis": "私は学生王です。"}
+{"id": "pm14", "turns": [{"text": "मेरी ब्रदर बहुत स्मार्ट है।", "language_code": "en", "language_confidence": 0.853618}], "hypothesis": "मेरी ब्रदर बहुत स्मार्ट है।"}
+{"id": "pm15", "turns": [{"text": "Iguan los tacos, pero no quiero la frijoles.", "language_code": "es", "language_confidence": 0.820777}], "hypothesis": "Iguan los tacos, pero no quiero la frijoles."}

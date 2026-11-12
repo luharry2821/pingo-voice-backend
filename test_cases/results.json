@@ -1,0 +1,1931 @@
+{
+ "n_cases": 68,
+ "wer_overall": {
+  "value_pct": 5.43,
+  "n_cases": 54,
+  "n_units": 368
+ },
+ "semantic_wer": {
+  "value_pct": 1.09,
+  "n_cases": 54,
+  "n_units": 368,
+  "judge": "AssemblyAI LLM Gateway gemma-4-31b, temperature 0, one batched call"
+ },
+ "fwer": {
+  "value_pct": 7.06,
+  "n_cases": 54,
+  "n_units": 354
+ },
+ "mer_overall": {
+  "value_pct": 5.43,
+  "n_cases": 54
+ },
+ "cpwer": {
+  "value_pct": 17.78,
+  "n_cases": 4,
+  "n_units": 45
+ },
+ "wer_by_language": {
+  "en": {
+   "value_pct": 0.0,
+   "n_cases": 10,
+   "n_units": 84
+  },
+  "de": {
+   "value_pct": 2.86,
+   "n_cases": 6,
+   "n_units": 35
+  },
+  "es": {
+   "value_pct": 0.0,
+   "n_cases": 3,
+   "n_units": 18
+  },
+  "fr": {
+   "value_pct": 0.0,
+   "n_cases": 2,
+   "n_units": 14
+  },
+  "it": {
+   "value_pct": 16.67,
+   "n_cases": 1,
+   "n_units": 6
+  }
+ },
+ "cer_by_language": {
+  "ja": {
+   "value_pct": 0.0,
+   "n_cases": 5,
+   "n_units": 45
+  },
+  "zh": {
+   "value_pct": 0.0,
+   "n_cases": 4,
+   "n_units": 23
+  },
+  "ko": {
+   "value_pct": 0.0,
+   "n_cases": 4,
+   "n_units": 32
+  }
+ },
+ "sentence_error_rate": {
+  "value_pct": 16.18,
+  "n_cases": 68
+ },
+ "codeswitch_wer": {
+  "en_hi": {
+   "value_pct": 42.86,
+   "n_cases": 5,
+   "n_units": 28
+  },
+  "en_es": {
+   "value_pct": 6.06,
+   "n_cases": 5,
+   "n_units": 33
+  }
+ },
+ "mistake_preservation_rate": {
+  "value_pct": 93.33,
+  "n_cases": 15,
+  "higher_is_better": true
+ },
+ "formatting_fwer": {
+  "value_pct": 0.0,
+  "n_cases": 4,
+  "n_units": 27
+ },
+ "formatting_wer": {
+  "value_pct": 0.0,
+  "n_cases": 4,
+  "n_units": 29
+ },
+ "cases": [
+  {
+   "id": "en01",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "How do I say I'm hungry in Spanish?",
+   "hypothesis": "How do I say I'm hungry in Spanish?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 8,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en02",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "Can you teach me how to order a coffee in French?",
+   "hypothesis": "Can you teach me how to order a coffee in French?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 11,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 11,
+   "N": 11,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en03",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "What's the difference between ser and estar?",
+   "hypothesis": "What's the difference between ser and estar?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en04",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "I keep forgetting the word for library.",
+   "hypothesis": "I keep forgetting the word for library.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en05",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "Please say that one more time, but slower.",
+   "hypothesis": "Please say that one more time, but slower.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 8,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en06",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "Let's practice greetings for a job interview.",
+   "hypothesis": "Let's practice greetings for a job interview.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en07",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "Was my pronunciation of croissant okay?",
+   "hypothesis": "Was my pronunciation of croissant okay?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en08",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "I want to learn German before my trip to Berlin.",
+   "hypothesis": "I want to learn German before my trip to Berlin.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 10,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 10,
+   "N": 10,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en09",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "Yes, I'm ready for the next lesson.",
+   "hypothesis": "Yes, I'm ready for the next lesson.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "en10",
+   "category": "english",
+   "languages": [
+    "en"
+   ],
+   "reference": "Could you give me a harder sentence this time?",
+   "hypothesis": "Could you give me a harder sentence this time?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 9,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "de01",
+   "category": "german",
+   "languages": [
+    "de"
+   ],
+   "reference": "Wie spät ist es?",
+   "hypothesis": "Wie spät ist es?",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "de02",
+   "category": "german",
+   "languages": [
+    "de"
+   ],
+   "reference": "Ich lerne seit drei Monaten Deutsch.",
+   "hypothesis": "Ich lerne seit 3 Monaten Deutsch.",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 6,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 6,
+   "E": 1,
+   "errors": [
+    "S: drei→3"
+   ],
+   "rate_pct": 16.67,
+   "pass": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "de03",
+   "category": "german",
+   "languages": [
+    "de"
+   ],
+   "reference": "Können Sie das bitte langsamer sagen?",
+   "hypothesis": "Können Sie das bitte langsamer sagen?",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "de04",
+   "category": "german",
+   "languages": [
+    "de"
+   ],
+   "reference": "Wo ist die nächste U-Bahn-Station?",
+   "hypothesis": "Wo ist die nächste U-Bahn-Station?",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 5,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "de05",
+   "category": "german",
+   "languages": [
+    "de"
+   ],
+   "reference": "Ich hätte gern ein Glas Wasser.",
+   "hypothesis": "Ich hätte gern ein Glas Wasser.",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "de06",
+   "category": "german",
+   "languages": [
+    "de"
+   ],
+   "reference": "Das Wetter ist heute sehr schön.",
+   "hypothesis": "Das Wetter ist heute sehr schön.",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "ja01",
+   "category": "japanese",
+   "languages": [
+    "ja"
+   ],
+   "reference": "お水をください。",
+   "hypothesis": "お水をください。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ja02",
+   "category": "japanese",
+   "languages": [
+    "ja"
+   ],
+   "reference": "駅はどこですか。",
+   "hypothesis": "駅はどこですか。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ja03",
+   "category": "japanese",
+   "languages": [
+    "ja"
+   ],
+   "reference": "日本語を勉強しています。",
+   "hypothesis": "日本語を勉強しています。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 11,
+   "N": 11,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ja04",
+   "category": "japanese",
+   "languages": [
+    "ja"
+   ],
+   "reference": "もう一度言ってください。",
+   "hypothesis": "もう一度言ってください。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 11,
+   "N": 11,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ja05",
+   "category": "japanese",
+   "languages": [
+    "ja"
+   ],
+   "reference": "これはいくらですか。",
+   "hypothesis": "これはいくらですか。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "zh01",
+   "category": "chinese",
+   "languages": [
+    "zh"
+   ],
+   "reference": "我想喝水。",
+   "hypothesis": "我想喝水。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "zh02",
+   "category": "chinese",
+   "languages": [
+    "zh"
+   ],
+   "reference": "请问洗手间在哪里？",
+   "hypothesis": "请问洗手间在哪里？",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "zh03",
+   "category": "chinese",
+   "languages": [
+    "zh"
+   ],
+   "reference": "我在学习中文。",
+   "hypothesis": "我在学习中文。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "zh04",
+   "category": "chinese",
+   "languages": [
+    "zh"
+   ],
+   "reference": "这个多少钱？",
+   "hypothesis": "这个多少钱？",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 5,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ko01",
+   "category": "korean",
+   "languages": [
+    "ko"
+   ],
+   "reference": "물 주세요.",
+   "hypothesis": "물 주세요.",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ko02",
+   "category": "korean",
+   "languages": [
+    "ko"
+   ],
+   "reference": "화장실이 어디예요?",
+   "hypothesis": "화장실이 어디예요?",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ko03",
+   "category": "korean",
+   "languages": [
+    "ko"
+   ],
+   "reference": "한국어를 공부하고 있어요.",
+   "hypothesis": "한국어를 공부하고 있어요.",
+   "turns": 1,
+   "detected_language": [
+    "ko"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 11,
+   "N": 11,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ko04",
+   "category": "korean",
+   "languages": [
+    "ko"
+   ],
+   "reference": "다시 한 번 말해 주세요.",
+   "hypothesis": "다시 한번 말해 주세요",
+   "turns": 1,
+   "detected_language": [
+    "ko"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true
+  },
+  {
+   "id": "es01",
+   "category": "other",
+   "languages": [
+    "es"
+   ],
+   "reference": "¿Dónde está el baño?",
+   "hypothesis": "¿Dónde está el baño?",
+   "turns": 1,
+   "detected_language": [
+    "ko"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "es02",
+   "category": "other",
+   "languages": [
+    "es"
+   ],
+   "reference": "Quiero aprender a pedir comida en un restaurante.",
+   "hypothesis": "Quiero aprender a pedir comida en un restaurante.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 8,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "es03",
+   "category": "other",
+   "languages": [
+    "es"
+   ],
+   "reference": "Mañana tengo una clase de inglés.",
+   "hypothesis": "Mañana tengo una clase de inglés.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fr01",
+   "category": "other",
+   "languages": [
+    "fr"
+   ],
+   "reference": "Je voudrais un croissant, s'il vous plaît.",
+   "hypothesis": "Je voudrais un croissant, s'il vous plaît.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fr02",
+   "category": "other",
+   "languages": [
+    "fr"
+   ],
+   "reference": "Comment dit-on merci en allemand ?",
+   "hypothesis": "Comment dit-on merci en allemand?",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "it01",
+   "category": "other",
+   "languages": [
+    "it"
+   ],
+   "reference": "Dov'è la stazione dei treni?",
+   "hypothesis": "Dove è la stazione dei treni?",
+   "turns": 1,
+   "detected_language": [
+    "it"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 5,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 6,
+   "E": 1,
+   "errors": [
+    "S: dov→dove"
+   ],
+   "rate_pct": 16.67,
+   "pass": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "hi01",
+   "category": "codeswitch_en_hi",
+   "languages": [
+    "en",
+    "hi"
+   ],
+   "reference": "मुझे एक coffee चाहिए, please.",
+   "hypothesis": "मुझे एक कॉफ़ी चाहिए, प्लीज़।",
+   "turns": 1,
+   "detected_language": [
+    "it"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 5,
+   "S": 2,
+   "D": 0,
+   "I": 0,
+   "H": 3,
+   "N": 5,
+   "E": 2,
+   "errors": [
+    "S: coffee→कॉफ़ी",
+    "S: please→प्लीज़"
+   ],
+   "rate_pct": 40.0,
+   "pass": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "hi02",
+   "category": "codeswitch_en_hi",
+   "languages": [
+    "en",
+    "hi"
+   ],
+   "reference": "Aaj मेरी Spanish class है।",
+   "hypothesis": "आज मेरी स्पैनिश क्लास है।",
+   "turns": 1,
+   "detected_language": [
+    "hi"
+   ],
+   "metric": "WER",
+   "F_E": 3,
+   "F_N": 5,
+   "S": 3,
+   "D": 0,
+   "I": 0,
+   "H": 2,
+   "N": 5,
+   "E": 3,
+   "errors": [
+    "S: aaj→आज",
+    "S: spanish→स्पैनिश",
+    "S: class→क्लास"
+   ],
+   "rate_pct": 60.0,
+   "pass": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "hi03",
+   "category": "codeswitch_en_hi",
+   "languages": [
+    "en",
+    "hi"
+   ],
+   "reference": "मैं weekend पर movie देखने जा रहा हूँ।",
+   "hypothesis": "मैं वीकेंड पर मूवी देखने जा रहा हूँ।",
+   "turns": 1,
+   "detected_language": [
+    "hi"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 8,
+   "S": 2,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 8,
+   "E": 2,
+   "errors": [
+    "S: weekend→वीकेंड",
+    "S: movie→मूवी"
+   ],
+   "rate_pct": 25.0,
+   "pass": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "hi04",
+   "category": "codeswitch_en_hi",
+   "languages": [
+    "en",
+    "hi"
+   ],
+   "reference": "यह sentence बहुत difficult है।",
+   "hypothesis": "यह सेंटेंस बहुत डिफिकल्ट है।",
+   "turns": 1,
+   "detected_language": [
+    "hi"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 5,
+   "S": 2,
+   "D": 0,
+   "I": 0,
+   "H": 3,
+   "N": 5,
+   "E": 2,
+   "errors": [
+    "S: sentence→सेंटेंस",
+    "S: difficult→डिफिकल्ट"
+   ],
+   "rate_pct": 40.0,
+   "pass": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "hi05",
+   "category": "codeswitch_en_hi",
+   "languages": [
+    "en",
+    "hi"
+   ],
+   "reference": "Please मुझे next lesson दिखाओ।",
+   "hypothesis": "प्लीज़ मुझे नेक्स्ट लेसन दिखाओ।",
+   "turns": 1,
+   "detected_language": [
+    "hi"
+   ],
+   "metric": "WER",
+   "F_E": 3,
+   "F_N": 5,
+   "S": 3,
+   "D": 0,
+   "I": 0,
+   "H": 2,
+   "N": 5,
+   "E": 3,
+   "errors": [
+    "S: please→प्लीज़",
+    "S: next→नेक्स्ट",
+    "S: lesson→लेसन"
+   ],
+   "rate_pct": 60.0,
+   "pass": false,
+   "meaning_errors": 0
+  },
+  {
+   "id": "cs01",
+   "category": "codeswitch_en_es",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "Quiero un café, please.",
+   "hypothesis": "Quiero un café, please.",
+   "turns": 1,
+   "detected_language": [
+    "hi"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "cs02",
+   "category": "codeswitch_en_es",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "How do you say tengo hambre in English?",
+   "hypothesis": "How do you say tango hambra in English?",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 8,
+   "S": 2,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 8,
+   "E": 2,
+   "errors": [
+    "S: tengo→tango",
+    "S: hambre→hambra"
+   ],
+   "rate_pct": 25.0,
+   "pass": false,
+   "meaning_errors": 2
+  },
+  {
+   "id": "cs03",
+   "category": "codeswitch_en_es",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "Mi hermano is coming to visit next week.",
+   "hypothesis": "Mi hermano is coming to visit next week.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 8,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "cs04",
+   "category": "codeswitch_en_es",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "I think the answer is muy bien.",
+   "hypothesis": "I think the answer is muy bien.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "cs05",
+   "category": "codeswitch_en_es",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "Vamos a la playa this weekend.",
+   "hypothesis": "Vamos a la playa this weekend.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fm01",
+   "category": "formatting",
+   "languages": [
+    "en"
+   ],
+   "reference": "My class is at 7:30 on Monday.",
+   "hypothesis": "My class is at 7:30 on Monday.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fm02",
+   "category": "formatting",
+   "languages": [
+    "en"
+   ],
+   "reference": "The course costs $49.99 a month.",
+   "hypothesis": "The course costs $49.99 a month.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fm03",
+   "category": "formatting",
+   "languages": [
+    "en"
+   ],
+   "reference": "I've learned 250 words in 3 weeks.",
+   "hypothesis": "I've learned 250 words in 3 weeks.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "fm04",
+   "category": "formatting",
+   "languages": [
+    "en"
+   ],
+   "reference": "My lesson is on March 5th, 2027.",
+   "hypothesis": "My lesson is on March 5th, 2027.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "sp01",
+   "category": "two_speaker",
+   "languages": [
+    "en"
+   ],
+   "reference": "Can we practice ordering food? Sure, let's start with the drinks.",
+   "hypothesis": "Can we practice ordering food? Sure, let's start with the drinks.",
+   "turns": 2,
+   "detected_language": [
+    "en",
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 11,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 12,
+   "N": 12,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "cp_E": 0,
+   "cp_N": 12,
+   "meaning_errors": 0
+  },
+  {
+   "id": "sp02",
+   "category": "two_speaker",
+   "languages": [
+    "en"
+   ],
+   "reference": "How do I say good night in German? You say gute Nacht.",
+   "hypothesis": "How do I say good night in German? You say Gute Nacht.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 12,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 12,
+   "N": 12,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "cp_E": 8,
+   "cp_N": 12,
+   "meaning_errors": 0
+  },
+  {
+   "id": "sp03",
+   "category": "two_speaker",
+   "languages": [
+    "en"
+   ],
+   "reference": "I'm ready for the quiz. Great, here is your first question.",
+   "hypothesis": "I'm ready for the quiz. Great, here is your first question.",
+   "turns": 2,
+   "detected_language": [
+    "en",
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 11,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 12,
+   "N": 12,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "cp_E": 0,
+   "cp_N": 12,
+   "meaning_errors": 0
+  },
+  {
+   "id": "sp04",
+   "category": "two_speaker",
+   "languages": [
+    "en"
+   ],
+   "reference": "That was really hard. You did well, keep going.",
+   "hypothesis": "That was really hard. You did well, keep going!",
+   "turns": 2,
+   "detected_language": [
+    "en",
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 9,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "cp_E": 0,
+   "cp_N": 9,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm01",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Yo es hambre.",
+   "hypothesis": "Yo es hambre.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 3,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 3,
+   "N": 3,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Yo tengo hambre.",
+   "planted_mistake": "es",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm02",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "La problema es muy difícil.",
+   "hypothesis": "La problema es muy difícil.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 5,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 5,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "El problema es muy difícil.",
+   "planted_mistake": "La problema",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm03",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Ayer yo como pizza con mis amigos.",
+   "hypothesis": "Ayer yo como pizza con mis amigos.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 7,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Ayer yo comí pizza con mis amigos.",
+   "planted_mistake": "como",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm04",
+   "category": "planted_mistake",
+   "languages": [
+    "es"
+   ],
+   "reference": "Mi madre es muy cansada hoy.",
+   "hypothesis": "Mi madre es muy cansada hoy.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Mi madre está muy cansada hoy.",
+   "planted_mistake": "es muy cansada",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm05",
+   "category": "planted_mistake",
+   "languages": [
+    "de"
+   ],
+   "reference": "Ich habe Hunger nicht.",
+   "hypothesis": "Ich habe Hunger nicht.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 4,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Ich habe keinen Hunger.",
+   "planted_mistake": "Hunger nicht",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm06",
+   "category": "planted_mistake",
+   "languages": [
+    "de"
+   ],
+   "reference": "Der Mädchen ist sehr nett.",
+   "hypothesis": "Der Mädchen ist sehr nett.",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 5,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 5,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Das Mädchen ist sehr nett.",
+   "planted_mistake": "Der Mädchen",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm07",
+   "category": "planted_mistake",
+   "languages": [
+    "de"
+   ],
+   "reference": "Gestern ich bin ins Kino gegangen.",
+   "hypothesis": "Gestern ich bin ins Kino gegangen.",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Gestern bin ich ins Kino gegangen.",
+   "planted_mistake": "Gestern ich bin",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm08",
+   "category": "planted_mistake",
+   "languages": [
+    "fr"
+   ],
+   "reference": "La garçon est très grand.",
+   "hypothesis": "La garçon est très grand.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 5,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 5,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Le garçon est très grand.",
+   "planted_mistake": "La garçon",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm09",
+   "category": "planted_mistake",
+   "languages": [
+    "fr"
+   ],
+   "reference": "J'ai allé au marché ce matin.",
+   "hypothesis": "J'ai allé au marché ce matin.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 7,
+   "N": 7,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Je suis allé au marché ce matin.",
+   "planted_mistake": "J'ai allé",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm10",
+   "category": "planted_mistake",
+   "languages": [
+    "it"
+   ],
+   "reference": "Io sono fame.",
+   "hypothesis": "Io sono fame.",
+   "turns": 1,
+   "detected_language": [
+    "it"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 3,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 3,
+   "N": 3,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Io ho fame.",
+   "planted_mistake": "sono fame",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm11",
+   "category": "planted_mistake",
+   "languages": [
+    "en"
+   ],
+   "reference": "She don't like coffee.",
+   "hypothesis": "She don't like coffee.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 4,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 5,
+   "N": 5,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "She doesn't like coffee.",
+   "planted_mistake": "don't",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm12",
+   "category": "planted_mistake",
+   "languages": [
+    "en"
+   ],
+   "reference": "Yesterday I go to the library.",
+   "hypothesis": "Yesterday I go to the library.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 6,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 6,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "intended_correct": "Yesterday I went to the library.",
+   "planted_mistake": "I go",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm13",
+   "category": "planted_mistake",
+   "languages": [
+    "ja"
+   ],
+   "reference": "私は学生をです。",
+   "hypothesis": "私は学生王です。",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "CER",
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 6,
+   "N": 7,
+   "E": 1,
+   "errors": [
+    "S: を→王"
+   ],
+   "rate_pct": 14.29,
+   "pass": false,
+   "intended_correct": "私は学生です。",
+   "planted_mistake": "学生をです",
+   "mistake_preserved": false
+  },
+  {
+   "id": "pm14",
+   "category": "planted_mistake",
+   "languages": [
+    "en",
+    "hi"
+   ],
+   "reference": "मेरी brother बहुत smart है।",
+   "hypothesis": "मेरी ब्रदर बहुत स्मार्ट है।",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 5,
+   "S": 2,
+   "D": 0,
+   "I": 0,
+   "H": 3,
+   "N": 5,
+   "E": 2,
+   "errors": [
+    "S: brother→ब्रदर",
+    "S: smart→स्मार्ट"
+   ],
+   "rate_pct": 40.0,
+   "pass": false,
+   "intended_correct": "मेरा brother बहुत smart है।",
+   "planted_mistake": "मेरी",
+   "mistake_preserved": true,
+   "meaning_errors": 0
+  },
+  {
+   "id": "pm15",
+   "category": "planted_mistake",
+   "languages": [
+    "en",
+    "es"
+   ],
+   "reference": "I want los tacos, pero no quiero la frijoles.",
+   "hypothesis": "Iguan los tacos, pero no quiero la frijoles.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 2,
+   "F_N": 9,
+   "S": 1,
+   "D": 1,
+   "I": 0,
+   "H": 7,
+   "N": 9,
+   "E": 2,
+   "errors": [
+    "S: i→iguan",
+    "D: want"
+   ],
+   "rate_pct": 22.22,
+   "pass": false,
+   "intended_correct": "I want los tacos, pero no quiero los frijoles.",
+   "planted_mistake": "la frijoles",
+   "mistake_preserved": true,
+   "meaning_errors": 2
+  }
+ ]
+}
