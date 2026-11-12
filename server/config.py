@@ -215,15 +215,12 @@ DEFAULTS = {
         "model": "gemma-4-31b",
         "temperature": 0.2,
         "max_tokens": 450,
-        # The playground call is one POST, not a stream. Kept so old configs still load.
-        "stream": False,
         "timeout_s": 30,
         "system_prompt": DEFAULT_SYSTEM_PROMPT,
     },
     "tts": {
         # TTS output format: 24 kHz PCM16, streamed straight to the browser.
         "sample_rate": 24000,
-        "encoding": "pcm_s16le",
         "timeout_s": 30,
         "voices": dict(DEFAULT_VOICES),
     },
@@ -345,11 +342,9 @@ _ENV_SCALARS = {
     "PINGO_LLM_MODEL": ("llm", "model"),
     "PINGO_LLM_TEMPERATURE": ("llm", "temperature"),
     "PINGO_LLM_MAX_TOKENS": ("llm", "max_tokens"),
-    "PINGO_LLM_STREAM": ("llm", "stream"),
     "PINGO_LLM_TIMEOUT": ("llm", "timeout_s"),
     "PINGO_LLM_SYSTEM_PROMPT": ("llm", "system_prompt"),
     "PINGO_TTS_SAMPLE_RATE": ("tts", "sample_rate"),
-    "PINGO_TTS_ENCODING": ("tts", "encoding"),
     "PINGO_TTS_TIMEOUT": ("tts", "timeout_s"),
     "PINGO_LOG_PATH": ("log", "path"),
     "PINGO_HOST": ("server", "host"),
@@ -417,9 +412,6 @@ def _coerce(settings):
     stt["voice_focus"] = normalize_voice_focus(stt.get("voice_focus"))
     stt["voice_focus_threshold"] = normalize_voice_focus_threshold(stt.get("voice_focus_threshold"))
     settings["llm"]["temperature"] = float(settings["llm"]["temperature"])
-    # Note: stream defaults to True here only if the key is missing entirely; DEFAULTS
-    # sets it to False.
-    settings["llm"]["stream"] = bool(settings["llm"].get("stream", True))
     settings["llm"]["timeout_s"] = float(settings["llm"].get("timeout_s") or 30)
     settings["tts"]["timeout_s"] = float(settings["tts"].get("timeout_s") or 30)
     settings["server"]["port"] = int(settings["server"]["port"])

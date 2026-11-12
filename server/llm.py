@@ -185,27 +185,6 @@ class Lesson:
         # Auto-target mode only: the language code the model says the learner asked for.
         self.target_language = turn.get("target_language") or ""
 
-    @property
-    def target_phrase(self):
-        """The target-language phrase (same value as `translation`, newer name)."""
-        return self.translation
-
-    def as_json(self):
-        """The lesson as a plain dict for the browser/tests (both phrase names included)."""
-        return {
-            "intent": self.intent,
-            "reply": self.reply,
-            "target_phrase": self.translation,
-            "translation": self.translation,
-            "pronunciation": self.pronunciation,
-            "syllables": self.syllables,
-            "tip": self.tip,
-            "verdict": self.verdict,
-            "verdict_reason": self.verdict_reason,
-            "next_prompt": self.next_prompt,
-            "detected_errors": self.detected_errors,
-        }
-
 
 def error_strings(errors):
     """Scorer wants a list of strings, e.g. 'soy -> tengo'."""

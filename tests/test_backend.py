@@ -22,12 +22,6 @@ from server.session import Session
 from server.stt import stt_query_params, update_configuration_message
 
 
-def _settings(**sets):
-    """Baseline settings with `key=value` overrides applied as --set flags."""
-    settings = load_settings("configs/baseline.yaml", [f"{key}={value}" for key, value in sets.items()])
-    return settings
-
-
 class ConfigTests(unittest.TestCase):
     """Settings loading and the STT/LLM parameters built from them."""
     def test_baseline_sends_mode_interruption_delay_and_prompt(self):

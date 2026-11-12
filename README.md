@@ -148,7 +148,6 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 | `llm.model` | `gemma-4-31b` | — | Sends `response_format` for the lesson schema. `PINGO_LLM_MODEL=qwen3.5-4b-32k-fast` (or `llm.model` in YAML) selects the other model this key can call. That one does not support `response_format`. Anything else, including `gemini-2.5-flash-lite`, returns 400. |
 | `llm.temperature` | `0.2` | yes | Sent on the playground POST. |
 | `llm.max_tokens` | `450` | yes | Caps the tutor turn JSON. Each spoken segment is also cut at 300 characters. |
-| `llm.stream` | `false` | no | The playground call is one POST. `llm_first_token` is null. |
 | `llm.timeout_s` | `30` | — | Overall deadline. The client gets "The tutor model timed out after 30 seconds." |
 | `llm.system_prompt` | see `server/config.py` | — | Must not silently correct the learner. It has to name the specific difference. `{target}` is replaced with the language name. |
 | `tts.voices.*` | per language | `voice_id` | `spanish`→`bff56a11-dc95-552e-a93a-59f68ca60b64`. `english`→`aai-kyla`, `french`→`aai-donatien`, `german`→`aai-magdalena`, `italian`→`aai-giada`, `portuguese`→`aai-nelson`. `language` is the full name. |
@@ -156,7 +155,7 @@ Defaults live in `configs/baseline.yaml`. Override with another file (`--config`
 
 `end_of_turn_confidence_threshold` is not a universal-3-6-pro parameter and is never sent. Final turns do include `end_of_turn_confidence`; it is stored on the JSONL line and is **not** used to start the LLM early.
 
-Environment variables (all optional): `PINGO_STT_MODE`, `PINGO_STT_PROMPT`, `PINGO_STT_LANGUAGE_CODES`, `PINGO_STT_KEYTERMS_PROMPT` (JSON or comma-separated), `PINGO_STT_AGENT_CONTEXT`, `PINGO_STT_AGENT_CONTEXT_ENABLED`, `PINGO_STT_MIN_TURN_SILENCE`, `PINGO_STT_MAX_TURN_SILENCE`, `PINGO_STT_INTERRUPTION_DELAY`, `PINGO_STT_VAD_THRESHOLD`, `PINGO_STT_VOICE_FOCUS` (`near-field`, `far-field` or `off`), `PINGO_STT_VOICE_FOCUS_THRESHOLD`, `PINGO_STT_FILTER_PROFANITY`, `PINGO_LLM_MODEL`, `PINGO_LLM_TEMPERATURE`, `PINGO_LLM_MAX_TOKENS`, `PINGO_LLM_STREAM`, `PINGO_LLM_TIMEOUT`, `PINGO_LLM_SYSTEM_PROMPT`, `PINGO_TTS_TIMEOUT`, `PINGO_TTS_VOICE_SPANISH` (or `_ES`, and the same for the other five), `PINGO_LOG_PATH`, `PINGO_HOST`, `PINGO_PORT`, `PINGO_TARGET_LANGUAGE`, `PINGO_CONFIG`.
+Environment variables (all optional): `PINGO_STT_MODE`, `PINGO_STT_PROMPT`, `PINGO_STT_LANGUAGE_CODES`, `PINGO_STT_KEYTERMS_PROMPT` (JSON or comma-separated), `PINGO_STT_AGENT_CONTEXT`, `PINGO_STT_AGENT_CONTEXT_ENABLED`, `PINGO_STT_MIN_TURN_SILENCE`, `PINGO_STT_MAX_TURN_SILENCE`, `PINGO_STT_INTERRUPTION_DELAY`, `PINGO_STT_VAD_THRESHOLD`, `PINGO_STT_VOICE_FOCUS` (`near-field`, `far-field` or `off`), `PINGO_STT_VOICE_FOCUS_THRESHOLD`, `PINGO_STT_FILTER_PROFANITY`, `PINGO_LLM_MODEL`, `PINGO_LLM_TEMPERATURE`, `PINGO_LLM_MAX_TOKENS`, `PINGO_LLM_TIMEOUT`, `PINGO_LLM_SYSTEM_PROMPT`, `PINGO_TTS_TIMEOUT`, `PINGO_TTS_VOICE_SPANISH` (or `_ES`, and the same for the other five), `PINGO_LOG_PATH`, `PINGO_HOST`, `PINGO_PORT`, `PINGO_TARGET_LANGUAGE`, `PINGO_CONFIG`.
 
 Example config: `configs/baseline.yaml`.
 

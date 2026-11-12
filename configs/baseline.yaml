@@ -38,12 +38,10 @@ llm:
   model: gemma-4-31b
   temperature: 0.2
   max_tokens: 450
-  stream: false
   timeout_s: 30
 
 tts:
   sample_rate: 24000
-  encoding: pcm_s16le
   timeout_s: 30
   voices:
     english: aai-kyla

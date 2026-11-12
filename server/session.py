@@ -1102,12 +1102,6 @@ class Session:
         if extra > 0:
             del self.history[:extra]
 
-    async def _speak(self, text, language_code, generation, record, turn_id=None):
-        """One segment in one language. Kept for callers that speak a single phrase."""
-        if not text:
-            return
-        await self._speak_plan([(text, target_name(language_code), "phrase")], generation, record, turn_id)
-
     async def _speak_plan(self, segments, generation, record, turn_id=None):
         """Speak segments in order, each in its own voice, as one tts_start..tts_end.
 

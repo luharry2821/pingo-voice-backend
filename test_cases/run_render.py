@@ -13,7 +13,7 @@ are attributed to the clip being played or its trailing silence. Sessions run 2 
 Environment knobs: ONLY (comma-separated case id prefixes), PER (clips per
 session, default 15), CONC (parallel sessions, default 2).
 """
-import asyncio, json, os, sys, time
+import asyncio, json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import websockets
 from server.audio import read_pcm16_mono
