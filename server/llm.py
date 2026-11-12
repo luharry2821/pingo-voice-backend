@@ -295,6 +295,11 @@ class GatewayLLM:
             if not retry.unparsed and not retry.corrupt:
                 retry.retried = True
                 return retry
+        if lesson.unparsed:
+            salvaged = salvage_lesson(lesson)
+            if salvaged is not None:
+                logger.warning("tutor reply was cut off; kept its complete fields: %r", lesson.raw_text[:200])
+                return salvaged
         return lesson
 
     def _send(self, body, model, seconds):
@@ -372,7 +377,9 @@ def build_user_text(
             f"\"{practice_check['target']}\". Match score {practice_check['score']}, "
             f"verdict {practice_check['verdict']} ({practice_check['reason']}). "
             f"Low-confidence words: {low}. Use intent practice_attempt and this verdict "
-            "unless the learner is clearly asking a question."
+            "unless the learner is clearly asking a question, or is clearly saying a sentence in another "
+            f"language (not {target_name or 'the target language'}) instead of trying the phrase: then use "
+            "intent teach_phrase and teach what it means."
         )
         misses = practice_check.get("misses_before")
         if misses:
@@ -539,6 +546,37 @@ def parse_lesson_text(text):
         # Only the auto-target schema has it. Validated by the session.
         "target_language": _field(data.get("target_language")).lower(),
     }
+
+
+# One complete "key": "string" pair, or an empty detected_errors list.
+_COMPLETE_FIELD = re.compile(r'"(\w+)"\s*:\s*("(?:[^"\\]|\\.)*")')
+
+
+def salvage_lesson(lesson):
+    """A Lesson from a reply the model cut off, or None.
+
+    Seen live: gemma sometimes loops inside one string ("gra - cias-t-i-a-s-t-i-a-s...")
+    until max_tokens, so the JSON never closes. The fields it finished before
+    the loop are fine. Keep those, drop the unfinished one, and require a
+    target phrase so there is something real to teach.
+    """
+    raw = getattr(lesson, "raw_text", "") or ""
+    data = {}
+    for key, value in _COMPLETE_FIELD.findall(raw):
+        try:
+            data.setdefault(key, json.loads(value, strict=False))
+        except json.JSONDecodeError:
+            continue
+    if not str(data.get("target_phrase") or "").strip():
+        return None
+    data["detected_errors"] = []
+    fixed = _lesson(json.dumps(data), lesson.model, None, lesson.first_token_at, lesson.done_at, lesson.streamed)
+    if fixed.unparsed:
+        return None
+    fixed.tokens_in, fixed.tokens_out = lesson.tokens_in, lesson.tokens_out
+    fixed.raw_text = raw
+    fixed.salvaged = True
+    return fixed
 
 
 def _load_object(raw):

@@ -42,6 +42,9 @@ GAP_MS = 250
 REPLAY_MODES = ("phrase", "slow", "all")
 # A learner turn this long or longer, outside practice, sets the learner's own language.
 NATIVE_MIN_WORDS = 3
+# A near-miss "attempt" STT tags this confidently as another language is
+# that language (French, Italian...), not a try at the practice phrase.
+FOREIGN_ATTEMPT_CONFIDENCE = 0.5
 # What a `start` may send as target_language in auto-target mode.
 AUTO_TARGET_VALUES = (None, "", "auto")
 
@@ -474,7 +477,12 @@ class Session:
             ):
                 check = check_attempt(transcript, self.practice_target, self.target, view["words"])
                 check["misses_before"] = self.misses
-            else:
+                if check["verdict"] != "correct" and self._spoken_elsewhere(turn):
+                    # "Je voudrais une tasse de café" after "Quisiera una taza de
+                    # café": spelled close, but it is French, not a try at the phrase.
+                    logger.info("not an attempt: STT says %s", turn.get("language_code"))
+                    check = None
+            if check is None:
                 self._note_native(turn, transcript)
                 # A pending practice phrase does not swallow a new phrase in the
                 # learner's own language ("Good morning" while "Hola" is pending).
@@ -515,6 +523,7 @@ class Session:
                 "detected_errors": error_strings(lesson.detected_errors),
                 "streamed": lesson.streamed,
                 "retried": bool(getattr(lesson, "retried", False)),
+                "salvaged": bool(getattr(lesson, "salvaged", False)),
             }
             record["practice"] = check
             record["routing"] = (
@@ -672,23 +681,31 @@ class Session:
         self.native_language = code
 
     def _other_language(self, turn, transcript):
-        """A turn in a language Pingo cannot speak (Hindi, Japanese, Chinese...).
+        """A turn in some language other than the learner's own or the target.
 
-        Returns the STT language code (or "other") when the turn is clearly in
-        another language, else "". Such a turn is something to translate and
-        teach, not something Pingo "didn't catch". Non-Latin script decides on
-        its own; for Latin script, the STT code must be outside the six with
-        the same words and confidence bar as _note_native.
+        Returns the STT language code (or "other") when the turn should be
+        translated and taught, else "". Such a turn is never something Pingo
+        "didn't catch". Non-Latin script decides on its own (all six languages
+        Pingo speaks are Latin script). Otherwise any STT code outside the
+        learner's language and the target counts, whatever the confidence:
+        live, short turns and French/Italian/Portuguese came back with low
+        confidence, and a wrong flag only adds a routing hint the model can
+        still overrule for meta talk.
         """
         code = turn.get("language_code") or ""
         if is_other_script(transcript):
             return code if code and code not in TARGET_LANGUAGES else "other"
-        confidence = turn.get("language_confidence")
-        if not code or code in TARGET_LANGUAGES or len(transcript.split()) < NATIVE_MIN_WORDS:
-            return ""
-        if not isinstance(confidence, (int, float)) or confidence < 0.6:
+        if not code or code in (self.target, self.native_language):
             return ""
         return code
+
+    def _spoken_elsewhere(self, turn):
+        """STT is fairly sure this turn is not the target or the learner's language."""
+        code = turn.get("language_code")
+        confidence = turn.get("language_confidence")
+        if not code or code in (self.target, self.native_language):
+            return False
+        return isinstance(confidence, (int, float)) and confidence >= FOREIGN_ATTEMPT_CONFIDENCE
 
     def _apply_auto_target(self, lesson, check, record):
         """Auto-target mode: take this turn's target from the model, checked.
