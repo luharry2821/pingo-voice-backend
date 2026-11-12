@@ -1,24 +1,25 @@
 {
- "n_cases": 99,
+ "n_cases": 109,
  "wer_overall": {
-  "value_pct": 7.05,
-  "n_cases": 80,
-  "n_units": 525
+  "value_pct": 6.35,
+  "n_cases": 88,
+  "n_units": 598
  },
  "semantic_wer": {
-  "value_pct": 2.67,
-  "n_cases": 80,
-  "n_units": 525,
+  "value_pct": 2.51,
+  "n_cases": 88,
+  "n_units": 598,
   "judge": "AssemblyAI LLM Gateway gemma-4-31b, temperature 0, one batched call"
  },
  "fwer": {
-  "value_pct": 9.57,
-  "n_cases": 80,
-  "n_units": 512
+  "value_pct": 8.59,
+  "n_cases": 88,
+  "n_units": 582
  },
  "mer_overall": {
-  "value_pct": 7.03,
-  "n_cases": 80
+  "value_pct": 6.34,
+  "n_cases": 88,
+  "n_units": 599
  },
  "cpwer": {
   "value_pct": 17.78,
@@ -52,16 +53,43 @@
    "n_units": 6
   }
  },
+ "mer_by_language": {
+  "en": {
+   "value_pct": 0.0,
+   "n_cases": 10,
+   "n_units": 84
+  },
+  "de": {
+   "value_pct": 2.86,
+   "n_cases": 6,
+   "n_units": 35
+  },
+  "es": {
+   "value_pct": 0.0,
+   "n_cases": 3,
+   "n_units": 18
+  },
+  "fr": {
+   "value_pct": 0.0,
+   "n_cases": 2,
+   "n_units": 14
+  },
+  "it": {
+   "value_pct": 16.67,
+   "n_cases": 1,
+   "n_units": 6
+  }
+ },
  "cer_by_language": {
   "ja": {
    "value_pct": 0.0,
-   "n_cases": 5,
-   "n_units": 45
+   "n_cases": 6,
+   "n_units": 59
   },
   "zh": {
    "value_pct": 0.0,
-   "n_cases": 4,
-   "n_units": 23
+   "n_cases": 5,
+   "n_units": 35
   },
   "ko": {
    "value_pct": 0.0,
@@ -70,8 +98,8 @@
   }
  },
  "sentence_error_rate": {
-  "value_pct": 26.26,
-  "n_cases": 99
+  "value_pct": 24.77,
+  "n_cases": 109
  },
  "codeswitch_wer": {
   "en_hi": {
@@ -106,13 +134,18 @@
    "n_cases": 26,
    "n_units": 157
   },
+  "mer": {
+   "value_pct": 10.76,
+   "n_cases": 26,
+   "n_units": 158
+  },
   "fwer": {
    "value_pct": 15.19,
    "n_cases": 26,
    "n_units": 158
   },
   "semantic_wer": {
-   "value_pct": 6.37,
+   "value_pct": 7.01,
    "n_cases": 26,
    "n_units": 157
   },
@@ -150,6 +183,84 @@
   "n_cases": 6,
   "n_units": 39
  },
+ "missed_entity_rate": {
+  "value_pct": 5.88,
+  "n_missed": 2,
+  "n_entities": 34,
+  "n_cases": 18,
+  "missed": [
+   {
+    "id": "fm05",
+    "entity": "veintiún euros",
+    "hypothesis": "Son 21 euros.",
+    "reference": "Son veintiún euros."
+   },
+   {
+    "id": "ent02",
+    "entity": "Siobhán",
+    "hypothesis": "Mi profesora se llama Siobhan.",
+    "reference": "Mi profesora se llama Siobhán."
+   }
+  ]
+ },
+ "missed_entity_rate_entity_set": {
+  "value_pct": 4.17,
+  "n_missed": 1,
+  "n_entities": 24,
+  "n_cases": 10,
+  "missed": [
+   {
+    "id": "ent02",
+    "entity": "Siobhán",
+    "hypothesis": "Mi profesora se llama Siobhan.",
+    "reference": "Mi profesora se llama Siobhán."
+   }
+  ]
+ },
+ "missed_entity_rate_by_category": {
+  "english": {
+   "value_pct": 0.0,
+   "n_missed": 0,
+   "n_entities": 1,
+   "n_cases": 1,
+   "missed": []
+  },
+  "entity": {
+   "value_pct": 4.17,
+   "n_missed": 1,
+   "n_entities": 24,
+   "n_cases": 10,
+   "missed": [
+    {
+     "id": "ent02",
+     "entity": "Siobhán",
+     "hypothesis": "Mi profesora se llama Siobhan.",
+     "reference": "Mi profesora se llama Siobhán."
+    }
+   ]
+  },
+  "formatting": {
+   "value_pct": 12.5,
+   "n_missed": 1,
+   "n_entities": 8,
+   "n_cases": 6,
+   "missed": [
+    {
+     "id": "fm05",
+     "entity": "veintiún euros",
+     "hypothesis": "Son 21 euros.",
+     "reference": "Son veintiún euros."
+    }
+   ]
+  },
+  "planted_mistake": {
+   "value_pct": 0.0,
+   "n_missed": 0,
+   "n_entities": 1,
+   "n_cases": 1,
+   "missed": []
+  }
+ },
  "cases": [
   {
    "id": "en01",
@@ -176,6 +287,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -203,6 +316,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -230,6 +345,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -257,6 +374,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -284,6 +403,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -311,6 +432,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -338,6 +461,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -365,6 +490,10 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [
+    "Berlin"
+   ],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -392,6 +521,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -419,6 +550,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -446,6 +579,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -475,6 +610,8 @@
    "rate_pct": 16.67,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -502,6 +639,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -529,6 +668,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -556,6 +697,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -583,6 +726,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -607,7 +752,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ja02",
@@ -631,7 +778,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ja03",
@@ -655,7 +804,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ja04",
@@ -679,7 +830,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ja05",
@@ -703,7 +856,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "zh01",
@@ -727,7 +882,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "zh02",
@@ -751,7 +908,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "zh03",
@@ -775,7 +934,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "zh04",
@@ -799,7 +960,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ko01",
@@ -823,7 +986,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ko02",
@@ -847,7 +1012,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ko03",
@@ -871,7 +1038,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "ko04",
@@ -895,7 +1064,9 @@
    "errors": [],
    "rate_pct": 0.0,
    "pass": true,
-   "hard": false
+   "hard": false,
+   "entities": [],
+   "entities_missed": []
   },
   {
    "id": "es01",
@@ -922,6 +1093,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -949,6 +1122,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -976,6 +1151,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1003,6 +1180,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1030,6 +1209,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1059,6 +1240,8 @@
    "rate_pct": 16.67,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1090,6 +1273,8 @@
    "rate_pct": 40.0,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1122,6 +1307,8 @@
    "rate_pct": 60.0,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1153,6 +1340,8 @@
    "rate_pct": 25.0,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1184,6 +1373,8 @@
    "rate_pct": 40.0,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1216,6 +1407,8 @@
    "rate_pct": 60.0,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1244,6 +1437,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1275,6 +1470,8 @@
    "rate_pct": 25.0,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 2
   },
   {
@@ -1303,6 +1500,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1331,6 +1530,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1359,6 +1560,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1386,6 +1589,11 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [
+    "7:30",
+    "Monday"
+   ],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1413,6 +1621,10 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [
+    "$49.99"
+   ],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1440,6 +1652,11 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [
+    "250",
+    "3 weeks"
+   ],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1469,6 +1686,12 @@
    "rate_pct": 33.33,
    "pass": false,
    "hard": true,
+   "entities": [
+    "veintiún euros"
+   ],
+   "entities_missed": [
+    "veintiún euros"
+   ],
    "meaning_errors": 0
   },
   {
@@ -1496,6 +1719,10 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [
+    "15 de julio"
+   ],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1523,6 +1750,10 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [
+    "March 5th, 2027"
+   ],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1553,6 +1784,8 @@
    "cp_E": 0,
    "cp_N": 12,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1582,6 +1815,8 @@
    "cp_E": 8,
    "cp_N": 12,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1612,6 +1847,8 @@
    "cp_E": 0,
    "cp_N": 12,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1642,6 +1879,8 @@
    "cp_E": 0,
    "cp_N": 9,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -1669,6 +1908,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Yo tengo hambre.",
    "planted_mistake": "es",
    "mistakes": [
@@ -1706,6 +1947,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "El problema es muy difícil.",
    "planted_mistake": "La problema",
    "mistakes": [
@@ -1743,6 +1986,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Ayer yo comí pizza con mis amigos.",
    "planted_mistake": "como",
    "mistakes": [
@@ -1780,6 +2025,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Mi madre está muy cansada hoy.",
    "planted_mistake": "es muy cansada",
    "mistakes": [
@@ -1817,6 +2064,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Ich habe keinen Hunger.",
    "planted_mistake": "Hunger nicht",
    "mistakes": [
@@ -1854,6 +2103,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Das Mädchen ist sehr nett.",
    "planted_mistake": "Der Mädchen",
    "mistakes": [
@@ -1891,6 +2142,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Gestern bin ich ins Kino gegangen.",
    "planted_mistake": "Gestern ich bin",
    "mistakes": [
@@ -1928,6 +2181,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Le garçon est très grand.",
    "planted_mistake": "La garçon",
    "mistakes": [
@@ -1965,6 +2220,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Je suis allé au marché ce matin.",
    "planted_mistake": "J'ai allé",
    "mistakes": [
@@ -2002,6 +2259,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Io ho fame.",
    "planted_mistake": "sono fame",
    "mistakes": [
@@ -2039,6 +2298,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "She doesn't like coffee.",
    "planted_mistake": "don't",
    "mistakes": [
@@ -2076,6 +2337,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Yesterday I went to the library.",
    "planted_mistake": "I go",
    "mistakes": [
@@ -2113,6 +2376,8 @@
    "rate_pct": 14.29,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "私は学生です。",
    "planted_mistake": "学生をです",
    "mistakes": [
@@ -2153,6 +2418,8 @@
    "rate_pct": 40.0,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "मेरा brother बहुत smart है।",
    "planted_mistake": "मेरी",
    "mistakes": [
@@ -2192,6 +2459,8 @@
    "rate_pct": 33.33,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Yo tengo hambre.",
    "planted_mistake": "tango",
    "mistakes": [
@@ -2231,6 +2500,8 @@
    "rate_pct": 20.0,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Je suis allé au cinéma.",
    "planted_mistake": "allée",
    "mistakes": [
@@ -2269,6 +2540,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Ella es muy simpática.",
    "planted_mistake": "Ella son",
    "mistakes": [
@@ -2307,6 +2580,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Nosotros vamos al parque.",
    "planted_mistake": "Nosotros va",
    "mistakes": [
@@ -2346,6 +2621,8 @@
    "rate_pct": 20.0,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "I went to school yesterday.",
    "planted_mistake": "goed",
    "mistakes": [
@@ -2386,6 +2663,8 @@
    "rate_pct": 20.0,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Tengo un perro en casa.",
    "planted_mistake": "pero",
    "mistakes": [
@@ -2425,6 +2704,8 @@
    "rate_pct": 33.33,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Feliz año nuevo.",
    "planted_mistake": "ano",
    "mistakes": [
@@ -2466,6 +2747,8 @@
    "rate_pct": 22.22,
    "pass": false,
    "hard": false,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "I want los tacos, pero no quiero los frijoles.",
    "planted_mistake": "la frijoles",
    "mistakes": [
@@ -2507,6 +2790,8 @@
    "rate_pct": 25.0,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -2536,6 +2821,8 @@
    "rate_pct": 25.0,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Quiero un carro rojo.",
    "planted_mistake": "caro",
    "mistakes": [
@@ -2575,6 +2862,8 @@
    "rate_pct": 14.29,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Vamos a la casa de mi abuela.",
    "planted_mistake": "caza",
    "mistakes": [
@@ -2612,6 +2901,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Je voudrais un café.",
    "planted_mistake": "une café",
    "mistakes": [
@@ -2649,6 +2940,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Ich gehe in den Park.",
    "planted_mistake": "die Park",
    "mistakes": [
@@ -2686,6 +2979,10 @@
    "rate_pct": 11.11,
    "pass": false,
    "hard": true,
+   "entities": [
+    "日本"
+   ],
+   "entities_missed": [],
    "intended_correct": "私は日本へ行きます。",
    "planted_mistake": "私を",
    "mistakes": [
@@ -2720,6 +3017,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "私は寿司を食べます。",
    "planted_mistake": "寿司が",
    "mistakes": [
@@ -2756,6 +3055,8 @@
    "rate_pct": 20.0,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "我有三本书。",
    "planted_mistake": "三个书",
    "mistakes": [
@@ -2790,6 +3091,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "我买了一辆车。",
    "planted_mistake": "一只车",
    "mistakes": [
@@ -2824,6 +3127,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "할머니, 진지 드셨어요?",
    "planted_mistake": "밥 먹어",
    "mistakes": [
@@ -2863,6 +3168,8 @@
    "rate_pct": 20.0,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "मैं कल school गया था।",
    "planted_mistake": "जाएगा",
    "mistakes": [
@@ -2906,6 +3213,8 @@
    "rate_pct": 66.67,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 3
   },
   {
@@ -2934,6 +3243,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -2961,6 +3272,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -2988,6 +3301,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -3015,6 +3330,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -3042,6 +3359,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -3069,6 +3388,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -3096,6 +3417,8 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -3126,6 +3449,8 @@
    "rate_pct": 11.11,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "intended_correct": "Ayer yo fui al mercado y compré unas manzanas y los tomates porque mi madre tiene mucha hambre.",
    "planted_mistake": [
     "yo va",
@@ -3156,7 +3481,7 @@
     }
    ],
    "mistake_preserved": false,
-   "meaning_errors": 1
+   "meaning_errors": 2
   },
   {
    "id": "h13",
@@ -3186,6 +3511,8 @@
    "rate_pct": 11.11,
    "pass": false,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
   },
   {
@@ -3215,7 +3542,331 @@
    "rate_pct": 0.0,
    "pass": true,
    "hard": true,
+   "entities": [],
+   "entities_missed": [],
    "meaning_errors": 0
+  },
+  {
+   "id": "ent01",
+   "category": "entity",
+   "languages": [
+    "es"
+   ],
+   "reference": "Vivo en Guadalajara desde el 3 de marzo.",
+   "hypothesis": "Vivo en Guadalajara desde el 3 de marzo.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 8,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "Guadalajara",
+    "3 de marzo"
+   ],
+   "entities_missed": [],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent02",
+   "category": "entity",
+   "languages": [
+    "es"
+   ],
+   "reference": "Mi profesora se llama Siobhán.",
+   "hypothesis": "Mi profesora se llama Siobhan.",
+   "turns": 1,
+   "detected_language": [
+    "es"
+   ],
+   "metric": "WER",
+   "F_E": 1,
+   "F_N": 5,
+   "S": 1,
+   "D": 0,
+   "I": 0,
+   "H": 4,
+   "N": 5,
+   "E": 1,
+   "errors": [
+    "S: siobhán→siobhan"
+   ],
+   "rate_pct": 20.0,
+   "pass": false,
+   "hard": false,
+   "entities": [
+    "Siobhán"
+   ],
+   "entities_missed": [
+    "Siobhán"
+   ],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent03",
+   "category": "entity",
+   "languages": [
+    "en"
+   ],
+   "reference": "I'm meeting Priya at Starbucks on June 14th.",
+   "hypothesis": "I'm meeting Priya at Starbucks on June 14th.",
+   "turns": 1,
+   "detected_language": [
+    "en"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 8,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "Priya",
+    "Starbucks",
+    "June 14th"
+   ],
+   "entities_missed": [],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent04",
+   "category": "entity",
+   "languages": [
+    "de"
+   ],
+   "reference": "Ich wohne in München seit dem 21. April.",
+   "hypothesis": "Ich wohne in München seit dem 21. April.",
+   "turns": 1,
+   "detected_language": [
+    "de"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 8,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 8,
+   "N": 8,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "München",
+    "21. April"
+   ],
+   "entities_missed": [],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent05",
+   "category": "entity",
+   "languages": [
+    "fr"
+   ],
+   "reference": "Je m'appelle François et j'habite à Lyon depuis 2019.",
+   "hypothesis": "Je m'appelle François et j'habite à Lyon depuis 2019.",
+   "turns": 1,
+   "detected_language": [
+    "fr"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 9,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 11,
+   "N": 11,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "François",
+    "Lyon",
+    "2019"
+   ],
+   "entities_missed": [],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent06",
+   "category": "entity",
+   "languages": [
+    "it"
+   ],
+   "reference": "Il mio amico Giorgio lavora da Fiat a Torino.",
+   "hypothesis": "Il mio amico Giorgio lavora da Fiat a Torino.",
+   "turns": 1,
+   "detected_language": [
+    "it"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 9,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 9,
+   "N": 9,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "Giorgio",
+    "Fiat",
+    "Torino"
+   ],
+   "entities_missed": [],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent07",
+   "category": "entity",
+   "languages": [
+    "hi"
+   ],
+   "reference": "मेरी सहेली का नाम अनुष्का है और वह दिल्ली में रहती है।",
+   "hypothesis": "मेरी सहेली का नाम अनुष्का है और वह दिल्ली में रहती है।",
+   "turns": 1,
+   "detected_language": [
+    "hi"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 12,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 12,
+   "N": 12,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "अनुष्का",
+    "दिल्ली"
+   ],
+   "entities_missed": [],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent08",
+   "category": "entity",
+   "languages": [
+    "ja"
+   ],
+   "reference": "田中さんは東京に住んでいます。",
+   "hypothesis": "田中さんは東京に住んでいます。",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 14,
+   "N": 14,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "田中",
+    "東京"
+   ],
+   "entities_missed": []
+  },
+  {
+   "id": "ent09",
+   "category": "entity",
+   "languages": [
+    "en"
+   ],
+   "reference": "Dr. Nguyen booked a flight to São Paulo on November 3rd.",
+   "hypothesis": "Dr. Nguyen booked a flight to São Paulo on November 3rd.",
+   "turns": 1,
+   "detected_language": [
+    "ja"
+   ],
+   "metric": "WER",
+   "F_E": 0,
+   "F_N": 11,
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 11,
+   "N": 11,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "Nguyen",
+    "São Paulo",
+    "November 3rd"
+   ],
+   "entities_missed": [],
+   "meaning_errors": 0
+  },
+  {
+   "id": "ent10",
+   "category": "entity",
+   "languages": [
+    "zh"
+   ],
+   "reference": "王芳在北京的华为公司工作。",
+   "hypothesis": "王芳在北京的华为公司工作。",
+   "turns": 1,
+   "detected_language": [
+    "zh"
+   ],
+   "metric": "CER",
+   "S": 0,
+   "D": 0,
+   "I": 0,
+   "H": 12,
+   "N": 12,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
+   "hard": false,
+   "entities": [
+    "王芳",
+    "北京",
+    "华为"
+   ],
+   "entities_missed": []
   }
  ]
 }

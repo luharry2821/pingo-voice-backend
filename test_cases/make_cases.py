@@ -58,6 +58,39 @@ C = [
  ("fm06","formatting",["es"],"Mi examen es el 15 de julio.","es-MX-DaliaNeural","Spanish date"),
  ("fm04","formatting",["en"],"My lesson is on March 5th, 2027.",EN2,"date"),
 ]
+# entity-heavy lines (names, places, numbers, dates, brands) for missed-entity rate
+ENTITY = [
+ ("ent01","entity",["es"],"Vivo en Guadalajara desde el 3 de marzo.","es-MX-DaliaNeural","place + date"),
+ ("ent02","entity",["es"],"Mi profesora se llama Siobhán.","es-ES-ElviraNeural","Irish name in Spanish"),
+ ("ent03","entity",["en"],"I'm meeting Priya at Starbucks on June 14th.",EN,"name + brand + date"),
+ ("ent04","entity",["de"],"Ich wohne in München seit dem 21. April.","de-DE-KatjaNeural","place + date"),
+ ("ent05","entity",["fr"],"Je m'appelle François et j'habite à Lyon depuis 2019.","fr-FR-HenriNeural","name + place + year"),
+ ("ent06","entity",["it"],"Il mio amico Giorgio lavora da Fiat a Torino.","it-IT-DiegoNeural","name + brand + place"),
+ ("ent07","entity",["hi"],"मेरी सहेली का नाम अनुष्का है और वह दिल्ली में रहती है।","hi-IN-SwaraNeural","name + place"),
+ ("ent08","entity",["ja"],"田中さんは東京に住んでいます。","ja-JP-NanamiNeural","name + place"),
+ ("ent09","entity",["en"],"Dr. Nguyen booked a flight to São Paulo on November 3rd.",EN2,"name + place + date"),
+ ("ent10","entity",["zh"],"王芳在北京的华为公司工作。","zh-CN-XiaoxiaoNeural","name + place + brand"),
+]
+ENTITIES = {
+ "en08": ["Berlin"],
+ "fm01": ["7:30", "Monday"],
+ "fm02": ["$49.99"],
+ "fm03": ["250", "3 weeks"],
+ "fm04": ["March 5th, 2027"],
+ "fm05": ["veintiún euros"],
+ "fm06": ["15 de julio"],
+ "h05": ["日本"],
+ "ent01": ["Guadalajara", "3 de marzo"],
+ "ent02": ["Siobhán"],
+ "ent03": ["Priya", "Starbucks", "June 14th"],
+ "ent04": ["München", "21. April"],
+ "ent05": ["François", "Lyon", "2019"],
+ "ent06": ["Giorgio", "Fiat", "Torino"],
+ "ent07": ["अनुष्का", "दिल्ली"],
+ "ent08": ["田中", "東京"],
+ "ent09": ["Nguyen", "São Paulo", "November 3rd"],
+ "ent10": ["王芳", "北京", "华为"],
+}
 # planted learner mistakes: (id, languages, spoken-with-mistake, intended_correct, planted_mistake, voice)
 PLANTED = [
  ("pm01",["es"],"Yo es hambre.","Yo tengo hambre.","es","es-MX-JorgeNeural"),
@@ -186,12 +219,14 @@ async def main():
     sem = asyncio.Semaphore(8)
     async def g(f, c):
         async with sem: return await f(c)
-    rows = await asyncio.gather(*[g(one,c) for c in C], *[g(two,c) for c in TWO], *[g(planted,c) for c in PLANTED], pause(), *[g(hard,c) for c in HARD], *[g(multipause,c) for c in PAUSES])
+    rows = await asyncio.gather(*[g(one,c) for c in C], *[g(two,c) for c in TWO], *[g(planted,c) for c in PLANTED], pause(), *[g(hard,c) for c in HARD], *[g(multipause,c) for c in PAUSES], *[g(one,c) for c in ENTITY])
     AMBIGUOUS = {"pm17": "allée/allé are homophones", "pm20": "TTS audio sounds like 'go' (Whisper + AssemblyAI pre-recorded)", "pm18": "Whisper heard 'Ellas son' (would be correct)"}
     for r in rows:
         if r["id"] in ("pm16","pm17","pm18","pm19","pm20","pm21","pm22","fm05","fm06","ps01"): r["hard"] = True
         if r["id"] in AMBIGUOUS: r["audio_ambiguous"] = AMBIGUOUS[r["id"]]
         if r["id"] == "h21": r["audio_ambiguous_mistakes"] = ["una manzanas"]  # Whisper heard "una manzana"
+    for r in rows:
+        r["entities"] = ENTITIES.get(r["id"], [])
     with open(f"{D}/cases.jsonl","w") as f:
         for r in rows: f.write(json.dumps(r, ensure_ascii=False)+"\n")
     print(len(rows), "cases")

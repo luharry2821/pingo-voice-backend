@@ -1,39 +1,61 @@
 # STT results (live Pingo on Render)
 
-99 cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER).
+109 cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER).
 
 | KPI | Value | n |
 |---|---|---|
-| WER (normalized, all word-based cases) | 7.05% | 80 / 525 |
-| Semantic WER (LLM judge) | 2.67% | 80 |
-| FWER (raw, no normalization) | 9.57% | 80 / 512 |
+| WER (normalized, all word-based cases) | 6.35% | 88 / 598 |
+| Semantic WER (LLM judge) | 2.51% | 88 |
+| FWER (raw, no normalization) | 8.59% | 88 / 582 |
+| MER (match error rate, jiwer.mer) | 6.34% | 88 / 599 |
 | cpWER (2-speaker) | 17.78% | 4 / 45 |
 | Mistake-preservation rate (higher is better) | 69.44% | 36 mistakes |
 | Mistake-preservation, ambiguous audio excluded | 75.0% | 32 mistakes |
-| Sentence error rate | 26.26% | 99 |
+| Sentence error rate | 24.77% | 109 |
+| Missed entity rate | 5.88% (2/34) | 18 cases |
+| Missed entity rate, entity set only | 4.17% (1/24) | 10 cases |
 | WER en | 0.0% | 10 / 84 |
 | WER de | 2.86% | 6 / 35 |
 | WER es | 0.0% | 3 / 18 |
 | WER fr | 0.0% | 2 / 14 |
 | WER it | 16.67% | 1 / 6 |
-| CER ja | 0.0% | 5 / 45 |
-| CER zh | 0.0% | 4 / 23 |
+| MER en | 0.0% | 10 / 84 |
+| MER de | 2.86% | 6 / 35 |
+| MER es | 0.0% | 3 / 18 |
+| MER fr | 0.0% | 2 / 14 |
+| MER it | 16.67% | 1 / 6 |
+| CER ja | 0.0% | 6 / 59 |
+| CER zh | 0.0% | 5 / 35 |
 | CER ko | 0.0% | 4 / 32 |
 | Code-switching WER en_hi | 42.86% | 5 / 28 |
 | Code-switching WER en_es | 13.33% | 7 / 45 |
 | Formatting cases: FWER / WER | 2.7% / 2.56% | 6 |
+| Missed entity rate (english) | 0.0% (0/1) | 1 cases |
+| Missed entity rate (entity) | 4.17% (1/24) | 10 cases |
+| Missed entity rate (formatting) | 12.5% (1/8) | 6 cases |
+| Missed entity rate (planted_mistake) | 0.0% (0/1) | 1 cases |
 
 ## Hard set only (31 cases)
 
 | KPI | Value | n |
 |---|---|---|
 | WER | 10.83% | 26 / 157 |
-| Semantic WER | 6.37% | 26 |
+| MER (jiwer.mer) | 10.76% | 26 / 158 |
+| Semantic WER | 7.01% | 26 |
 | FWER | 15.19% | 26 / 158 |
 | CER | 5.71% | 5 / 35 |
 | Sentence error rate | 48.39% | 31 |
 | Mistake preservation | 52.38% | 21 |
 | Mistake preservation, ambiguous excluded | 58.82% | 17 |
+
+## Missed entities
+
+2 of 34 entities missed after the same normalization as WER/CER.
+
+| id | entity (as spoken) | Pingo heard |
+|---|---|---|
+| fm05 | veintiún euros | Son 21 euros. |
+| ent02 | Siobhán | Mi profesora se llama Siobhan. |
 
 ## Planted mistakes
 
@@ -103,3 +125,4 @@
 | h11 | Te voy a textear later, okay? | Te voy a testear la ter, ¿ok? | I: testear; S: textear→la; S: later→ter; S: okay→ok |
 | h21 | Ayer yo va al mercado y compré una manzanas y la tomates porque mi madre es muy hambre. | Ayer yo va al mercado y compré una manzana si la tomates porque mi madre es muy hambre. | S: manzanas→manzana; S: y→si |
 | h13 | Yo... eh... yo fui, no, yo voy al mercado. | Yo. Yo fui, no, yo voy al mercado. | D: eh |
+| ent02 | Mi profesora se llama Siobhán. | Mi profesora se llama Siobhan. | S: siobhán→siobhan |
