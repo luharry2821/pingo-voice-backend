@@ -6,7 +6,6 @@ Modules, in pipeline order (mic audio -> STT -> LLM tutor -> TTS -> browser):
   session.py   one learner session; orchestrates everything below
   audio.py     WAV -> 16 kHz PCM16 for file mode
   stt.py       AssemblyAI streaming speech-to-text
-  practice.py  deterministic scoring of practice attempts
   llm.py       the tutor model on the AssemblyAI LLM Gateway
   tts.py       AssemblyAI text-to-speech, one session per voice
   config.py    settings: defaults, YAML, env vars, --set

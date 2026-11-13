@@ -1,8 +1,8 @@
-"""Tests for the conversational tutor: tutor-turn schema, practice matching, practice state, speech plan.
+"""Tests for the conversational tutor: tutor-turn schema, practice state, speech plan.
 
-These sit in the middle of the pipeline (STT -> **practice check + LLM tutor**
--> TTS): the JSON schema and parsing in server/llm.py, the deterministic
-attempt scoring in server/practice.py, speech_plans() in server/session.py,
+These sit in the middle of the pipeline (STT -> **LLM tutor** -> TTS): the
+JSON schema and parsing in server/llm.py, the small text helpers and
+speech_plans() in server/session.py,
 and full teach / pronounce / attempt / replay flows through a Session with
 scripted fakes. No network.
 """
@@ -16,8 +16,7 @@ import unittest
 
 from server.config import load_settings
 from server.llm import LESSON_SCHEMA, Lesson, build_user_text, parse_lesson_text
-from server.practice import check_attempt, fold, looks_like_attempt, match_score, slow_text, sound_key
-from server.session import Session, speech_plans
+from server.session import Session, fold, slow_text, speech_plans
 
 
 def _run(coro):
@@ -75,13 +74,17 @@ class SchemaTests(unittest.TestCase):
         self.assertTrue(parsed["reply"].startswith("In Spanish, hello is"))
 
     def test_prompt_carries_practice_state(self):
-        """The user prompt includes the practice phrase and check, and ends with the transcript."""
-        check = check_attempt("ola", "Hola", "es", [{"text": "ola", "confidence": 0.9}])
-        text = build_user_text("ola", "es", 0.7, "spanish", "english", "Hola", check)
+        """The user prompt includes the practice phrase and the miss count, and ends with the transcript.
+
+        There is no rule-based verdict in the prompt: the model grades the attempt.
+        """
+        text = build_user_text("ola", "es", 0.7, "spanish", "english", "Hola", 1)
         self.assertIn("Current practice phrase: Hola", text)
-        self.assertIn("Practice check", text)
-        self.assertIn("verdict correct", text)
+        self.assertIn("Misses on the practice phrase so far: 1", text)
+        self.assertNotIn("Practice check", text)
+        self.assertNotIn("verdict", text)
         self.assertTrue(text.endswith("ola"))
+        self.assertNotIn("Misses", build_user_text("ola", "es", 0.7, "spanish", "english", "Hola", 0))
         self.assertIn("(none yet)", build_user_text("hi", "en", 0.9, "spanish"))
 
 
@@ -124,42 +127,13 @@ class RetryTests(unittest.TestCase):
         self.assertEqual(lesson.translation, "Hola")
 
 
-class PracticeMatchTests(unittest.TestCase):
-    """Deterministic matching of an attempt to the practice phrase."""
-    def test_spelling_variants_of_hola_are_correct(self):
-        """STT spellings of "Hola" (ola, hola., ...) all score as correct attempts."""
-        for heard in ("hola", "Hola", "ola", "Ola.", "Hola!", "olá", "¡Hola!", "HOLA", "uh, hola"):
-            with self.subTest(heard=heard):
-                self.assertGreaterEqual(match_score(heard, "Hola", "es"), 0.85)
-                self.assertEqual(check_attempt(heard, "Hola", "es")["verdict"], "correct")
-                self.assertTrue(looks_like_attempt(heard, "Hola", "es"))
-
+class HelperTests(unittest.TestCase):
+    """Small text helpers in server/session.py."""
     def test_folding(self):
-        """Folding removes case, accents and punctuation; the sound key ignores silent h but keeps ch.
-        """
+        """Folding removes case, accents and punctuation."""
         self.assertEqual(fold("¡Olá!"), "ola")
-        self.assertEqual(sound_key("Hola"), sound_key("ola"))
-        self.assertEqual(sound_key("¿Cómo estás?"), sound_key("como estas"))
-        self.assertEqual(sound_key("chico"), "chiko".replace("k", "c"))  # ch is kept
-
-    def test_wrong_words_are_not_correct(self):
-        """A different word is try_again, and questions are not treated as attempts."""
-        self.assertEqual(check_attempt("adios", "Hola", "es")["verdict"], "try_again")
-        self.assertFalse(looks_like_attempt("how do I pronounce it", "Hola", "es"))
-        self.assertFalse(looks_like_attempt("how do I say goodbye in Spanish", "Hola", "es"))
-
-    def test_close_attempt(self):
-        """A near miss is close; an unrelated word is try_again."""
-        result = check_attempt("buenos dia", "Buenos días", "es")
-        self.assertIn(result["verdict"], ("correct", "close"))
-        self.assertEqual(check_attempt("gracias", "Buenos días", "es")["verdict"], "try_again")
-        self.assertEqual(check_attempt("hora", "Hola", "es")["verdict"], "close")
-
-    def test_low_confidence_downgrades_correct(self):
-        """A spelling match heard with low STT confidence is downgraded to close."""
-        result = check_attempt("hola", "Hola", "es", [{"text": "hola", "confidence": 0.31}])
-        self.assertEqual(result["verdict"], "close")
-        self.assertEqual(result["low_confidence_words"], [{"text": "hola", "confidence": 0.31}])
+        self.assertEqual(fold("¿Cómo   estás?"), "como estas")
+        self.assertEqual(fold("Dov'è"), "dove")
 
     def test_slow_text(self):
         """The slow read uses syllables, falls back to words, and is empty for one word without syllables.
@@ -313,8 +287,9 @@ class PracticeStateTests(unittest.TestCase):
                 [
                     dict(intent="teach_phrase", reply="In Spanish, hello is", next_prompt="Now you try."),
                     dict(intent="pronunciation", reply="Say it like OH-lah.", next_prompt="Now you try."),
-                    # The model mislabels the attempt; the practice check wins.
-                    dict(intent="chat", phrase="", reply="Hi there!", next_prompt="Want another word?"),
+                    # The model grades the attempt; its echoed phrase is pinned to the stored one.
+                    dict(intent="practice_attempt", phrase="Hola. corticosteroids", reply="Correct! Nice.",
+                         verdict="correct", next_prompt="Want another word?"),
                 ],
             )
             await session.handle_text({"type": "start", "target_language": "es"})
@@ -322,10 +297,11 @@ class PracticeStateTests(unittest.TestCase):
                 await session.stt.send_audio(b"\x00\x00")
                 await session.job
             self.assertEqual(llm.calls[0]["practice_target"], "")
-            self.assertIsNone(llm.calls[0]["practice_check"])
             self.assertEqual(llm.calls[1]["practice_target"], "Hola")
-            self.assertIsNone(llm.calls[1]["practice_check"])
-            self.assertEqual(llm.calls[2]["practice_check"]["verdict"], "correct")
+            self.assertEqual(llm.calls[2]["practice_target"], "Hola")
+            # No rule-based check is sent to the model any more.
+            self.assertNotIn("practice_check", llm.calls[2])
+            self.assertEqual(llm.calls[2]["misses"], 0)
             self.assertEqual(llm.calls[2]["native_name"], "english")
             lessons = [p for p in sent if isinstance(p, dict) and p.get("type") == "lesson"]
             self.assertEqual([l["intent"] for l in lessons], ["teach_phrase", "pronunciation", "practice_attempt"])

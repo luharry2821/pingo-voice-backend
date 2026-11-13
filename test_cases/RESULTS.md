@@ -16,7 +16,6 @@
 | Missed entity rate, entity set only | 4.17% (1/24) | 10 cases |
 | Language-ID accuracy (higher is better) | 80.34% | 94 / 117 turns |
 | Confident-wrong rate (wrong label, confidence ≥ 0.6) | 13.68% | 16 / 117 turns |
-| Wrong labels at confidence ≥ 0.5 | 17 | 17 / 117 turns |
 | Language-ID accuracy en | 87.1% | 27 / 31 turns |
 | Language-ID accuracy de | 75.0% | 9 / 12 turns |
 | Language-ID accuracy es | 81.48% | 22 / 27 turns |

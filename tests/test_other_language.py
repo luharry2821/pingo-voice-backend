@@ -6,15 +6,16 @@ answered "I'm sorry, I didn't quite catch that." STT's language_code was also
 wrong on some turns (Japanese tagged "hi", Chinese tagged "ja").
 
 These tests cover the routing between STT and the LLM tutor: the script
-check in server/practice.py, the "other language" hint in the user prompt
-(server/llm.py) and how server/session.py classifies each turn.
+check and turn classification in server/session.py and the "other
+language" hint in the user prompt (server/llm.py). Whether a turn is an
+attempt at the practice phrase is the model's call.
 """
 
 import unittest
 
 from server.config import DEFAULT_SYSTEM_PROMPT
 from server.llm import build_user_text
-from server.practice import is_other_script, looks_like_attempt
+from server.session import is_other_script
 from tests import test_tutor
 from tests.test_tutor import _run
 
@@ -22,12 +23,10 @@ from tests.test_tutor import _run
 class OtherScriptTests(unittest.TestCase):
     """is_other_script(): detecting non-Latin writing."""
     def test_non_latin_scripts(self):
-        """Devanagari, Japanese, Chinese, Cyrillic and Arabic text is another script and never a practice attempt.
-        """
+        """Devanagari, Japanese, Chinese, Cyrillic and Arabic text is another script."""
         for text in ("मुझे पानी पीना है।", "水が飲みたいです。", "我想喝水。", "Где вокзал?", "أين المحطة؟"):
             with self.subTest(text=text):
                 self.assertTrue(is_other_script(text))
-                self.assertFalse(looks_like_attempt(text, "Quiero agua", "es", "en"))
 
     def test_latin_scripts_and_empty(self):
         """Latin-script text (with accents) and empty text do not."""
@@ -38,17 +37,17 @@ class OtherScriptTests(unittest.TestCase):
 
 class OtherLanguageUserTextTests(unittest.TestCase):
     """The routing lines added to the per-turn user prompt."""
-    def test_practice_check_line_allows_another_language(self):
-        """The practice-check line lets the model treat a clearly foreign sentence as a new phrase.
-        """
-        check = {"target": "Quisiera un café", "score": 0.73, "verdict": "close", "reason": "r", "low_confidence_words": []}
-        text = build_user_text("Vorrei un caffè", "it", 0.4, "spanish", "english", "Quisiera un café", check)
-        self.assertIn("clearly saying a sentence in another language (not spanish)", text)
+    def test_pending_phrase_lets_the_model_judge_a_mislabelled_attempt(self):
+        """With a practice phrase pending, the other-language line says an attempt is still judged as one."""
+        text = build_user_text("Ola", "pt", 0.5, "spanish", "english", "Hola", other_language="pt")
+        self.assertIn("judge it as a practice_attempt instead", text)
+        text = build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", "", other_language="ja")
+        self.assertNotIn("practice_attempt", text)
 
     def test_fixed_target_routing_line(self):
         """With a fixed target, the other-language line tells the model to teach it in that target.
         """
-        text = build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", "", None, other_language="ja")
+        text = build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", "", other_language="ja")
         self.assertIn("clear speech in another language", text)
         self.assertIn("Do not ask them to repeat it", text)
         self.assertIn("naturally say in spanish", text)
@@ -59,10 +58,10 @@ class OtherLanguageUserTextTests(unittest.TestCase):
     def test_auto_target_routing_line(self):
         """In auto-target mode, the line refers to the requested or previous target instead."""
         text = build_user_text("स्पेनिश में मैं कैसे कहूँ कि मुझे पानी चाहिए?", "hi", 0.76, "", "english", "",
-                               None, auto_target=True, previous_target="", other_language="hi")
+                               auto_target=True, previous_target="", other_language="hi")
         self.assertIn("the language they ask for", text)
         self.assertIn("ask which one", text)
-        text = build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", "", None,
+        text = build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", "",
                                auto_target=True, previous_target="es", other_language="ja")
         self.assertIn("else the previous target language", text)
         self.assertNotIn("ask which one", text)
@@ -104,8 +103,6 @@ class OtherLanguageSessionTests(unittest.TestCase):
                 await session.job
             # Any STT code outside the learner's language and the target counts, even short turns.
             self.assertEqual([c["other_language"] for c in llm.calls], ["hi", "hi", "other", "nl", "nl", ""])
-            self.assertFalse(llm.calls[0]["new_phrase"])
-            self.assertTrue(llm.calls[5]["new_phrase"])
             # The explanation language stays one Pingo can speak.
             self.assertEqual({c["native_name"] for c in llm.calls}, {"english"})
             self.assertEqual(session.native_language, "en")
@@ -131,7 +128,11 @@ class OtherLanguageSessionTests(unittest.TestCase):
         self.assertEqual(check({"language_code": None, "language_confidence": None}, "मुझे पानी पीना है।"), "other")
 
     def test_foreign_sentence_close_to_the_phrase_is_not_an_attempt(self):
-        """Live: French/Italian/Portuguese coffee orders were judged "Almost!" against the Spanish one."""
+        """Live: French/Italian/Portuguese coffee orders were judged "Almost!" against the Spanish one.
+
+        Longer, confident French or Italian becomes the explanation language, so the
+        model sees it as the learner's own language, not as an attempt.
+        """
         async def scenario():
             """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
@@ -150,15 +151,13 @@ class OtherLanguageSessionTests(unittest.TestCase):
             for _ in range(4):
                 await session.stt.send_audio(b"\x00\x00")
                 await session.job
-            self.assertIsNone(llm.calls[1]["practice_check"])
             # Existing _note_native rule: 3+ words of French at 0.6+ makes French the
             # explanation language, so it is taught as the learner's own language.
             self.assertEqual(llm.calls[1]["native_name"], "french")
             self.assertEqual(llm.calls[1]["other_language"], "")
-            self.assertIsNone(llm.calls[2]["practice_check"])
             self.assertEqual(llm.calls[2]["native_name"], "italian")
-            # A real near-miss in Spanish is still checked.
-            self.assertIsNotNone(llm.calls[3]["practice_check"])
+            # A near-miss in Spanish goes to the model with no other-language hint;
+            # the model grades it.
             self.assertEqual(llm.calls[3]["other_language"], "")
             lessons = [p for p in sent if isinstance(p, dict) and p.get("type") == "lesson"]
             self.assertEqual([l["intent"] for l in lessons], ["teach_phrase", "teach_phrase", "teach_phrase", "practice_attempt"])
@@ -167,18 +166,8 @@ class OtherLanguageSessionTests(unittest.TestCase):
 
         _run(scenario())
 
-    def test_spoken_elsewhere_needs_confidence(self):
-        """_spoken_elsewhere needs a confident foreign code; target and native codes never count."""
-        session, _llm, _tts, _sent = self._session([], [])
-        session.target = "es"
-        self.assertTrue(session._spoken_elsewhere({"language_code": "fr", "language_confidence": 0.56}))
-        self.assertFalse(session._spoken_elsewhere({"language_code": "fr", "language_confidence": 0.39}))
-        self.assertFalse(session._spoken_elsewhere({"language_code": "es", "language_confidence": 0.99}))
-        # STT often tags short Spanish attempts as English, the learner's own language.
-        self.assertFalse(session._spoken_elsewhere({"language_code": "en", "language_confidence": 0.99}))
-
     def test_attempt_at_the_practice_phrase_is_still_checked(self):
-        """After teaching from another language, a real attempt at the phrase is still checked."""
+        """After teaching from another language, a real attempt reaches the model and keeps its verdict."""
         async def scenario():
             """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
@@ -192,8 +181,10 @@ class OtherLanguageSessionTests(unittest.TestCase):
                 await session.stt.send_audio(b"\x00\x00")
                 await session.job
             self.assertEqual(llm.calls[0]["other_language"], "hi")
-            self.assertEqual(llm.calls[1]["practice_check"]["verdict"], "correct")
+            self.assertEqual(llm.calls[1]["practice_target"], "Quiero agua")
             self.assertEqual(llm.calls[1]["other_language"], "")
+            lessons = [p for p in sent if isinstance(p, dict) and p.get("type") == "lesson"]
+            self.assertEqual(lessons[1]["verdict"], "correct")
 
         _run(scenario())
 

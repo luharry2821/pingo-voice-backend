@@ -178,7 +178,7 @@ class AutoTargetSessionTests(unittest.TestCase):
             # Spanish question -> Spanish explanations; the short German attempt does not flip it.
             self.assertEqual([l["native_language"] for l in lessons], ["en", "es", "es", "en"])
             self.assertEqual([c["previous_target"] for c in llm.calls], ["", "fr", "de", "de"])
-            self.assertEqual(llm.calls[2]["practice_check"]["verdict"], "correct")
+            self.assertEqual(llm.calls[2]["practice_target"], "Guten Morgen")
             self.assertEqual(lessons[2]["verdict"], "correct")
             self.assertEqual(lessons[3]["target_phrase"], "Ich habe Hunger")
             self.assertIn(("spanish", "En alemán, se dice"), tts.spoken)

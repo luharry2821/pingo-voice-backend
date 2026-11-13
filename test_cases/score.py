@@ -29,8 +29,7 @@ the two. KPIs it reports (error rates: lower is better):
                  single right label
   Confident-wrong rate  share of turns whose language label is wrong
                  with confidence >= 0.6 (Pingo's native-language switch
-                 cutoff). Also reports how many wrong labels sit at
-                 confidence >= 0.5 (the practice-mode cutoff)
+                 cutoff)
 
 Helpers can be imported without scoring. Running the script writes
 results.json and RESULTS.md: helpers first, then one row per case, then
@@ -47,11 +46,9 @@ RAW = args[0] if args else f"{D}/raw_outputs.jsonl"
 JUDGE = "--no-judge" not in sys.argv
 # Languages scored by characters (CER) instead of words.
 CJK = {"ja", "zh", "ko"}
-# Cutoffs copied from server/session.py: 0.6 in _note_native before a turn
-# can change the learner's own language, 0.5 in _spoken_elsewhere before a
-# practice turn is treated as another language rather than an attempt.
+# Cutoff copied from server/session.py: 0.6 in _note_native before a turn
+# can change the learner's own language.
 LANG_ID_NATIVE_CUTOFF = 0.6
-LANG_ID_PRACTICE_CUTOFF = 0.5
 en_norm = EnglishTextNormalizer()
 
 def basic(text):
@@ -179,7 +176,7 @@ def judge(items):
     return {x["id"]: int(x["meaning_errors"]) for x in json.loads(text)["results"]}
 
 
-def language_id_metrics(cases, raw, native_cutoff=LANG_ID_NATIVE_CUTOFF, practice_cutoff=LANG_ID_PRACTICE_CUTOFF):
+def language_id_metrics(cases, raw, native_cutoff=LANG_ID_NATIVE_CUTOFF):
     """Language-ID accuracy and confident-wrong rates, scored per final turn.
 
     raw_outputs.jsonl stores only finished turns (AssemblyAI fills
@@ -195,10 +192,7 @@ def language_id_metrics(cases, raw, native_cutoff=LANG_ID_NATIVE_CUTOFF, practic
     wrong with confidence at or above native_cutoff (0.6), the threshold
     Pingo uses before changing the learner's own language — a wrong label
     this confident is the case those cutoffs cannot catch (e.g. es01
-    tagged Korean at 1.0). n_wrong_at_practice_cutoff counts wrong labels
-    at or above practice_cutoff (0.5), the practice-mode "spoken
-    elsewhere" floor; it is a count, not a rate, so a single miss stays
-    visible.
+    tagged Korean at 1.0).
 
     Turns with no language_code are counted as wrong, but with no
     confidence they do not raise the confident-wrong rate. Cases with no
@@ -237,7 +231,6 @@ def language_id_metrics(cases, raw, native_cutoff=LANG_ID_NATIVE_CUTOFF, practic
 
     n = len(turns)
     confident_wrong = [t for t in turns if not t["correct"] and t["confidence"] is not None and t["confidence"] >= native_cutoff]
-    wrong_practice = [t for t in turns if not t["correct"] and t["confidence"] is not None and t["confidence"] >= practice_cutoff]
     mislabeled = [{"id": t["id"], "text": t["text"], "expected": t["expected"], "got": t["got"], "confidence": t["confidence"]}
                   for t in turns if not t["correct"]]
 
@@ -256,7 +249,6 @@ def language_id_metrics(cases, raw, native_cutoff=LANG_ID_NATIVE_CUTOFF, practic
         "language_id_accuracy": {**pack(turns), "n_cases": n_cases},
         "confident_wrong_rate": {"value_pct": round(100 * len(confident_wrong) / n, 2) if n else None,
                                  "n_confident_wrong": len(confident_wrong), "n_turns": n, "cutoff": native_cutoff},
-        "n_wrong_at_practice_cutoff": {"n_wrong": len(wrong_practice), "n_turns": n, "cutoff": practice_cutoff},
         "language_id_accuracy_by_language": {k: pack(grouped[k]) for k in keys},
         "language_id_mislabeled": mislabeled,
     }
@@ -406,8 +398,7 @@ if __name__ == "__main__":
          f"| Missed entity rate | {p(res['missed_entity_rate'])} ({res['missed_entity_rate']['n_missed']}/{res['missed_entity_rate']['n_entities']}) | {res['missed_entity_rate']['n_cases']} cases |",
          f"| Missed entity rate, entity set only | {p(res['missed_entity_rate_entity_set'])} ({res['missed_entity_rate_entity_set']['n_missed']}/{res['missed_entity_rate_entity_set']['n_entities']}) | {res['missed_entity_rate_entity_set']['n_cases']} cases |",
          f"| Language-ID accuracy (higher is better) | {p(res['language_id_accuracy'])} | {res['language_id_accuracy']['n_correct']} / {res['language_id_accuracy']['n_turns']} turns |",
-         f"| Confident-wrong rate (wrong label, confidence ≥ {res['confident_wrong_rate']['cutoff']}) | {p(res['confident_wrong_rate'])} | {res['confident_wrong_rate']['n_confident_wrong']} / {res['confident_wrong_rate']['n_turns']} turns |",
-         f"| Wrong labels at confidence ≥ {res['n_wrong_at_practice_cutoff']['cutoff']} | {res['n_wrong_at_practice_cutoff']['n_wrong']} | {res['n_wrong_at_practice_cutoff']['n_wrong']} / {res['n_wrong_at_practice_cutoff']['n_turns']} turns |"]
+         f"| Confident-wrong rate (wrong label, confidence ≥ {res['confident_wrong_rate']['cutoff']}) | {p(res['confident_wrong_rate'])} | {res['confident_wrong_rate']['n_confident_wrong']} / {res['confident_wrong_rate']['n_turns']} turns |"]
     for l, v in res["language_id_accuracy_by_language"].items():
         L.append(f"| Language-ID accuracy {l} | {p(v)} | {v['n_correct']} / {v['n_turns']} turns |")
     for l, v in res["wer_by_language"].items(): L.append(f"| WER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")

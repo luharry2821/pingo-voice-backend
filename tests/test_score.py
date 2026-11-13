@@ -1,9 +1,8 @@
 """Language-ID accuracy and confident-wrong rate in test_cases/score.py.
 
 These KPIs score AssemblyAI's language_code against each case's expected
-language, per final turn. The cutoffs (0.6 / 0.5) are the ones Pingo uses
-before changing the learner's own language or treating a practice turn as
-another language. Tests use small synthetic cases so they do not depend on
+language, per final turn. The 0.6 cutoff is the one Pingo uses before
+changing the learner's own language. Tests use small synthetic cases so they do not depend on
 the live Render run, plus one regression check on the committed raw outputs.
 """
 
@@ -75,17 +74,7 @@ class LanguageIdMetricsTests(unittest.TestCase):
         self.assertEqual(m["confident_wrong_rate"]["n_confident_wrong"], 1)
         self.assertEqual(m["confident_wrong_rate"]["cutoff"], 0.6)
         self.assertEqual(m["confident_wrong_rate"]["value_pct"], 50.0)
-        # Both scores are at or above the practice cutoff of 0.5.
-        self.assertEqual(m["n_wrong_at_practice_cutoff"]["n_wrong"], 2)
         self.assertEqual(score.LANG_ID_NATIVE_CUTOFF, 0.6)
-
-    def test_practice_cutoff_count_includes_the_gap_between_cutoffs(self):
-        """A wrong label at 0.5 is counted at the practice cutoff but is not confident-wrong (0.6)."""
-        m = _metrics(*_one("pm18", ["es"], "Ella son muy simpática.", "fr", 0.53))
-        self.assertEqual(m["confident_wrong_rate"]["n_confident_wrong"], 0)
-        self.assertEqual(m["n_wrong_at_practice_cutoff"]["n_wrong"], 1)
-        self.assertEqual(m["n_wrong_at_practice_cutoff"]["cutoff"], 0.5)
-        self.assertEqual(score.LANG_ID_PRACTICE_CUTOFF, 0.5)
 
     def test_each_turn_is_scored_separately(self):
         """Multi-turn cases (two-speaker or pause-filler splits) score each final turn on its own."""
@@ -110,7 +99,6 @@ class LanguageIdMetricsTests(unittest.TestCase):
         m = _metrics(cases, raw)
         self.assertEqual(m["language_id_accuracy"]["n_correct"], 0)
         self.assertEqual(m["confident_wrong_rate"]["n_confident_wrong"], 0)
-        self.assertEqual(m["n_wrong_at_practice_cutoff"]["n_wrong"], 0)
         self.assertIsNone(m["language_id_mislabeled"][0]["got"])
 
     def test_empty_turns_and_missing_raw_contribute_nothing(self):
@@ -147,7 +135,7 @@ class LanguageIdMetricsTests(unittest.TestCase):
         self.assertEqual(m["language_id_accuracy"]["value_pct"], 80.34)
         self.assertEqual(m["confident_wrong_rate"]["n_confident_wrong"], 16)
         self.assertEqual(m["confident_wrong_rate"]["value_pct"], 13.68)
-        self.assertEqual(m["n_wrong_at_practice_cutoff"]["n_wrong"], 17)
+        self.assertNotIn("n_wrong_at_practice_cutoff", m)
         self.assertEqual(len(m["language_id_mislabeled"]), 23)
         # The known confidently-wrong case: Spanish tagged Korean at 1.0.
         es01 = [x for x in m["language_id_mislabeled"] if x["id"] == "es01"]

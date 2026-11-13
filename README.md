@@ -22,7 +22,7 @@ flowchart LR
   WS --> LOG["logs/turns.jsonl"]
 ```
 
-On each finished turn (`end_of_turn`), the server grades a practice attempt if one is pending, asks the tutor model for a structured lesson, and streams TTS audio back. Partials only update the on-screen transcript. File mode (`python -m server --input clip.wav`) uses the same `Session` class, paced in real time, so evals run the live pipeline.
+On each finished turn (`end_of_turn`), the server asks the tutor model for a structured lesson (the model also decides whether the turn is an attempt at the pending phrase and grades it), and streams TTS audio back. Partials only update the on-screen transcript. File mode (`python -m server --input clip.wav`) uses the same `Session` class, paced in real time, so evals run the live pipeline.
 
 STT detects any of 32 languages; TTS and tutoring speak six: English, Spanish, French, German, Italian, and Portuguese.
 
@@ -123,11 +123,10 @@ Target codes: `en`, `es`, `fr`, `de`, `it`, `pt` (or the full name, `spanish`). 
 ## Key decisions
 
 - **One vendor, one key.** Streaming STT, the LLM Gateway, and TTS all use `ASSEMBLYAI_API_KEY` on the server. The deprecated managed Voice Agent API is not used.
-- **Finished turns only.** Language rules and grading run only on a turn with `end_of_turn` and words. Partials are displayed, not acted on.
-- **Language confidence is a hint, not a fact.** AssemblyAI's `language_confidence` is a 0–1 score, not a guaranteed probability. The 109-clip eval had a 13.68% confident-wrong rate (wrong label at ≥ 0.6; 16 / 117 turns), including a Spanish sentence labelled Korean at 1.0. Thresholds below are judgment calls, unit-tested in `tests/test_other_language.py`. They have not been measured in live use.
-  - **0.5 (`FOREIGN_ATTEMPT_CONFIDENCE`):** a practice attempt that is not already `correct`, labelled as a third language at 0.5 or above, is set aside rather than marked wrong. A correct answer is never thrown out because of a label. A missing score does not trigger this rule.
+- **Finished turns only.** Language rules and the tutor call run only on a turn with `end_of_turn` and words. Partials are displayed, not acted on.
+- **Language confidence is a hint, not a fact.** AssemblyAI's `language_confidence` is a 0–1 score, not a guaranteed probability. The 109-clip eval had a 13.68% confident-wrong rate (wrong label at ≥ 0.6; 16 / 117 turns), including a Spanish sentence labelled Korean at 1.0. The rules below are judgment calls, unit-tested in `tests/test_other_language.py`. They have not been measured in live use.
   - **0.6 plus 3 or more words (`NATIVE_MIN_WORDS`):** can change the learner's own language, and only to one of the six TTS languages, and never to the language being practised. A missing score does **not** block the change; only a numeric score below 0.6 does.
-  - **Any confidence:** if the label is neither the learner's language nor the target, `_other_language` treats the turn as a third language to translate and teach. The tutor prompt always includes the label and score, or `"unknown"` if the score is missing, and the model can overrule a bad label.
+  - **Any confidence:** if the label is neither the learner's language nor the target, `_other_language` treats the turn as a third language to translate and teach. The tutor prompt always includes the label and score, or `"unknown"` if the score is missing, and the model can overrule a bad label. While a practice phrase is pending, the hint also tells the model that a mislabelled attempt is still judged as an attempt.
 - **`language_codes` left empty.** STT stays open to all 32 languages. Narrowing the list is supported but was not adopted for the baseline.
 - **Endpointing and barge-in.** `min_turn_silence` 400 ms and `max_turn_silence` 2400 ms (raised from the balanced presets of 128 / 1280). `interruption_delay` 250 ms (preset 500). These are judgment calls, not A/B measured. Barge-in fires on `SpeechStarted`, or on a new transcript with words, while Pingo is thinking, speaking, or still playing audio (`_agent_audible`).
 - **Keyterms and agent context off.** Either can normalize away a planted mistake. Left off until an eval shows otherwise.
@@ -135,7 +134,7 @@ Target codes: `en`, `es`, `fr`, `de`, `it`, `pt` (or the full name, `spanish`). 
 - **Profanity filter on.** The tutor only sees the masked transcript.
 - **`vad_threshold` 0.2.** Documented default, not tuned.
 - **Structured tutor call, after the final turn.** `gemma-4-31b` with `response_format`, temperature 0.2, `max_tokens` 450. The server does not start the LLM on a partial, and TTS starts only after the full lesson JSON is parsed. A cancelled or unparsed reply is not spoken.
-- **Practice check is deterministic.** Before the LLM runs, `server/practice.py` compares a short try to the pending phrase (case, accents, punctuation, and silent *h* folded). Score ≥ 0.85 is `correct` (downgraded to `close` if a word's STT confidence is under 0.5), ≥ 0.6 is `close`, lower is `try_again`. The server enforces that verdict. This is separate from language confidence.
+- **The LLM grades practice attempts.** There is no rule-based matcher. The tutor model gets the pending phrase, the transcript, the language label and score, and the number of misses so far, then returns `intent` and `verdict` (`correct`, `close`, `try_again`). The server keeps that verdict. It only pins the stored phrase on an attempt (so the card shows the phrase being practised, not what the model echoed), counts misses, and reads the phrase slowly by syllables after two misses. No eval measures grading accuracy yet.
 - **Reuse TTS sessions.** The account may open only 5 TTS sessions a minute, so each connection keeps one session per voice and warms them on `start`. There is no TTS speed control; a slow read is syllables with pauses, then the whole phrase.
 
 Published rates, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026 (PT): streaming `universal-3-6-pro` is $0.45/hr of open session time, including idle; `gemma-4-31b` is $0.14 / 1M input tokens and $0.40 / 1M output tokens; TTS is $15 / 1M characters. Each turn log includes `usage` quantities; this README does not compute a cost per turn or per hour.
@@ -162,7 +161,6 @@ Error rates: lower is better, except language-ID accuracy and mistake preservati
 | Missed entity rate, entity set only | 4.17% (1/24) | 10 cases |
 | Language-ID accuracy (higher is better) | 80.34% | 94 / 117 turns |
 | Confident-wrong rate (wrong label, confidence ≥ 0.6) | 13.68% | 16 / 117 turns |
-| Wrong labels at confidence ≥ 0.5 | 17 | 17 / 117 turns |
 
 **MER** here means missed entity rate (names, places, dates, numbers, brands that do not appear after the same normalization as WER, or CER for ja/zh/ko). `RESULTS.md` also reports match error rate under the heading "MER (match error rate, jiwer.mer)"; that is a different metric.
 
@@ -176,8 +174,7 @@ The language-confidence rules above are implemented and unit-tested. The eval sc
 |---|---|
 | `server/__main__.py` | CLI: WebSocket server, or `--input` file mode |
 | `server/app.py` | FastAPI app, `GET /health`, `WS /ws` |
-| `server/session.py` | One learner session: STT events, routing, practice state, barge-in, TTS plan, log |
-| `server/practice.py` | Practice-attempt matching and slow-read text |
+| `server/session.py` | One learner session: STT events, routing, practice state, barge-in, TTS plan, slow-read text, log |
 | `server/stt.py` | SDK `RealTimeTranscriber` and the parameter rules |
 | `server/llm.py` | Playground `requests.post` to the LLM Gateway |
 | `server/tts.py` | SDK `TTSSession.speak`, one long-lived session per voice per connection |
@@ -192,9 +189,9 @@ The language-confidence rules above are implemented and unit-tested. The eval sc
 ## Limitations and next steps
 
 - TTS speaks six languages. STT understands many more, so Pingo cannot yet teach Japanese or Hindi.
-- There is no phoneme-level pronunciation score. The practice check is spelling plus STT word confidence, so a strong accent that STT still transcribes as the target is judged correct.
+- There is no phoneme-level pronunciation score. Grading is the LLM reading the transcript, so a strong accent that STT still transcribes as the target is judged correct, and grading can vary between runs.
 - TTS cannot slow down; slow reads are syllables with pauses.
-- Language-ID arrives in time for finished-turn decisions only. The 0.5 and 0.6 rules are unit-tested, not measured in live use. Next step: log how often they fire in live sessions.
+- Language-ID arrives in time for finished-turn decisions only. The 0.6 rule is unit-tested, not measured in live use. Next step: log how often it fires in live sessions.
 - `SpeechStarted` barge-in can still be delayed until STT is sure speech has started, and browser echo can false-trigger it. Headphones or a higher `vad_threshold` help.
 - The speech-end timestamp assumes STT word times start at the first audio byte this process sent. Compare `stt_final - speech_end` on a real clip before publishing latency numbers.
 - No accounts, history, auth, or rate limiting. This is a reference server.

@@ -171,7 +171,7 @@ class PinnedPracticePhraseTests(unittest.TestCase):
                     dict(intent="teach_phrase", phrase="Hola", reply="In Spanish, that's", next_prompt="Now you say it."),
                     dict(intent="practice_attempt", phrase="Hola corticosteroids", verdict="correct", reply="Correct!",
                          next_prompt="Nice! What else do you want to say?", syllables="x - y"),
-                    dict(intent="pronunciation", phrase="Holaa", reply="Say it like OH-lah.", syllables="o - l - a",
+                    dict(intent="pronunciation", phrase="¡hola!", reply="Say it like OH-lah.", syllables="o - l - a",
                          next_prompt="Now you say it."),
                     dict(intent="pronunciation", phrase="Buenas noches", reply="Say it like BWEH-nahs NOH-chehs.",
                          syllables="bue - nas - no - ches", next_prompt="Now you say it."),

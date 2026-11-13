@@ -274,11 +274,6 @@
   "n_turns": 117,
   "cutoff": 0.6
  },
- "n_wrong_at_practice_cutoff": {
-  "n_wrong": 17,
-  "n_turns": 117,
-  "cutoff": 0.5
- },
  "language_id_accuracy_by_language": {
   "en": {
    "value_pct": 87.1,

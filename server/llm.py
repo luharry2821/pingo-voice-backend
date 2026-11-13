@@ -226,8 +226,7 @@ class GatewayLLM:
         history=None,
         native_name="english",
         practice_target="",
-        practice_check=None,
-        new_phrase=False,
+        misses=0,
         auto_target=False,
         previous_target="",
         other_language="",
@@ -237,7 +236,7 @@ class GatewayLLM:
 
         Inputs: the learner transcript, STT's detected language and its confidence,
         the target and native language names, recent chat history, and routing hints
-        from the session (practice phrase and check, new_phrase, other_language,
+        from the session (practice phrase, misses on it, other_language,
         auto-target fields). The blocking HTTP call runs in a worker thread, wrapped
         in an overall timeout (timeout_s + 1 s). Raises LLMError on timeout.
         """
@@ -254,8 +253,7 @@ class GatewayLLM:
                     list(history or []),
                     native_name,
                     practice_target,
-                    practice_check,
-                    new_phrase,
+                    misses,
                     auto_target,
                     previous_target,
                     other_language,
@@ -275,8 +273,7 @@ class GatewayLLM:
         history,
         native_name="english",
         practice_target="",
-        practice_check=None,
-        new_phrase=False,
+        misses=0,
         auto_target=False,
         previous_target="",
         other_language="",
@@ -300,8 +297,7 @@ class GatewayLLM:
             target_name,
             native_name,
             practice_target,
-            practice_check,
-            new_phrase,
+            misses,
             auto_target=auto_target,
             previous_target=previous_target,
             other_language=other_language,
@@ -404,8 +400,7 @@ def build_user_text(
     target_name,
     native_name="english",
     practice_target="",
-    practice_check=None,
-    new_phrase=False,
+    misses=0,
     auto_target=False,
     previous_target="",
     other_language="",
@@ -415,8 +410,9 @@ def build_user_text(
 
     The context lines tell the model the target and native languages, what STT
     detected, the current practice phrase and, depending on routing, one extra
-    instruction: trust the automatic practice check, or teach this new native
-    phrase, or treat it as speech in another language. The transcript is passed
+    instruction: how many times the learner has missed the practice phrase, or
+    treat this turn as speech in another language. The model itself decides
+    whether the turn is an attempt and grades it. The transcript is passed
     verbatim so the model can spot (and not silently fix) learner mistakes.
     """
     confidence = "unknown" if language_confidence is None else language_confidence
@@ -430,41 +426,16 @@ def build_user_text(
         f"Detected language of this turn: {source_language or 'unknown'} (confidence {confidence}).",
         f"Current practice phrase: {practice_target or '(none yet)'}.",
     ]
-    # Routing hint 1: a deterministic practice check matched this turn to the pending
-    # phrase. The model is told to trust its verdict.
-    if practice_check:
-        low = ", ".join(
-            f"{w['text']} ({w['confidence']})" for w in practice_check.get("low_confidence_words") or []
-        ) or "none"
+    # After earlier misses on the practice phrase, tell the model a slow syllable read
+    # follows a wrong attempt, so its reply can lead into it.
+    if practice_target and misses:
         lines.append(
-            "Practice check (automatic, trust it): this turn sounds like an attempt at "
-            f"\"{practice_check['target']}\". Match score {practice_check['score']}, "
-            f"verdict {practice_check['verdict']} ({practice_check['reason']}). "
-            f"Low-confidence words: {low}. Use intent practice_attempt and this verdict "
-            "unless the learner is clearly asking a question, or is clearly saying a sentence in another "
-            f"language (not {target_name or 'the target language'}) instead of trying the phrase: then use "
-            "intent teach_phrase and teach what it means."
+            f"Misses on the practice phrase so far: {misses}. If this turn is an attempt and not correct, "
+            "the syllables are read slowly after your reply, so lead into that."
         )
-        # After earlier misses, tell the model a slow syllable read follows so its reply
-        # can lead into it.
-        misses = practice_check.get("misses_before")
-        if misses:
-            lines.append(
-                f"Misses on this phrase before this turn: {misses}. If this one is not correct either, "
-                "the syllables are read slowly after your reply, so lead into that."
-            )
-    # Routing hint 2: a new phrase in the learner's own language, to be taught, not
-    # judged.
-    elif new_phrase:
-        lines.append(
-            f"Routing (automatic): this turn is an everyday {native_name or 'english'} phrase, not an attempt "
-            "at the practice phrase. Use intent teach_phrase and teach its natural "
-            f"{target_name or 'target language'} equivalent, unless it is a question about pronunciation or "
-            "repeating the current phrase, or meta talk about the lesson."
-        )
-    # Routing hint 3: clear speech in some third language; teach its meaning instead of
+    # Routing hint: clear speech in some third language; teach its meaning instead of
     # saying "I didn't catch that".
-    elif other_language:
+    if other_language:
         native = native_name or "english"
         if auto_target:
             target = "the language they ask for (else the previous target language)"
@@ -472,8 +443,16 @@ def build_user_text(
                 target = "the language they ask for"
         else:
             target = target_name or "target language"
+        # With a phrase pending, a mislabelled attempt ("Hola" tagged "pt") must still be
+        # judged as an attempt, so the model gets the final say.
+        attempt_note = (
+            "If it is really an attempt at the current practice phrase (the language code is often wrong "
+            "on short attempts), judge it as a practice_attempt instead. Otherwise: "
+            if practice_target else ""
+        )
         lines.append(
             f"Routing (automatic): this turn is clear speech in another language, not {native}. "
+            + attempt_note +
             "The detected language code can be wrong; trust the transcript. Do not ask them to repeat it. "
             f"Understand it as if they had said it in {native}: if it asks how to say something, teach that; "
             f"otherwise teach what a native speaker would naturally say in {target} for its meaning "

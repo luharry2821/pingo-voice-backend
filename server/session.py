@@ -24,8 +24,8 @@ Key ideas you will meet below:
 * playback_until: TTS arrives faster than real time, so the server is done
   sending long before the browser is done playing. This wall-clock estimate of
   when playback ends lets a learner still interrupt ("barge in") the tail.
-* practice loop: after Pingo teaches a phrase, the next learner turn is
-  checked against it (server/practice.py) and judged correct / close / try
+* practice loop: after Pingo teaches a phrase, the LLM decides whether the
+  next learner turn is an attempt at it and judges it correct / close / try
   again; after two misses the phrase is read slowly, syllable by syllable.
 * auto-target mode: the learner does not pick a language up front; the LLM
   says which language each turn asks for and this file checks the answer.
@@ -33,7 +33,9 @@ Key ideas you will meet below:
 
 import asyncio
 import logging
+import re
 import time
+import unicodedata
 import uuid
 
 from server.audio import TARGET_RATE
@@ -47,15 +49,6 @@ from server.config import (
 )
 from server.log import write_turn
 from server.llm import error_strings
-from server.practice import (
-    CLOSE_AT,
-    check_attempt,
-    is_native_phrase,
-    is_other_script,
-    looks_like_attempt,
-    match_score,
-    slow_text,
-)
 from server.stt import UPDATABLE, StreamingSTT, stt_query_params, update_configuration_message
 from server.tts import TTSError, audio_ms
 
@@ -75,9 +68,6 @@ GAP_MS = 250
 REPLAY_MODES = ("phrase", "slow", "all")
 # A learner turn this long or longer, outside practice, sets the learner's own language.
 NATIVE_MIN_WORDS = 3
-# A near-miss "attempt" STT tags this confidently as another language is
-# that language (French, Italian...), not a try at the practice phrase.
-FOREIGN_ATTEMPT_CONFIDENCE = 0.5
 # What a `start` may send as target_language in auto-target mode.
 AUTO_TARGET_VALUES = (None, "", "auto")
 
@@ -646,12 +636,12 @@ class Session:
         )
 
     async def _respond(self, turn, view, partials, partial_first, generation, audio_mark, received_ms, turn_id):
-        """Answer one final learner turn: practice check, LLM tutor, TTS, log line.
+        """Answer one final learner turn: LLM tutor, TTS, log line.
 
-        Steps: decide whether the turn is an attempt at the pending practice phrase,
-        a new phrase in the learner's own language, or a phrase in some other
-        language; ask the LLM for a lesson; correct the lesson with the practice
-        check; send a `lesson` and an `agent_text` message; speak the plan; update
+        Steps: note the learner's own language, flag a turn in some other
+        language; ask the LLM for a lesson (it decides whether the turn is an
+        attempt at the practice phrase and grades it); move the practice phrase;
+        send a `lesson` and an `agent_text` message; speak the plan; update
         history and STT agent context. Runs as a cancellable task: if the generation
         changes (barge-in, newer turn) it stops and the log line says barge_in.
         The log record is always handed to _hold() in the finally block.
@@ -663,31 +653,12 @@ class Session:
                 return
             await self._status("thinking")
             transcript = view["transcript"]
-            check = None
-            new_phrase = False
-            other_language = ""
-            # Routing: is this an attempt at the pending practice phrase?
-            # looks_like_attempt is a cheap text-similarity test (server/practice.py).
-            if self.practice_target and looks_like_attempt(
-                transcript, self.practice_target, self.target, self.native_language
-            ):
-                check = check_attempt(transcript, self.practice_target, self.target, view["words"])
-                check["misses_before"] = self.misses
-                if check["verdict"] != "correct" and self._spoken_elsewhere(turn):
-                    # "Je voudrais une tasse de café" after "Quisiera una taza de
-                    # café": spelled close, but it is French, not a try at the phrase.
-                    logger.info("not an attempt: STT says %s", turn.get("language_code"))
-                    check = None
-            # Not a practice attempt: maybe learn the learner's own language from it,
-            # and detect whether it is a new phrase to teach or a phrase in a third
-            # language.
-            if check is None:
-                self._note_native(turn, transcript)
-                # A pending practice phrase does not swallow a new phrase in the
-                # learner's own language ("Good morning" while "Hola" is pending).
-                new_phrase = is_native_phrase(transcript, self.practice_target, self.native_language)
-                if not new_phrase:
-                    other_language = self._other_language(turn, transcript)
+            # Learn the learner's own language from longer, confidently detected turns.
+            self._note_native(turn, transcript)
+            # Flag speech in some third language. With a practice phrase pending, the
+            # prompt tells the model the label can be wrong and an attempt is still
+            # judged as one.
+            other_language = self._other_language(turn, transcript)
             native = self._native_name()
             # Auto-target mode tells the LLM to also return which language the learner
             # wants, plus what it was last turn.
@@ -700,8 +671,7 @@ class Session:
                 history=list(self.history),
                 native_name=native,
                 practice_target=self.practice_target,
-                practice_check=check,
-                new_phrase=new_phrase,
+                misses=self.misses,
                 other_language=other_language,
                 **extra,
             )
@@ -710,11 +680,10 @@ class Session:
             # Auto-target: check the model's language choice (may reset the practice
             # phrase or turn the reply into a canned question).
             if self.auto_target and not lesson.unparsed:
-                check = self._apply_auto_target(lesson, check, record)
-            # Let the deterministic practice check overrule the model's verdict and move
-            # the practice phrase forward.
+                self._apply_auto_target(lesson, record)
+            # Keep the model's verdict and move the practice phrase forward.
             if not lesson.unparsed:
-                self._apply_practice(lesson, check, new_phrase)
+                self._apply_practice(lesson)
             record["llm"] = {
                 "model": lesson.model,
                 "intent": getattr(lesson, "intent", None),
@@ -730,15 +699,8 @@ class Session:
                 "retried": bool(getattr(lesson, "retried", False)),
                 "salvaged": bool(getattr(lesson, "salvaged", False)),
             }
-            # Routing label in the log: how this turn was classified before the LLM
-            # call.
-            record["practice"] = check
-            record["routing"] = (
-                "practice_attempt" if check
-                else "new_phrase" if new_phrase
-                else "other_language" if other_language
-                else "model"
-            )
+            # Routing label in the log: how this turn was flagged before the LLM call.
+            record["routing"] = "other_language" if other_language else "model"
             record["usage"]["llm_input_tokens"] = lesson.tokens_in
             record["usage"]["llm_output_tokens"] = lesson.tokens_out
             # The model's reply was not valid JSON: log the start of the raw text, tell
@@ -788,7 +750,6 @@ class Session:
                 "verdict_reason": getattr(lesson, "verdict_reason", ""),
                 "next_prompt": getattr(lesson, "next_prompt", ""),
                 "detected_errors": lesson.detected_errors,
-                "practice": check,
                 "practice_target": self.practice_target,
             }
             if self.auto_target:
@@ -939,20 +900,12 @@ class Session:
             return ""
         return code
 
-    def _spoken_elsewhere(self, turn):
-        """STT is fairly sure this turn is not the target or the learner's language."""
-        code = turn.get("language_code")
-        confidence = turn.get("language_confidence")
-        if not code or code in (self.target, self.native_language):
-            return False
-        return isinstance(confidence, (int, float)) and confidence >= FOREIGN_ATTEMPT_CONFIDENCE
-
-    def _apply_auto_target(self, lesson, check, record):
+    def _apply_auto_target(self, lesson, record):
         """Auto-target mode: take this turn's target from the model, checked.
 
         A new target resets the practice phrase like set_target does. With no
         target yet, or one TTS cannot speak, the turn becomes a chat that says
-        which languages Pingo teaches. Returns the practice check still valid.
+        which languages Pingo teaches.
         """
         previous = self.target
         target, unsupported = resolve_auto_target(getattr(lesson, "target_language", ""), previous)
@@ -967,8 +920,6 @@ class Session:
             logger.info("auto target: %s -> %s", previous, target)
             if previous is not None:
                 self._forget()
-            # The check was against the old language's phrase.
-            check = None
             self.target = target
             self.settings["target_language"] = target
         # No usable target yet (or an unspeakable one): replace the lesson with a canned
@@ -985,46 +936,23 @@ class Session:
             lesson.verdict_reason = ""
             lesson.next_prompt = ""
             lesson.detected_errors = []
-            return None
-        return check
 
-    def _apply_practice(self, lesson, check, new_phrase=False):
-        """Ground the verdict in the practice check and move the practice phrase."""
+    def _apply_practice(self, lesson):
+        """Keep the model's verdict and move the practice phrase.
+
+        The LLM decides whether the turn is an attempt and grades it; nothing
+        here overrides that. This only pins the stored phrase, starts a new
+        practice phrase when one is taught, and counts misses.
+        """
         intent = getattr(lesson, "intent", None)
-        if check is None and new_phrase and intent in ("practice_attempt", "chat") and lesson.translation:
-            # A new phrase in the learner's own language is taught, never judged
-            # or answered as small talk.
-            logger.info("new %s phrase: %s -> teach_phrase", self._native_name(), intent)
-            lesson.intent = intent = "teach_phrase"
-            lesson.verdict = "none"
-            lesson.verdict_reason = ""
-        # A pronunciation breakdown after a miss is still a judged attempt: the
-        # verdict badge stays, and the slow read comes from the miss count.
-        if check is not None and intent != "teach_phrase":
-            if intent != "practice_attempt" or lesson.verdict != check["verdict"]:
-                logger.info(
-                    "practice check overrides the model: %s/%s -> practice_attempt/%s",
-                    intent,
-                    getattr(lesson, "verdict", None),
-                    check["verdict"],
-                )
-                # The model judged differently from the check: for English learners swap
-                # in the canned verdict line so the spoken reply matches the badge.
-                if lesson.verdict not in ("none", check["verdict"]) and self.native_language == "en":
-                    lesson.reply = CANNED_VERDICT[check["verdict"]]
-                    lesson.verdict_reason = check["reason"]
-            lesson.intent = "practice_attempt"
-            lesson.verdict = check["verdict"]
-            if not lesson.verdict_reason:
-                lesson.verdict_reason = check["reason"]
-            if not lesson.reply:
-                lesson.reply = CANNED_VERDICT[check["verdict"]]
-            if not lesson.translation:
-                lesson.translation = check["target"]
-            # A correct attempt has no errors to show, whatever the model said.
-            if check["verdict"] == "correct":
+        if intent == "practice_attempt":
+            # Fallback spoken line when the model gave a verdict but no reply.
+            if not lesson.reply and lesson.verdict in CANNED_VERDICT:
+                lesson.reply = CANNED_VERDICT[lesson.verdict]
+            # A correct attempt has no errors to show.
+            if lesson.verdict == "correct":
                 lesson.detected_errors = []
-        self._pin_practice_phrase(lesson, check)
+        self._pin_practice_phrase(lesson)
         # Teaching a new phrase (or nothing pending yet): it becomes the phrase to
         # practise, with its respelling and syllables. A different phrase resets the
         # miss count.
@@ -1041,24 +969,20 @@ class Session:
         if lesson.intent == "practice_attempt":
             self.misses = 0 if lesson.verdict == "correct" else self.misses + 1
 
-    def _pin_practice_phrase(self, lesson, check):
+    def _pin_practice_phrase(self, lesson):
         """Attempts and breakdowns are about the stored phrase, not what the model echoes.
 
         Seen live: a correct attempt at "Hola" came back with target_phrase
-        "Hola. corticosteroids". A judged attempt always uses the stored phrase.
-        A model-labelled attempt or a pronunciation turn uses it when the model's
-        phrase is empty or close to it; a clearly different phrase is a new one.
+        "Hola. corticosteroids". An attempt or a pronunciation turn uses the
+        stored phrase when the model's phrase is empty, the same, or contains it
+        (or the other way round). A clearly different phrase is a new one.
         """
         if not self.practice_target or lesson.intent not in ("practice_attempt", "pronunciation"):
             return
         phrase = lesson.translation or ""
-        # Treat the model's phrase as the stored phrase when this is a judged attempt,
-        # when it is empty, or when it is close enough (match_score >= CLOSE_AT).
-        same = (
-            (lesson.intent == "practice_attempt" and check is not None)
-            or not phrase
-            or match_score(phrase, self.practice_target, self.target) >= CLOSE_AT
-        )
+        model_words = f" {fold(phrase)} "
+        stored_words = f" {fold(self.practice_target)} "
+        same = not phrase.strip() or stored_words in model_words or model_words in stored_words
         if not same:
             return
         if phrase != self.practice_target:
@@ -1341,13 +1265,58 @@ class Session:
 # After this many misses on the same practice phrase, read it slowly by syllables.
 MISSES_BEFORE_SLOW = 2
 
-# Fallback spoken replies for a practice verdict when the model's reply is missing or
-# contradicts the check.
+# Fallback spoken replies for a practice verdict when the model's reply is missing.
 CANNED_VERDICT = {
     "correct": "Correct! That sounded right.",
     "close": "Close! Almost there.",
     "try_again": "Not quite. Listen once more.",
 }
+
+
+def is_other_script(utterance):
+    """True when most letters are not Latin (Devanagari, kana, kanji, Cyrillic...).
+
+    Every language Pingo teaches or explains in (en, es, fr, de, it, pt) is
+    written in Latin script, so such a turn is the learner speaking another
+    language. STT's language_code is not enough on its own (seen live:
+    Japanese tagged "hi", Chinese "ja").
+    """
+    letters = [ch for ch in utterance or "" if ch.isalpha()]
+    if not letters:
+        return False
+    other = sum(1 for ch in letters if not unicodedata.name(ch, "").startswith("LATIN"))
+    # More than half the letters are non-Latin.
+    return other * 2 > len(letters)
+
+
+def fold(text):
+    """Lowercase, strip accents and punctuation, collapse spaces."""
+    # NFKD splits "é" into "e" + accent; dropping the combining marks removes accents.
+    text = unicodedata.normalize("NFKD", text or "")
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.lower().replace("ß", "ss")
+    # Punctuation becomes spaces; apostrophes are removed so "dov'è" and "dove" match.
+    text = re.sub(r"[^\w\s']", " ", text)
+    text = text.replace("'", "")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def slow_text(target_phrase, syllables):
+    """Text for a slow read: syllables with pauses.
+
+    TTS has no speed control (the HTTP API only accepts speed=1 and the SDK's
+    TTSConfig has no speed field), so slowness comes from splitting the phrase
+    into syllables with ellipses between them.
+    """
+    # Split syllables written as "ho - la", "ho·la", "ho|la"; with no usable syllables
+    # fall back to the words; a single word with no syllables has no slow read.
+    parts = [p.strip() for p in re.split(r"\s*[-·•|]\s*", syllables or "") if p.strip()]
+    if len(parts) < 2:
+        words = (target_phrase or "").split()
+        if len(words) < 2:
+            return ""
+        parts = words
+    return "... ".join(parts) + "."
 
 
 def speech_plans(lesson, native_name, target_name_, slow_read=False):
