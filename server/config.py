@@ -403,8 +403,6 @@ def _coerce(settings):
         if isinstance(value, str):
             value = _parse_list(value)
         stt[key] = [str(item) for item in value]
-    # Does not exist on universal-3-6-pro. Drop it if a config file still has it.
-    stt.pop("end_of_turn_confidence_threshold", None)
     stt["language_detection"] = bool(stt.get("language_detection", True))
     stt["agent_context_enabled"] = bool(stt.get("agent_context_enabled", False))
     stt["filter_profanity"] = _as_bool(stt.get("filter_profanity", True))

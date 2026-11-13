@@ -39,7 +39,6 @@ class ConfigTests(unittest.TestCase):
         self.assertIs(params["language_detection"], True)
         self.assertNotIn("keyterms_prompt", params)
         self.assertNotIn("language_codes", params)
-        self.assertNotIn("end_of_turn_confidence_threshold", params)
         self.assertNotIn("llm_gateway", params)
         self.assertEqual(settings["llm"]["model"], "gemma-4-31b")
         self.assertEqual(settings["llm"]["max_tokens"], 450)
@@ -76,7 +75,6 @@ class ConfigTests(unittest.TestCase):
         )
         self.assertEqual(settings["stt"]["max_turn_silence"], 1800)
         self.assertEqual(settings["llm"]["temperature"], 0.0)
-        self.assertNotIn("end_of_turn_confidence_threshold", settings["stt"])
 
     def test_update_configuration_forwards_supported_fields(self):
         """UpdateConfiguration carries live-updatable fields but drops mode (set_params has no mode).
@@ -91,7 +89,6 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(message["min_turn_silence"], 400)
         # RealTimeSessionParameters has no mode field, so set_params cannot send it.
         self.assertNotIn("mode", message)
-        self.assertNotIn("end_of_turn_confidence_threshold", message)
 
     def test_local_bind_stays_on_localhost_until_port_is_set(self):
         """Bind address defaults to 127.0.0.1:8000; PORT env and --host/--port override it in order.
@@ -287,7 +284,6 @@ class _FakeSTT:
                     "type": "Turn",
                     "turn_order": 0,
                     "end_of_turn": True,
-                    "end_of_turn_confidence": 0.84,
                     "transcript": "How do I say where is the station?",
                     "language_code": "en",
                     "language_confidence": 0.93,
@@ -404,7 +400,6 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(row["stt"]["words"][1]["text"], "station?")
         self.assertAlmostEqual(row["stt"]["words"][1]["confidence"], 0.72)
         self.assertEqual(row["stt"]["language_code"], "en")
-        self.assertEqual(row["stt"]["end_of_turn_confidence"], 0.84)
         self.assertEqual(row["llm"]["detected_errors"], [])
         self.assertEqual(row["llm"]["translation"], "¿Dónde está la estación?")
         self.assertIn("speech_end", row["timings_ms"])
@@ -620,7 +615,6 @@ class MemoryTests(unittest.TestCase):
                     "transcript": "hello",
                     "language_code": "en",
                     "language_confidence": 0.9,
-                    "end_of_turn_confidence": 1,
                     "words": [{"text": "hello", "start": 0, "end": 10, "confidence": 0.9, "word_is_final": True}],
                 }
             )

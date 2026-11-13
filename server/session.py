@@ -801,7 +801,6 @@ class Session:
                 "words": view["words"],
                 "language_code": turn.get("language_code"),
                 "language_confidence": turn.get("language_confidence"),
-                "end_of_turn_confidence": turn.get("end_of_turn_confidence"),
             },
             "stt_partial_first": partial_first,
             "stt_partials": partials,

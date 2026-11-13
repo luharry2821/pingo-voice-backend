@@ -16,8 +16,7 @@ handed back to the asyncio session with run_coroutine_threadsafe.
 
 `mode` is a connect parameter. The SDK's set_params model (RealTimeSessionParameters)
 has no `mode` field, so a mid-session mode change is kept for the next start.
-`end_of_turn_confidence_threshold` and the streaming `llm_gateway` parameter
-are never sent.
+The streaming `llm_gateway` parameter is never sent.
 """
 
 import asyncio
@@ -49,7 +48,6 @@ UPDATABLE = (
 
 # What set_params can actually carry. `mode` is not one of them.
 SESSION_FIELDS = set(RealTimeSessionParameters.model_fields) - {
-    "end_of_turn_confidence_threshold",
     "min_end_of_turn_silence_when_confident",
 }
 

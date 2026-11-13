@@ -110,8 +110,6 @@ An empty client `prompt` does not clear the server prompt (the Lovable client se
 
 Environment overrides (all optional): `PINGO_STT_MODE`, `PINGO_STT_PROMPT`, `PINGO_STT_LANGUAGE_CODES`, `PINGO_STT_KEYTERMS_PROMPT` (JSON or comma-separated), `PINGO_STT_AGENT_CONTEXT`, `PINGO_STT_AGENT_CONTEXT_ENABLED`, `PINGO_STT_MIN_TURN_SILENCE`, `PINGO_STT_MAX_TURN_SILENCE`, `PINGO_STT_INTERRUPTION_DELAY`, `PINGO_STT_VAD_THRESHOLD`, `PINGO_STT_VOICE_FOCUS`, `PINGO_STT_VOICE_FOCUS_THRESHOLD`, `PINGO_STT_FILTER_PROFANITY`, `PINGO_LLM_MODEL`, `PINGO_LLM_TEMPERATURE`, `PINGO_LLM_MAX_TOKENS`, `PINGO_LLM_TIMEOUT`, `PINGO_LLM_SYSTEM_PROMPT`, `PINGO_TTS_SAMPLE_RATE`, `PINGO_TTS_TIMEOUT`, `PINGO_TTS_VOICE_SPANISH` (or `_ES`, and the same for the other five), `PINGO_LOG_PATH`, `PINGO_HOST`, `PINGO_PORT`, `PINGO_TARGET_LANGUAGE`, `PINGO_CONFIG`.
 
-`end_of_turn_confidence_threshold` is not a `universal-3-6-pro` parameter and is never sent.
-
 ### Protocol (short)
 
 Client → server: `{"type":"start","target_language":"es"}` (optional `native_language`, `case_id`, `session_id`, `config`; or `auto_target: true` / `target_language: "auto"`), binary 16 kHz PCM16 frames (~50 ms), `update_config`, `set_target`, `replay` (`phrase` / `slow` / `all`), `stop`.

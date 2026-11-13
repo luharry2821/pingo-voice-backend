@@ -212,7 +212,7 @@ class _ScriptedSTT:
         self.index += 1
         await self.on_event({
             "type": "Turn", "turn_order": self.index - 1, "end_of_turn": True, "transcript": text,
-            "language_code": lang, "language_confidence": 0.8, "end_of_turn_confidence": 1,
+            "language_code": lang, "language_confidence": 0.8,
             "words": [{"text": w, "start": 0, "end": 10, "confidence": conf, "word_is_final": True} for w in text.split()],
         })
 
