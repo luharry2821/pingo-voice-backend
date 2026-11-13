@@ -27,8 +27,6 @@ Key ideas you will meet below:
 * practice loop: after Pingo teaches a phrase, the LLM decides whether the
   next learner turn is an attempt at it and judges it correct / close / try
   again; after two misses the phrase is read slowly, syllable by syllable.
-* auto-target mode: the learner does not pick a language up front; the LLM
-  says which language each turn asks for and this file checks the answer.
 """
 
 import asyncio
@@ -68,58 +66,6 @@ GAP_MS = 250
 REPLAY_MODES = ("phrase", "slow", "all")
 # A learner turn this long or longer, outside practice, sets the learner's own language.
 NATIVE_MIN_WORDS = 3
-# What a `start` may send as target_language in auto-target mode.
-AUTO_TARGET_VALUES = (None, "", "auto")
-
-# Auto-target mode: said in the learner's language when Pingo cannot tell which
-# language they want, or when they ask for one TTS cannot speak.
-ASK_TARGET = {
-    "en": "Which language would you like to learn that in? I can teach English, Spanish, French, German, Italian or Portuguese.",
-    "es": "¿En qué idioma te gustaría aprenderlo? Puedo enseñarte inglés, español, francés, alemán, italiano o portugués.",
-    "fr": "Dans quelle langue veux-tu l'apprendre ? Je peux t'apprendre l'anglais, l'espagnol, le français, l'allemand, l'italien ou le portugais.",
-    "de": "In welcher Sprache möchtest du das lernen? Ich kann dir Englisch, Spanisch, Französisch, Deutsch, Italienisch oder Portugiesisch beibringen.",
-    "it": "In quale lingua vuoi impararlo? Posso insegnarti inglese, spagnolo, francese, tedesco, italiano o portoghese.",
-    "pt": "Em que idioma você quer aprender isso? Posso ensinar inglês, espanhol, francês, alemão, italiano ou português.",
-}
-UNSUPPORTED_TARGET = {
-    "en": "Sorry, I can't teach that language yet. I can teach English, Spanish, French, German, Italian or Portuguese.",
-    "es": "Lo siento, todavía no puedo enseñar ese idioma. Puedo enseñarte inglés, español, francés, alemán, italiano o portugués.",
-    "fr": "Désolé, je ne peux pas encore enseigner cette langue. Je peux t'apprendre l'anglais, l'espagnol, le français, l'allemand, l'italien ou le portugais.",
-    "de": "Diese Sprache kann ich leider noch nicht unterrichten. Ich kann dir Englisch, Spanisch, Französisch, Deutsch, Italienisch oder Portugiesisch beibringen.",
-    "it": "Mi dispiace, non posso ancora insegnare quella lingua. Posso insegnarti inglese, spagnolo, francese, tedesco, italiano o portoghese.",
-    "pt": "Desculpe, ainda não posso ensinar esse idioma. Posso ensinar inglês, espanhol, francês, alemão, italiano ou português.",
-}
-# Names the model may return instead of a code for a language TTS cannot speak.
-OTHER_LANGUAGE_NAMES = {
-    "japanese", "chinese", "mandarin", "cantonese", "korean", "hindi", "arabic", "russian",
-    "turkish", "dutch", "swedish", "norwegian", "danish", "finnish", "hebrew", "persian",
-    "farsi", "urdu", "marathi", "vietnamese", "romanian", "catalan", "galician", "estonian",
-    "afrikaans", "xhosa", "zulu", "polish", "greek", "thai", "indonesian", "ukrainian",
-}
-
-
-def resolve_auto_target(value, previous):
-    """The model's target_language for this turn, checked.
-
-    Returns (target code or None, unsupported). One of the six codes or names
-    wins. Empty, missing or junk keeps the previous target. A real language TTS
-    cannot speak (e.g. "ja") keeps the previous target and is flagged.
-    """
-    text = str(value or "").strip().lower()
-    if not text:
-        return previous, False
-    try:
-        return normalize_target(text), False
-    except ValueError:
-        pass
-    # Not one of the six teachable languages, but it looks like a real language (a known
-    # STT code, a known name, or a 2-3 letter code): keep the old target and flag it as
-    # unsupported so the learner hears why.
-    if text in STT_LANGUAGES or text in OTHER_LANGUAGE_NAMES or (text.isalpha() and len(text) in (2, 3)):
-        return previous, True
-    return previous, False
-
-
 def now_ms():
     """Current wall-clock time in integer milliseconds (used for timings and playback_until)."""
     return int(time.time() * 1000)
@@ -189,8 +135,6 @@ class Session:
         self.voices = tts.pool() if hasattr(tts, "pool") else tts
         self.log_path = settings["log"]["path"] if log_path is None else log_path
         self.target = settings.get("target_language")
-        # Auto-target mode: no language picked up front; each turn says which one.
-        self.auto_target = False
         # STT connection and what we asked it for / what it confirmed in Begin.
         self.stt = None
         self.stt_query = {}
@@ -341,7 +285,7 @@ class Session:
         # A second `start` on the same socket: tear down the old stream first.
         """Handle a `start` message: validate it, open streaming STT, start listening.
 
-        Reads target_language (or auto-target mode), optional case_id/session_id,
+        Reads target_language, optional case_id/session_id,
         the learner's native_language and per-session config overrides. Any bad
         value is reported to the browser as an error and the session stays idle.
         On success the session status becomes "listening" and the TTS voices are
@@ -350,15 +294,10 @@ class Session:
         if self.stt is not None or self.state != "idle":
             await self._replace_upstream()
         self.closed = False
-        self.auto_target = bool(message.get("auto_target"))
-        raw_target = message.get("target_language")
         try:
-            # Auto-target mode with no language given (None, '' or 'auto').
-            if self.auto_target and (raw_target is None or str(raw_target).strip().lower() in AUTO_TARGET_VALUES):
-                # The learner names the language when they speak.
-                self.target = None
-            else:
-                self.target = normalize_target(raw_target or self.base_settings.get("target_language"))
+            self.target = normalize_target(
+                message.get("target_language") or self.base_settings.get("target_language")
+            )
         except ValueError as exc:
             await self._error(str(exc))
             return
@@ -660,27 +599,19 @@ class Session:
             # judged as one.
             other_language = self._other_language(turn, transcript)
             native = self._native_name()
-            # Auto-target mode tells the LLM to also return which language the learner
-            # wants, plus what it was last turn.
-            extra = {"auto_target": True, "previous_target": self.target or ""} if self.auto_target else {}
             lesson = await self.llm.complete(
                 transcript=transcript,
                 source_language=turn.get("language_code"),
                 language_confidence=turn.get("language_confidence"),
-                target_name=target_name(self.target) if self.target else "",
+                target_name=target_name(self.target),
                 history=list(self.history),
                 native_name=native,
                 practice_target=self.practice_target,
                 misses=self.misses,
                 other_language=other_language,
-                **extra,
             )
             record["timings_ms"]["llm_first_token"] = _ms(lesson.first_token_at)
             record["timings_ms"]["llm_done"] = _ms(lesson.done_at)
-            # Auto-target: check the model's language choice (may reset the practice
-            # phrase or turn the reply into a canned question).
-            if self.auto_target and not lesson.unparsed:
-                self._apply_auto_target(lesson, record)
             # Keep the model's verdict and move the practice phrase forward.
             if not lesson.unparsed:
                 self._apply_practice(lesson)
@@ -720,7 +651,7 @@ class Session:
             plans = speech_plans(
                 lesson,
                 native,
-                target_name(self.target) if self.target else native,
+                target_name(self.target),
                 slow_read=self.misses >= MISSES_BEFORE_SLOW,
             )
             # Store the plans so the play buttons (replay) can speak them again without
@@ -752,8 +683,6 @@ class Session:
                 "detected_errors": lesson.detected_errors,
                 "practice_target": self.practice_target,
             }
-            if self.auto_target:
-                message["auto_target"] = True
             await self._emit(message)
             # agent_text: the full text the tutor is about to say, for captions.
             spoken = " ".join(text for text, _lang, _kind in plans["all"])
@@ -855,8 +784,7 @@ class Session:
         warm = getattr(self.voices, "warm", None)
         if warm is None:
             return
-        names = [self._native_name()] + ([target_name(self.target)] if self.target else [])
-        task = asyncio.create_task(warm(names))
+        task = asyncio.create_task(warm([self._native_name(), target_name(self.target)]))
         self.background.add(task)
         task.add_done_callback(self.background.discard)
 
@@ -898,43 +826,6 @@ class Session:
         if not code or code in (self.target, self.native_language):
             return ""
         return code
-
-    def _apply_auto_target(self, lesson, record):
-        """Auto-target mode: take this turn's target from the model, checked.
-
-        A new target resets the practice phrase like set_target does. With no
-        target yet, or one TTS cannot speak, the turn becomes a chat that says
-        which languages Pingo teaches.
-        """
-        previous = self.target
-        target, unsupported = resolve_auto_target(getattr(lesson, "target_language", ""), previous)
-        record["auto_target"] = {
-            "model": getattr(lesson, "target_language", ""),
-            "previous": previous,
-            "resolved": target,
-            "unsupported": unsupported,
-        }
-        # The model chose a different target language this turn.
-        if target != previous:
-            logger.info("auto target: %s -> %s", previous, target)
-            if previous is not None:
-                self._forget()
-            self.target = target
-            self.settings["target_language"] = target
-        # No usable target yet (or an unspeakable one): replace the lesson with a canned
-        # chat reply in the learner's language.
-        if unsupported or self.target is None:
-            canned = UNSUPPORTED_TARGET if unsupported else ASK_TARGET
-            lesson.intent = "chat"
-            lesson.reply = canned.get(self.native_language, canned["en"])
-            lesson.translation = ""
-            lesson.pronunciation = ""
-            lesson.syllables = ""
-            lesson.tip = ""
-            lesson.verdict = "none"
-            lesson.verdict_reason = ""
-            lesson.next_prompt = ""
-            lesson.detected_errors = []
 
     def _apply_practice(self, lesson):
         """Keep the model's verdict and move the practice phrase.

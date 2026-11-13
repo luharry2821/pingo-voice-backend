@@ -33,8 +33,6 @@ TURN_KEYS = (
     "timings_ms",
     "usage",
     "tts_audio_ms",
-    # Auto-target mode only: what the model said, the previous and the resolved target.
-    "auto_target",
 )
 
 

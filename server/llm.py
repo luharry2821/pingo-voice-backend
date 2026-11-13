@@ -100,39 +100,8 @@ LESSON_SCHEMA = {
     },
 }
 
-def _auto_schema():
-    """LESSON_SCHEMA plus `target_language`: the language the learner asked for this turn."""
-    # Deep copy via JSON so the base schema is not modified.
-    schema = json.loads(json.dumps(LESSON_SCHEMA))
-    body = schema["json_schema"]["schema"]
-    schema["json_schema"]["name"] = "pingo_tutor_turn_auto"
-    body["properties"]["target_language"] = {"type": "string"}
-    body["required"].append("target_language")
-    return schema
-
-
-AUTO_LESSON_SCHEMA = _auto_schema()
-
-# Appended to the system prompt in auto-target mode. {target} in the main
-# prompt becomes "the target language"; this block says how to pick it.
-AUTO_TARGET_PROMPT = """
-# Auto-target mode
-
-The learner did not pick a language. They can speak any language. Each turn, decide which
-language they want to learn and return it as target_language:
-- The ISO 639-1 code of the language they ask for in this turn, in whatever language they ask
-  ("How do I say thanks in French?" -> "fr", "¿Cómo se dice hola en alemán?" -> "de").
-- If they do not name a language, use the previous target language from the turn details.
-- If they name none and there is no previous target, return "" with intent chat and an empty
-  target_phrase, and ask which language they want to learn it in.
-- Pingo teaches only en, es, fr, de, it and pt. If they ask for another language, still return its
-  code (e.g. "ja"), with intent chat and an empty target_phrase.
-- "The target language" above means this turn's target_language. In reply, name it
-  ("In German, that's"), never say "the target language".
-"""
-
 # Lesson fields beyond the original schema, passed to Lesson(**turn).
-TURN_FIELDS = ("intent", "reply", "syllables", "verdict", "verdict_reason", "next_prompt", "target_language")
+TURN_FIELDS = ("intent", "reply", "syllables", "verdict", "verdict_reason", "next_prompt")
 
 # Control characters and the replacement character. Seen live from the model:
 # "Buenos d\x7fas" (DEL where "í" belongs). The gateway bytes are valid UTF-8
@@ -157,7 +126,7 @@ class Lesson:
 
         The positional fields are the original lesson schema; **turn carries the
         newer tutor-turn fields (intent, reply, syllables, verdict, verdict_reason,
-        next_prompt, target_language, corrupt). Missing ones get safe defaults: an
+        next_prompt, corrupt). Missing ones get safe defaults: an
         intent of teach_phrase if there is a phrase (else chat), verdict "none".
         unparsed / raw_text / retried / salvaged are set later by the caller.
         """
@@ -182,8 +151,6 @@ class Lesson:
         self.verdict = turn.get("verdict") or "none"
         self.verdict_reason = turn.get("verdict_reason") or ""
         self.next_prompt = turn.get("next_prompt") or ""
-        # Auto-target mode only: the language code the model says the learner asked for.
-        self.target_language = turn.get("target_language") or ""
 
 
 def error_strings(errors):
@@ -227,8 +194,6 @@ class GatewayLLM:
         native_name="english",
         practice_target="",
         misses=0,
-        auto_target=False,
-        previous_target="",
         other_language="",
     ):
         # Overall time budget for this tutor call, in seconds.
@@ -236,8 +201,7 @@ class GatewayLLM:
 
         Inputs: the learner transcript, STT's detected language and its confidence,
         the target and native language names, recent chat history, and routing hints
-        from the session (practice phrase, misses on it, other_language,
-        auto-target fields). The blocking HTTP call runs in a worker thread, wrapped
+        from the session (practice phrase, misses on it, other_language). The blocking HTTP call runs in a worker thread, wrapped
         in an overall timeout (timeout_s + 1 s). Raises LLMError on timeout.
         """
         seconds = float(self.settings.get("timeout_s") or 30)
@@ -254,8 +218,6 @@ class GatewayLLM:
                     native_name,
                     practice_target,
                     misses,
-                    auto_target,
-                    previous_target,
                     other_language,
                 ),
                 timeout=seconds + 1,
@@ -274,8 +236,6 @@ class GatewayLLM:
         native_name="english",
         practice_target="",
         misses=0,
-        auto_target=False,
-        previous_target="",
         other_language="",
     ):
         """Build the prompt and request body, send it, and retry/salvage bad replies.
@@ -289,7 +249,7 @@ class GatewayLLM:
           * still not JSON -> salvage the fields that were complete before the
             model got cut off (salvage_lesson).
         """
-        prompt = system_prompt(self.settings.get("system_prompt") or "", target_name, native_name, auto_target)
+        prompt = system_prompt(self.settings.get("system_prompt") or "", target_name, native_name)
         user_text = build_user_text(
             transcript,
             source_language,
@@ -298,8 +258,6 @@ class GatewayLLM:
             native_name,
             practice_target,
             misses,
-            auto_target=auto_target,
-            previous_target=previous_target,
             other_language=other_language,
         )
         # Request body: system prompt, recent history, then this turn. Low temperature
@@ -312,7 +270,7 @@ class GatewayLLM:
             "temperature": float(self.settings.get("temperature", 0.2)),
         }
         if model == GEMMA_MODEL:
-            body["response_format"] = AUTO_LESSON_SCHEMA if auto_target else LESSON_SCHEMA
+            body["response_format"] = LESSON_SCHEMA
         # Timestamp used by the retry rule below (retry only if there is time left).
         started = time.time()
         lesson = self._send(body, model, seconds)
@@ -377,20 +335,11 @@ class GatewayLLM:
         return lesson
 
 
-def system_prompt(template, target_name, native_name="english", auto_target=False):
-    """Fill {target} and {native}. Auto-target mode appends how to pick the target."""
-    # Auto-target: the language is not known yet, so the prompt says "the target
-    # language" and the appended block explains how to pick it.
-    if auto_target:
-        target = "the target language"
-    else:
-        # Capitalise names like "spanish" for the prompt; leave already-styled names
-        # alone.
-        target = target_name.capitalize() if target_name.islower() else target_name
-    prompt = template.replace("{target}", target).replace("{native}", (native_name or "english").capitalize())
-    if auto_target:
-        prompt = prompt.rstrip() + "\n" + AUTO_TARGET_PROMPT
-    return prompt
+def system_prompt(template, target_name, native_name="english"):
+    """Fill {target} and {native}."""
+    # Capitalise names like "spanish" for the prompt; leave already-styled names alone.
+    target = target_name.capitalize() if target_name.islower() else target_name
+    return template.replace("{target}", target).replace("{native}", (native_name or "english").capitalize())
 
 
 def build_user_text(
@@ -401,8 +350,6 @@ def build_user_text(
     native_name="english",
     practice_target="",
     misses=0,
-    auto_target=False,
-    previous_target="",
     other_language="",
 ):
     # The first lines are context; the transcript always comes last.
@@ -416,12 +363,8 @@ def build_user_text(
     verbatim so the model can spot (and not silently fix) learner mistakes.
     """
     confidence = "unknown" if language_confidence is None else language_confidence
-    if auto_target:
-        target_line = f"Previous target language: {previous_target or 'none'}."
-    else:
-        target_line = f"Target language: {target_name}."
     lines = [
-        target_line,
+        f"Target language: {target_name}.",
         f"Learner's own language: {native_name or 'english'}.",
         f"Detected language of this turn: {source_language or 'unknown'} (confidence {confidence}).",
         f"Current practice phrase: {practice_target or '(none yet)'}.",
@@ -437,12 +380,7 @@ def build_user_text(
     # saying "I didn't catch that".
     if other_language:
         native = native_name or "english"
-        if auto_target:
-            target = "the language they ask for (else the previous target language)"
-            if not previous_target:
-                target = "the language they ask for"
-        else:
-            target = target_name or "target language"
+        target = target_name or "target language"
         # With a phrase pending, a mislabelled attempt ("Hola" tagged "pt") must still be
         # judged as an attempt, so the model gets the final say.
         attempt_note = (
@@ -458,7 +396,6 @@ def build_user_text(
             f"otherwise teach what a native speaker would naturally say in {target} for its meaning "
             "(correct grammar, not word for word). "
             f"Use intent teach_phrase and explain in {native}."
-            + (" If they name no language and there is no previous target, ask which one, as above." if auto_target and not previous_target else "")
         )
     lines.append("Learner transcript, verbatim. Never silently correct it:")
     lines.append(transcript)
@@ -612,8 +549,6 @@ def parse_lesson_text(text):
         "next_prompt": next_prompt,
         "detected_errors": errors,
         "corrupt": corrupt,
-        # Only the auto-target schema has it. Validated by the session.
-        "target_language": _field(data.get("target_language")).lower(),
     }
 
 

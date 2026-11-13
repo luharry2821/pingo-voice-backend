@@ -112,7 +112,7 @@ Environment overrides (all optional): `PINGO_STT_MODE`, `PINGO_STT_PROMPT`, `PIN
 
 ### Protocol (short)
 
-Client → server: `{"type":"start","target_language":"es"}` (optional `native_language`, `case_id`, `session_id`, `config`; or `auto_target: true` / `target_language: "auto"`), binary 16 kHz PCM16 frames (~50 ms), `update_config`, `set_target`, `replay` (`phrase` / `slow` / `all`), `stop`.
+Client → server: `{"type":"start","target_language":"es"}` (optional `native_language`, `case_id`, `session_id`, `config`), binary 16 kHz PCM16 frames (~50 ms), `update_config`, `set_target`, `replay` (`phrase` / `slow` / `all`), `stop`.
 
 Server → client: `status`, `transcript` (partial or final, including `language_code` and `language_confidence`), `lesson`, `agent_text`, `tts_start` + 24 kHz PCM + `tts_end`, `barge_in`, `error`. One turn can mix voices: explanations in the learner's language, the phrase in the target language, with 250 ms of silence between segments.
 

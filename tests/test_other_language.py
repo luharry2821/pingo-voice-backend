@@ -55,17 +55,6 @@ class OtherLanguageUserTextTests(unittest.TestCase):
         self.assertTrue(text.endswith("我想喝水。"))
         self.assertNotIn("Routing", build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", ""))
 
-    def test_auto_target_routing_line(self):
-        """In auto-target mode, the line refers to the requested or previous target instead."""
-        text = build_user_text("स्पेनिश में मैं कैसे कहूँ कि मुझे पानी चाहिए?", "hi", 0.76, "", "english", "",
-                               auto_target=True, previous_target="", other_language="hi")
-        self.assertIn("the language they ask for", text)
-        self.assertIn("ask which one", text)
-        text = build_user_text("我想喝水。", "ja", 1.0, "spanish", "english", "",
-                               auto_target=True, previous_target="es", other_language="ja")
-        self.assertIn("else the previous target language", text)
-        self.assertNotIn("ask which one", text)
-
     def test_prompt_teaches_other_languages(self):
         """The system prompt says speech in any other language is taught, never a reason to ask again.
         """
