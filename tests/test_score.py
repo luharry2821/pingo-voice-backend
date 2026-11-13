@@ -77,7 +77,7 @@ class LanguageIdMetricsTests(unittest.TestCase):
         self.assertEqual(score.LANG_ID_NATIVE_CUTOFF, 0.6)
 
     def test_each_turn_is_scored_separately(self):
-        """Multi-turn cases (two-speaker or pause-filler splits) score each final turn on its own."""
+        """Multi-turn cases (pause-filler splits) score each final turn on its own."""
         cases = {"h14": {"languages": ["en"]}}
         raw = {"h14": {"turns": [
             {"text": "I want to.", "language_code": "es", "language_confidence": 0.44},
@@ -131,18 +131,18 @@ class LanguageIdMetricsTests(unittest.TestCase):
             with open(ROOT / "test_cases" / "bench" / f"{name}_raw.jsonl") as fh:
                 return {json.loads(l)["id"]: json.loads(l) for l in fh}
         aai = _metrics(cases, load("assemblyai"))
-        self.assertEqual((aai["language_id_accuracy"]["n_correct"], aai["language_id_accuracy"]["n_turns"]), (112, 118))
+        self.assertEqual((aai["language_id_accuracy"]["n_correct"], aai["language_id_accuracy"]["n_turns"]), (105, 111))
         self.assertEqual(aai["confident_wrong_rate"]["n_confident_wrong"], 2)
         dg = _metrics(cases, load("deepgram"))
-        self.assertEqual((dg["language_id_accuracy"]["n_correct"], dg["language_id_accuracy"]["n_turns"]), (111, 115))
+        self.assertEqual((dg["language_id_accuracy"]["n_correct"], dg["language_id_accuracy"]["n_turns"]), (103, 107))
         # Deepgram streaming returns no language confidence: not comparable, not 0%.
         self.assertTrue(dg["confident_wrong_rate"]["not_comparable"])
         self.assertIsNone(dg["confident_wrong_rate"]["value_pct"])
         # Flux runs only on its supported languages: score it on the clips it ran.
         fx = load("flux")
-        self.assertEqual(len(fx), 97)
+        self.assertEqual(len(fx), 93)
         fm = _metrics({k: v for k, v in cases.items() if k in fx}, fx)
-        self.assertEqual((fm["language_id_accuracy"]["n_correct"], fm["language_id_accuracy"]["n_turns"]), (102, 105))
+        self.assertEqual((fm["language_id_accuracy"]["n_correct"], fm["language_id_accuracy"]["n_turns"]), (94, 97))
         self.assertTrue(fm["confident_wrong_rate"]["not_comparable"])
         self.assertTrue(all(r.get("session_id") for r in fx.values()))
 

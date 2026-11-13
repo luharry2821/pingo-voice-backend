@@ -1,25 +1,37 @@
 {
- "n_cases": 109,
+ "n_cases": 105,
  "wer_overall": {
-  "value_pct": 5.85,
-  "n_cases": 88,
-  "n_units": 598
+  "value_pct": 6.33,
+  "n_cases": 84,
+  "n_units": 553
  },
  "semantic_wer": {
-  "value_pct": 2.51,
-  "n_cases": 88,
-  "n_units": 598,
+  "value_pct": 2.71,
+  "n_cases": 84,
+  "n_units": 553,
   "judge": "AssemblyAI LLM Gateway gemma-4-31b, temperature 0, one batched call"
  },
  "fwer": {
-  "value_pct": 8.42,
-  "n_cases": 88,
-  "n_units": 582
+  "value_pct": 8.72,
+  "n_cases": 84,
+  "n_units": 539
  },
- "cpwer": {
-  "value_pct": 17.78,
-  "n_cases": 4,
-  "n_units": 45
+ "wer_monolingual": {
+  "en": {
+   "value_pct": 0.55,
+   "n_cases": 22,
+   "n_units": 183
+  },
+  "es": {
+   "value_pct": 7.97,
+   "n_cases": 24,
+   "n_units": 138
+  },
+  "hi": {
+   "value_pct": 0.0,
+   "n_cases": 1,
+   "n_units": 12
+  }
  },
  "wer_by_language": {
   "en": {
@@ -66,8 +78,8 @@
   }
  },
  "sentence_error_rate": {
-  "value_pct": 22.94,
-  "n_cases": 109
+  "value_pct": 23.81,
+  "n_cases": 105
  },
  "codeswitch_wer": {
   "en_hi": {
@@ -197,23 +209,23 @@
   }
  },
  "language_id_accuracy": {
-  "value_pct": 94.92,
-  "n_correct": 112,
-  "n_turns": 118,
+  "value_pct": 94.59,
+  "n_correct": 105,
+  "n_turns": 111,
   "higher_is_better": true,
-  "n_cases": 109
+  "n_cases": 105
  },
  "confident_wrong_rate": {
-  "value_pct": 1.69,
+  "value_pct": 1.8,
   "n_confident_wrong": 2,
-  "n_turns": 118,
+  "n_turns": 111,
   "cutoff": 0.6
  },
  "language_id_accuracy_by_language": {
   "en": {
-   "value_pct": 96.77,
-   "n_correct": 30,
-   "n_turns": 31,
+   "value_pct": 95.83,
+   "n_correct": 23,
+   "n_turns": 24,
    "higher_is_better": true
   },
   "de": {
@@ -349,10 +361,10 @@
  },
  "latency_ms": {
   "ttft_ms": {
-   "n": 109,
+   "n": 105,
    "p50": 1055,
-   "p90": 1179,
-   "p95": 1265
+   "p90": 1181,
+   "p95": 1266
   },
   "ttct_ms": {
    "n": 101,
@@ -367,14 +379,13 @@
    "p95": 2835
   },
   "ttft_from_speech_start_ms": {
-   "n": 109,
+   "n": 105,
    "p50": 368,
-   "p90": 460,
-   "p95": 508
-  },
-  "no_eot_in_4s": 1
+   "p90": 462,
+   "p95": 516
+  }
  },
- "session_ids": 109,
+ "session_ids": 105,
  "cases": [
   {
    "id": "en01",
@@ -1863,133 +1874,6 @@
    "entities": [
     "March 5th, 2027"
    ],
-   "entities_missed": [],
-   "meaning_errors": 0
-  },
-  {
-   "id": "sp01",
-   "category": "two_speaker",
-   "languages": [
-    "en"
-   ],
-   "reference": "Can we practice ordering food? Sure, let's start with the drinks.",
-   "hypothesis": "Can we practice ordering food? Sure, let's start with the drinks.",
-   "turns": 2,
-   "detected_language": [
-    "en",
-    "en"
-   ],
-   "metric": "WER",
-   "F_E": 0,
-   "F_N": 11,
-   "S": 0,
-   "D": 0,
-   "I": 0,
-   "H": 12,
-   "N": 12,
-   "E": 0,
-   "errors": [],
-   "rate_pct": 0.0,
-   "pass": true,
-   "cp_E": 0,
-   "cp_N": 12,
-   "hard": false,
-   "entities": [],
-   "entities_missed": [],
-   "meaning_errors": 0
-  },
-  {
-   "id": "sp02",
-   "category": "two_speaker",
-   "languages": [
-    "en"
-   ],
-   "reference": "How do I say good night in German? You say gute Nacht.",
-   "hypothesis": "How do I say good night in German? You say Gute Nacht.",
-   "turns": 1,
-   "detected_language": [
-    "en"
-   ],
-   "metric": "WER",
-   "F_E": 1,
-   "F_N": 12,
-   "S": 0,
-   "D": 0,
-   "I": 0,
-   "H": 12,
-   "N": 12,
-   "E": 0,
-   "errors": [],
-   "rate_pct": 0.0,
-   "pass": true,
-   "cp_E": 8,
-   "cp_N": 12,
-   "hard": false,
-   "entities": [],
-   "entities_missed": [],
-   "meaning_errors": 0
-  },
-  {
-   "id": "sp03",
-   "category": "two_speaker",
-   "languages": [
-    "en"
-   ],
-   "reference": "I'm ready for the quiz. Great, here is your first question.",
-   "hypothesis": "I'm ready for the quiz. Great, here is your first question.",
-   "turns": 2,
-   "detected_language": [
-    "en",
-    "en"
-   ],
-   "metric": "WER",
-   "F_E": 0,
-   "F_N": 11,
-   "S": 0,
-   "D": 0,
-   "I": 0,
-   "H": 12,
-   "N": 12,
-   "E": 0,
-   "errors": [],
-   "rate_pct": 0.0,
-   "pass": true,
-   "cp_E": 0,
-   "cp_N": 12,
-   "hard": false,
-   "entities": [],
-   "entities_missed": [],
-   "meaning_errors": 0
-  },
-  {
-   "id": "sp04",
-   "category": "two_speaker",
-   "languages": [
-    "en"
-   ],
-   "reference": "That was really hard. You did well, keep going.",
-   "hypothesis": "That was really hard. You did well, keep going!",
-   "turns": 2,
-   "detected_language": [
-    "en",
-    "en"
-   ],
-   "metric": "WER",
-   "F_E": 1,
-   "F_N": 9,
-   "S": 0,
-   "D": 0,
-   "I": 0,
-   "H": 9,
-   "N": 9,
-   "E": 0,
-   "errors": [],
-   "rate_pct": 0.0,
-   "pass": true,
-   "cp_E": 0,
-   "cp_N": 9,
-   "hard": false,
-   "entities": [],
    "entities_missed": [],
    "meaning_errors": 0
   },

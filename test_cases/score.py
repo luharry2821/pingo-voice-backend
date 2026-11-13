@@ -11,7 +11,6 @@ transcripts, and this script compares the two (same code for every provider). KP
                  are substituted/deleted/inserted words and N reference words
   Semantic WER   only the errors an LLM judge says change the meaning
   FWER           "formatted" WER on the raw text (case and punctuation kept)
-  cpWER          WER for two-speaker clips, best assignment of turns to speakers
   CER            character error rate, for Japanese/Chinese/Korean
   Sentence error rate   share of cases with at least one error
   Code-switching WER    WER on English-Hindi and English-Spanish mixed clips
@@ -30,7 +29,7 @@ Helpers can be imported without scoring. Running the script writes
 results.json and RESULTS.md: helpers first, then one row per case, then
 the aggregate KPIs, then the two output files.
 """
-import itertools, json, os, re, sys, unicodedata
+import json, os, re, sys, unicodedata
 import jiwer
 from whisper_normalizer.english import EnglishTextNormalizer
 # Command line: optional raw outputs path; --no-judge skips the LLM call (and Semantic
@@ -121,26 +120,6 @@ def entity_in_hyp(ent, hyp, langs):
     ne, nh = norm(ent, langs), norm(hyp, langs)
     return bool(ne) and f" {ne} " in f" {nh} "
 
-def cpwer(case, turns):
-    """Concatenated minimum-permutation WER for a two-speaker case: (errors, reference words).
-
-    Every way of assigning STT turns to the reference speakers is tried and the
-    lowest total error count is kept, so the score is not hurt by turn order.
-    No turns at all = every reference word missed.
-    """
-    refs = [norm(s["text"], ["en"]) for s in case["speakers"]]
-    hyps = [norm(t["text"], ["en"]) for t in turns]
-    best = None
-    for assign in itertools.product(range(len(refs)), repeat=len(hyps)):
-        e = 0
-        for k, ref in enumerate(refs):
-            hyp = " ".join(h for h, a in zip(hyps, assign) if a == k)
-            c = counts(ref, hyp); e += c["S"] + c["D"] + c["I"]
-        best = e if best is None else min(best, e)
-    if not hyps:
-        best = sum(len(r.split()) for r in refs)
-    return best, sum(len(r.split()) for r in refs)
-
 def judge(items):
     """One batched LLM-Gateway call: how many of each case's word errors change the meaning."""
     import requests
@@ -171,7 +150,7 @@ def language_id_metrics(cases, raw, native_cutoff=LANG_ID_NATIVE_CUTOFF):
 
     The raw JSONL stores only finished turns (AssemblyAI fills
     language_code and language_confidence only then). A case may have
-    several turns — two-speaker clips or a pause-filler that split — and
+    several turns — a pause-filler that split — and
     each turn is scored on its own. A label is correct when it matches the
     case's expected language. Code-switching cases list two languages
     (en+hi, en+es); either code counts as correct, because a mixed
@@ -277,9 +256,6 @@ if __name__ == "__main__":
         # Per-case rate for the tables; a case passes only with zero errors.
         row["rate_pct"] = round(100 * row["E"] / row["N"], 2)
         row["pass"] = row["E"] == 0
-        # Two-speaker clips also get cpWER.
-        if c["category"] == "two_speaker":
-            row["cp_E"], row["cp_N"] = cpwer(c, r.get("turns", []))
         # Hard-set flag (kept in results.json for the hard-only numbers).
         row["hard"] = bool(c.get("hard"))
         # Entities tagged in the case, and the ones not found in the transcript.
@@ -330,7 +306,9 @@ if __name__ == "__main__":
       "wer_overall": rate(word),
       "semantic_wer": semantic,
       "fwer": rate(word, "F_E", "F_N"),
-      "cpwer": rate(by(lambda r: "cp_E" in r), "cp_E", "cp_N"),
+      # Per-language WER over every monolingual word-based clip (cases.jsonl
+      # languages == [l], any category); code-switching clips are left out.
+      "wer_monolingual": {l: rate(by(lambda r, l=l: r["languages"] == [l] and r["metric"] == "WER")) for l in ("en", "es", "hi")},
       "wer_by_language": {l: rate(by(lambda r, l=l: r["languages"] == [l] and r["category"] in ("english", "german", "other")))
                           for l in ("en", "de", "es", "fr", "it")},
       "cer_by_language": {l: rate(by(lambda r, l=l: r["languages"] == [l] and r["category"] != "planted_mistake")) for l in ("ja", "zh", "ko")},
@@ -374,7 +352,6 @@ if __name__ == "__main__":
     v = [x["ttft_ms"] - lead_ms(cases[cid]) for cid, x in raw.items() if "ttft_ms" in x and cid in cases]
     if v:
         res["latency_ms"]["ttft_from_speech_start_ms"] = {"n": len(v), "p50": pctl(v, .5), "p90": pctl(v, .9), "p95": pctl(v, .95)}
-    res["latency_ms"]["no_eot_in_4s"] = sum(1 for x in raw.values() if x.get("no_eot_in_4s"))
     res["session_ids"] = sum(1 for x in raw.values() if x.get("session_id"))
     res["cases"] = rows
     # Machine-readable results (also used for the Notion/Lovable tables).
@@ -383,22 +360,18 @@ if __name__ == "__main__":
     # Human-readable RESULTS.md: KPI table, hard-set table, missed entities, planted
     # failed cases.
     p = lambda x: ("not comparable" if x.get("not_comparable") else "n/a") if x.get("value_pct") is None else f"{x['value_pct']}%"
-    L = [f"# STT results: {os.path.basename(RAW)}", "", f"{len(rows)} cases. Error rates: lower is better, except language-ID accuracy (higher is better). n = cases / reference units (words, or characters for CER); language-ID metrics are per final turn.", "",
+    L = [f"# STT results: {os.path.basename(RAW)}", "", f"{len(rows)} cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER); the confident-wrong rate is per final turn.", "",
          "| KPI | Value | n |", "|---|---|---|",
          f"| WER (normalized, all word-based cases) | {p(res['wer_overall'])} | {res['wer_overall']['n_cases']} / {res['wer_overall']['n_units']} |",
          f"| Semantic WER (LLM judge) | {p(semantic)} | {semantic.get('n_cases','-')} |",
          f"| FWER (raw, no normalization) | {p(res['fwer'])} | {res['fwer']['n_cases']} / {res['fwer']['n_units']} |",
-         f"| cpWER (2-speaker) | {p(res['cpwer'])} | {res['cpwer']['n_cases']} / {res['cpwer']['n_units']} |",
          f"| Sentence error rate | {p(res['sentence_error_rate'])} | {len(rows)} |",
          f"| Missed entity rate | {p(res['missed_entity_rate'])} ({res['missed_entity_rate']['n_missed']}/{res['missed_entity_rate']['n_entities']}) | {res['missed_entity_rate']['n_cases']} cases |",
          f"| Missed entity rate, entity set only | {p(res['missed_entity_rate_entity_set'])} ({res['missed_entity_rate_entity_set']['n_missed']}/{res['missed_entity_rate_entity_set']['n_entities']}) | {res['missed_entity_rate_entity_set']['n_cases']} cases |",
-         f"| Language-ID accuracy (higher is better) | {p(res['language_id_accuracy'])} | {res['language_id_accuracy']['n_correct']} / {res['language_id_accuracy']['n_turns']} turns |",
          f"| Confident-wrong rate (wrong label, confidence ≥ {res['confident_wrong_rate']['cutoff']}) | {p(res['confident_wrong_rate'])} | {res['confident_wrong_rate']['n_confident_wrong']} / {res['confident_wrong_rate']['n_turns']} turns |"]
-    for l, v in res["language_id_accuracy_by_language"].items():
-        L.append(f"| Language-ID accuracy {l} | {p(v)} | {v['n_correct']} / {v['n_turns']} turns |")
+    for l, v in res["wer_monolingual"].items(): L.append(f"| WER {l}, all monolingual clips | {p(v)} | {v['n_cases']} / {v['n_units']} |")
     for l, v in res["wer_by_language"].items(): L.append(f"| WER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")
     for l, v in res["cer_by_language"].items(): L.append(f"| CER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")
-    for l, v in res["codeswitch_wer"].items(): L.append(f"| Code-switching WER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")
     L.append(f"| Formatting cases: FWER / WER | {p(res['formatting_fwer'])} / {p(res['formatting_wer'])} | {res['formatting_fwer']['n_cases']} |")
     for cat, v in res["missed_entity_rate_by_category"].items():
         L.append(f"| Missed entity rate ({cat}) | {p(v)} ({v['n_missed']}/{v['n_entities']}) | {v['n_cases']} cases |")
@@ -416,7 +389,7 @@ if __name__ == "__main__":
     lat = res["latency_ms"]
     L += ["", "## Latency (client-side, ms)", "", "| Metric | p50 | p90 | p95 | n |", "|---|---|---|---|---|"]
     L += [f"| {k} | {v['p50']} | {v['p90']} | {v['p95']} | {v['n']} |" for k, v in lat.items() if isinstance(v, dict)]
-    L += ["", f"No end-of-turn within 4 s of silence: {lat['no_eot_in_4s']} clips. Rows with a provider session/request id: {res['session_ids']} of {len(raw)}."]
+    L += ["", f"Rows with a provider session/request id: {res['session_ids']} of {len(raw)}."]
     mer = res["missed_entity_rate"]
     L += ["", "## Missed entities", "",
           f"{mer['n_missed']} of {mer['n_entities']} entities missed after the same normalization as WER/CER.",

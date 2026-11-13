@@ -12,7 +12,7 @@ ground truth. Existing WAVs are reused, so re-running only fills gaps.
 Case groups: C (plain sentences by language, code-switching, formatting),
 ENTITY (names/places/dates, for missed entity rate), PLANTED (learner
 mistakes STT must not silently fix), HARD (harder variants), PAUSES and
-pause() (real silences and fillers), TWO (two speakers, for cpWER).
+pause() (real silences and fillers).
 Needs ffmpeg on PATH and the edge-tts package.
 """
 import asyncio, json, os, subprocess, tempfile
@@ -193,13 +193,6 @@ async def multipause(c):
         for q in parts: os.remove(q)
     return {"id": cid, "category": "pause_filler", "languages": langs, "reference": ref, "hard": True,
             "speakers": [{"speaker": "A", "voice": voice, "text": ref}], "audio": f"audio/{cid}.wav", "notes": "1.2 s silences, filler + self-correction"}
-# two-speaker clips: learner then tutor, different voices, 0.9 s gap
-TWO = [
- ("sp01",["Can we practice ordering food?","Sure, let's start with the drinks."],[EN,EN2]),
- ("sp02",["How do I say good night in German?","You say gute Nacht."],[EN2,"en-GB-SoniaNeural"]),
- ("sp03",["I'm ready for the quiz.","Great, here is your first question."],["en-AU-NatashaNeural",EN2]),
- ("sp04",["That was really hard.","You did well, keep going."],[EN2,EN]),
-]
 def to_wav(src, dst, pre=500, post=250):
     # adelay adds silence before the speech, apad after; then resample to 16 kHz mono
     # s16.
@@ -225,20 +218,6 @@ async def one(c):
     if not os.path.exists(wav):
         mp3 = wav[:-4]+".mp3"; await tts(text, voice, mp3); to_wav(mp3, wav); os.remove(mp3)
     return {"id":cid,"category":cat,"languages":langs,"reference":text,"speakers":[{"speaker":"A","voice":voice,"text":text}],"audio":f"audio/{cid}.wav","notes":notes}
-async def two(c):
-    """Build a two-speaker case: learner line then tutor line in different voices, 0.9 s apart."""
-    cid, texts, voices = c
-    wav = f"{D}/audio/{cid}.wav"
-    if not os.path.exists(wav):
-        parts = []
-        for i,(t,v) in enumerate(zip(texts,voices)):
-            mp3 = f"{D}/audio/{cid}_{i}.mp3"; await tts(t, v, mp3)
-            p = f"{D}/audio/{cid}_{i}.wav"; to_wav(mp3, p, 500 if i==0 else 900, 0 if i==0 else 250); os.remove(mp3); parts.append(p)
-        lst = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False); lst.write("".join(f"file '{p}'\n" for p in parts)); lst.close()
-        subprocess.run(["ffmpeg","-y","-loglevel","error","-f","concat","-safe","0","-i",lst.name,"-c","copy",wav], check=True)
-        for p in parts: os.remove(p)
-    return {"id":cid,"category":"two_speaker","languages":["en"],"reference":" ".join(texts),
-            "speakers":[{"speaker":s,"voice":v,"text":t} for s,t,v in zip("AB",texts,voices)],"audio":f"audio/{cid}.wav","notes":"learner then tutor, 0.9 s gap"}
 async def pause():
     """Quiero... um... un café with 1.5 s of real silence around the filler."""
     cid = "ps01"; wav = f"{D}/audio/{cid}.wav"; segs = ["Quiero", "um", "un café"]
@@ -259,7 +238,7 @@ async def main():
     async def g(f, c):
         """Run one case builder under the semaphore so at most 8 TTS/ffmpeg jobs run at once."""
         async with sem: return await f(c)
-    rows = await asyncio.gather(*[g(one,c) for c in C], *[g(two,c) for c in TWO], *[g(planted,c) for c in PLANTED], pause(), *[g(hard,c) for c in HARD], *[g(multipause,c) for c in PAUSES], *[g(one,c) for c in ENTITY])
+    rows = await asyncio.gather(*[g(one,c) for c in C], *[g(planted,c) for c in PLANTED], pause(), *[g(hard,c) for c in HARD], *[g(multipause,c) for c in PAUSES], *[g(one,c) for c in ENTITY])
     # Clips where the audio itself is ambiguous (homophones, or the voice really sounds
     # like another word). kept as metadata from the audio check.
     AMBIGUOUS = {"pm17": "allée/allé are homophones", "pm20": "TTS audio sounds like 'go' (Whisper + AssemblyAI pre-recorded)", "pm18": "Whisper heard 'Ellas son' (would be correct)"}

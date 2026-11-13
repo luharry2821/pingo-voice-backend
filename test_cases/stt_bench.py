@@ -41,7 +41,7 @@ stamped client-side when the message reaches this process's event loop:
   speech end      first frame send time - one frame + the clip's last sample above
                   -40 dBFS (from the WAV)
 TTCT and end-of-turn are only reported for single-utterance clips that produced
-exactly one turn (two_speaker and pause_filler clips are skipped for latency).
+exactly one turn (pause_filler clips are skipped for latency).
 A clip whose turn only ended when the stream closed (no end-of-turn signal in
 the 4 s of trailing silence) gets no_eot_in_4s instead of a latency.
 """
@@ -60,7 +60,7 @@ DG_PARAMS = {"model": "nova-3", "language": "multi", "encoding": "linear16", "sa
              "smart_format": "true", "punctuate": "true", "interim_results": "true",
              "endpointing": 600, "utterance_end_ms": 2400, "profanity_filter": "false", "vad_events": "true"}
 AAI_MIN_GAP_S = 12.5  # 5 new streams a minute on the free plan
-NO_LATENCY = ("two_speaker", "pause_filler")
+NO_LATENCY = ("pause_filler",)
 
 
 def speech_end_s(pcm, threshold=328):

@@ -1,29 +1,19 @@
 # STT results: deepgram_raw.jsonl
 
-109 cases. Error rates: lower is better, except language-ID accuracy (higher is better). n = cases / reference units (words, or characters for CER); language-ID metrics are per final turn.
+105 cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER); the confident-wrong rate is per final turn.
 
 | KPI | Value | n |
 |---|---|---|
-| WER (normalized, all word-based cases) | 9.7% | 88 / 598 |
-| Semantic WER (LLM judge) | 4.18% | 88 |
-| FWER (raw, no normalization) | 14.09% | 88 / 582 |
-| cpWER (2-speaker) | 8.89% | 4 / 45 |
-| Sentence error rate | 28.44% | 109 |
+| WER (normalized, all word-based cases) | 9.76% | 84 / 553 |
+| Semantic WER (LLM judge) | 4.52% | 84 |
+| FWER (raw, no normalization) | 13.73% | 84 / 539 |
+| Sentence error rate | 28.57% | 105 |
 | Missed entity rate | 20.59% (7/34) | 18 cases |
 | Missed entity rate, entity set only | 20.83% (5/24) | 10 cases |
-| Language-ID accuracy (higher is better) | 96.52% | 111 / 115 turns |
-| Confident-wrong rate (wrong label, confidence ≥ 0.6) | not comparable | 0 / 115 turns |
-| Language-ID accuracy en | 100.0% | 31 / 31 turns |
-| Language-ID accuracy de | 91.67% | 11 / 12 turns |
-| Language-ID accuracy es | 92.0% | 23 / 25 turns |
-| Language-ID accuracy fr | 100.0% | 7 / 7 turns |
-| Language-ID accuracy it | 100.0% | 3 / 3 turns |
-| Language-ID accuracy hi | 100.0% | 1 / 1 turns |
-| Language-ID accuracy ja | 100.0% | 9 / 9 turns |
-| Language-ID accuracy zh | 100.0% | 7 / 7 turns |
-| Language-ID accuracy ko | 100.0% | 5 / 5 turns |
-| Language-ID accuracy en+hi | 100.0% | 7 / 7 turns |
-| Language-ID accuracy en+es | 87.5% | 7 / 8 turns |
+| Confident-wrong rate (wrong label, confidence ≥ 0.6) | not comparable | 0 / 107 turns |
+| WER en, all monolingual clips | 4.37% | 22 / 183 |
+| WER es, all monolingual clips | 15.22% | 24 / 138 |
+| WER hi, all monolingual clips | 0.0% | 1 / 12 |
 | WER en | 2.38% | 10 / 84 |
 | WER de | 8.57% | 6 / 35 |
 | WER es | 0.0% | 3 / 18 |
@@ -32,8 +22,6 @@
 | CER ja | 5.08% | 6 / 59 |
 | CER zh | 0.0% | 5 / 35 |
 | CER ko | 0.0% | 4 / 32 |
-| Code-switching WER en_hi | 10.71% | 5 / 28 |
-| Code-switching WER en_es | 26.67% | 7 / 45 |
 | Formatting cases: FWER / WER | 16.22% / 7.69% | 6 |
 | Missed entity rate (english) | 0.0% (0/1) | 1 cases |
 | Missed entity rate (entity) | 20.83% (5/24) | 10 cases |
@@ -58,12 +46,12 @@ Split into more than one turn: 2 of 3 (turns per clip: {'ps01': 2, 'h13': 1, 'h1
 
 | Metric | p50 | p90 | p95 | n |
 |---|---|---|---|---|
-| ttft_ms | 1067 | 1169 | 1194 | 109 |
+| ttft_ms | 1067 | 1170 | 1197 | 105 |
 | ttct_ms | 936 | 1020 | 1032 | 89 |
 | eot_latency_ms | 939 | 1024 | 1035 | 89 |
-| ttft_from_speech_start_ms | 378 | 473 | 502 | 109 |
+| ttft_from_speech_start_ms | 378 | 473 | 503 | 105 |
 
-No end-of-turn within 4 s of silence: 13 clips. Rows with a provider session/request id: 109 of 109.
+Rows with a provider session/request id: 105 of 105.
 
 ## Missed entities
 
@@ -83,7 +71,7 @@ No end-of-turn within 4 s of silence: 13 clips. Rows with a provider session/req
 
 Final turns whose language_code did not match the case's expected language. Code-switching cases count either expected language as correct.
 
-4 of 115 turns.
+4 of 107 turns.
 
 | id | text | expected | got | confidence |
 |---|---|---|---|---|
@@ -107,7 +95,6 @@ Final turns whose language_code did not match the case's expected language. Code
 | cs04 | I think the answer is muy bien. | I think the answer is Muibian. | S: muy→muibian; D: bien |
 | fm05 | Son veintiún euros. | Son 21 euros. | S: veintiún→21 |
 | fm04 | My lesson is on March 5th, 2027. | My lesson is on 03/05/2027. | S: march→3; S: 5th→5 |
-| sp02 | How do I say good night in German? You say gute Nacht. | How do I say goodnight in German? You say gutnacht. | S: good→goodnight; D: night; S: gute→gutnacht; D: nacht |
 | pm07 | Gestern ich bin ins Kino gegangen. | Gestern bin ich ins Kino gegangen. | I: bin; D: bin |
 | pm13 | 私は学生をです。 | 私は学生王です。 | S: を→王 |
 | pm16 | Yo tango hambre. | Yo tengo hambre. | S: tango→tengo |

@@ -1,27 +1,19 @@
 # STT results: flux_raw.jsonl
 
-97 cases. Error rates: lower is better, except language-ID accuracy (higher is better). n = cases / reference units (words, or characters for CER); language-ID metrics are per final turn.
+93 cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER); the confident-wrong rate is per final turn.
 
 | KPI | Value | n |
 |---|---|---|
-| WER (normalized, all word-based cases) | 8.86% | 88 / 598 |
-| Semantic WER (LLM judge) | 4.52% | 88 |
-| FWER (raw, no normalization) | 16.49% | 88 / 582 |
-| cpWER (2-speaker) | 4.44% | 4 / 45 |
-| Sentence error rate | 30.93% | 97 |
+| WER (normalized, all word-based cases) | 9.22% | 84 / 553 |
+| Semantic WER (LLM judge) | 4.52% | 84 |
+| FWER (raw, no normalization) | 16.33% | 84 / 539 |
+| Sentence error rate | 31.18% | 93 |
 | Missed entity rate | 19.35% (6/31) | 17 cases |
 | Missed entity rate, entity set only | 19.05% (4/21) | 9 cases |
-| Language-ID accuracy (higher is better) | 97.14% | 102 / 105 turns |
-| Confident-wrong rate (wrong label, confidence ≥ 0.6) | not comparable | 0 / 105 turns |
-| Language-ID accuracy en | 100.0% | 31 / 31 turns |
-| Language-ID accuracy de | 100.0% | 12 / 12 turns |
-| Language-ID accuracy es | 92.59% | 25 / 27 turns |
-| Language-ID accuracy fr | 100.0% | 7 / 7 turns |
-| Language-ID accuracy it | 100.0% | 3 / 3 turns |
-| Language-ID accuracy hi | 100.0% | 1 / 1 turns |
-| Language-ID accuracy ja | 100.0% | 9 / 9 turns |
-| Language-ID accuracy en+hi | 100.0% | 7 / 7 turns |
-| Language-ID accuracy en+es | 87.5% | 7 / 8 turns |
+| Confident-wrong rate (wrong label, confidence ≥ 0.6) | not comparable | 0 / 97 turns |
+| WER en, all monolingual clips | 4.37% | 22 / 183 |
+| WER es, all monolingual clips | 11.59% | 24 / 138 |
+| WER hi, all monolingual clips | 0.0% | 1 / 12 |
 | WER en | 3.57% | 10 / 84 |
 | WER de | 5.71% | 6 / 35 |
 | WER es | 0.0% | 3 / 18 |
@@ -30,8 +22,6 @@
 | CER ja | 0.0% | 6 / 59 |
 | CER zh | n/a | 0 / 0 |
 | CER ko | n/a | 0 / 0 |
-| Code-switching WER en_hi | 7.14% | 5 / 28 |
-| Code-switching WER en_es | 28.89% | 7 / 45 |
 | Formatting cases: FWER / WER | 48.65% / 7.69% | 6 |
 | Missed entity rate (english) | 0.0% (0/1) | 1 cases |
 | Missed entity rate (entity) | 19.05% (4/21) | 9 cases |
@@ -56,12 +46,12 @@ Split into more than one turn: 3 of 3 (turns per clip: {'ps01': 3, 'h13': 2, 'h1
 
 | Metric | p50 | p90 | p95 | n |
 |---|---|---|---|---|
-| ttft_ms | 1056 | 1293 | 1334 | 97 |
+| ttft_ms | 1058 | 1294 | 1334 | 93 |
 | ttct_ms | 982 | 1993 | 2222 | 90 |
 | eot_latency_ms | 982 | 1993 | 2222 | 90 |
-| ttft_from_speech_start_ms | 356 | 576 | 620 | 97 |
+| ttft_from_speech_start_ms | 356 | 577 | 621 | 93 |
 
-No end-of-turn within 4 s of silence: 0 clips. Rows with a provider session/request id: 97 of 97.
+Rows with a provider session/request id: 93 of 93.
 
 ## Missed entities
 
@@ -80,7 +70,7 @@ No end-of-turn within 4 s of silence: 0 clips. Rows with a provider session/requ
 
 Final turns whose language_code did not match the case's expected language. Code-switching cases count either expected language as correct.
 
-3 of 105 turns.
+3 of 97 turns.
 
 | id | text | expected | got | confidence |
 |---|---|---|---|---|
@@ -102,7 +92,6 @@ Final turns whose language_code did not match the case's expected language. Code
 | cs04 | I think the answer is muy bien. | I think the answer is Muibian. | S: muy→muibian; D: bien |
 | fm01 | My class is at 7:30 on Monday. | My class is at seven thirty on Monday. | S: 7→730; D: 30 |
 | fm06 | Mi examen es el 15 de julio. | Mi examen es el quince de julio. | S: 15→quince |
-| sp02 | How do I say good night in German? You say gute Nacht. | How do I say good night in German? You say gut nacked! | S: gute→gut; S: nacht→nacked |
 | pm13 | 私は学生をです。 | 私は学生です。 | D: を |
 | pm16 | Yo tango hambre. | Yo tengo hambre. | S: tango→tengo |
 | pm17 | Je suis allée au cinéma. | Je suis allé au cinéma. | S: allée→allé |

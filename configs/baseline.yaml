@@ -2,7 +2,7 @@
 # mode and interruption_delay are sent. prompt is sent because it is non-empty.
 # Turn-taking is tuned for learners, who pause mid-phrase while thinking:
 # min_turn_silence 600 ms (preset 128; the live app sends 600) so a short pause does not end the turn,
-# max_turn_silence 2400 ms (preset 1280) so a long hesitation is not cut off,
+# max_turn_silence 2400 ms (preset 1280),
 # vad_threshold 0.2 (the documented default) sent explicitly so soft or trailing
 # speech still counts as speech. All four are editable live from Advanced settings.
 

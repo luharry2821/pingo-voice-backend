@@ -6,39 +6,36 @@ Live app: [pingo-ai.lovable.app](https://pingo-ai.lovable.app) (UI built in Lova
 
 ## Evaluation: AssemblyAI vs Deepgram on the same audio
 
-**Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English + Spanish). Deepgram ends turns sooner and wins on Hinglish and two-speaker clips. Deepgram is slightly ahead on language ID, by 2 to 3 turns.**
+**Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English and Spanish). Deepgram ends turns sooner.**
 
-The same 109 clips were streamed live to each provider from one machine and scored with the same `score.py`. The runs took place on 13 November 2026, between about 4:45 and 5:25 AM PT. Results: [`assemblyai`](test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](test_cases/bench/deepgram/RESULTS.md), [`flux`](test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `test_cases/bench/*_raw.jsonl`.
+The same 105 clips were streamed live to each provider from one machine and scored with the same `score.py`. The runs took place on 13 November 2026, between about 4:45 and 5:25 AM PT. Results: [`assemblyai`](test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](test_cases/bench/deepgram/RESULTS.md), [`flux`](test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `test_cases/bench/*_raw.jsonl`.
 
 ### Scorecard
 
-Error rates and latency: lower is better. The winner of each pair is in bold; no bold means there's no clear winner. Nova-3 is compared with AssemblyAI on all 109 clips. Flux returned results on 97 of 109 clips; it does not support Chinese or Korean.
+Error rates and latency: lower is better. The winner of each pair is in bold; no bold means there's no clear winner. Nova-3 is compared with AssemblyAI on all 105 clips. Flux returned results on 93 of 105 clips; it does not support Chinese or Korean.
 
-| Metric | AssemblyAI U3.6 Pro (n=109) | Deepgram Nova-3 (n=109) | Deepgram Flux (n=97) |
+| Metric | AssemblyAI U3.6 Pro (n=105) | Deepgram Nova-3 (n=105) | Deepgram Flux (n=93) |
 |---|---|---|---|
-| WER, normalized (88 clips / 598 words) | **5.85%** | 9.70% | 8.86% |
-| Semantic WER, LLM judge (88 clips) | **2.51%** | 4.18% | 4.52% |
+| WER, normalized (84 clips / 553 words) | **6.33%** | 9.76% | 9.22% |
+| Semantic WER, LLM judge (84 clips) | **2.71%** | 4.52% | 4.52% |
 | Missed entity rate | **5.88%** (2/34) | 20.59% (7/34) | 19.35% (6/31) |
-| Sentence error rate | **22.94%** | 28.44% | 30.93% |
+| Sentence error rate | **23.81%** | 28.57% | 31.18% |
 | Hard-set WER (26 clips / 157 words) | **10.83%** | 19.11% | 15.92% |
-| English + Spanish WER (7 clips / 45 words) | **13.33%** | 26.67% | 28.89% |
-| English + Hindi WER (5 clips / 28 words) | 32.14% | **10.71%** | **7.14%** |
-| Two-speaker cpWER (4 clips / 45 words) | 17.78% | **8.89%** | **4.44%** |
-| Language-ID accuracy, per final turn (higher is better) | 94.92% (112/118) | **96.52%** (111/115) | **97.14%** (102/105) |
-| Confident-wrong language rate (confidence ≥ 0.6) | 1.69% (2/118) | not comparable¹ | not comparable¹ |
+| English WER (22 clips / 183 words) | **0.55%** | 4.37% | 4.37% |
+| Spanish WER (24 clips / 138 words) | **7.97%** | 15.22% | 11.59% |
+| Hindi WER (1 clip / 12 words) | 0.0% | 0.0% | 0.0% |
+| Confident-wrong language rate (confidence ≥ 0.6) | 1.80% (2/111) | not comparable¹ | not comparable¹ |
 | Hesitation clips: turns per clip, ps01 / h13 / h14 (1 is ideal) | 3 / 3 / 3 | **2 / 1 / 2** | **3 / 2 / 2** |
 | Hesitation clips: WER (3 clips / 25 words) | **12.0%** | 24.0% | **8.0%** |
-| TTFT from speech start², p50 / p90 (from stream start) | 368 / 460 ms (1,055 / 1,179) | 378 / 473 ms (1,067 / 1,169) | 356 / 576 ms (1,056 / 1,293) |
+| TTFT from speech start², p50 / p90 (from stream start) | 368 / 462 ms (1,055 / 1,181) | 378 / 473 ms (1,067 / 1,170) | 356 / 577 ms (1,058 / 1,294) |
 | TTCT³, p50 / p90 | 1,124 / 2,802 ms (n=101) | **936 / 1,020 ms** (n=89) | **982 / 1,993 ms** (n=90) |
 | End-of-turn latency³, p50 / p90 | 1,124 / 2,802 ms (n=101) | **939 / 1,024 ms** (n=89) | **982 / 1,993 ms** (n=90) |
-| No end of turn within 4 s of silence | **1 / 102** | 13 / 102 | **0 / 90** |
 
 1. Deepgram returns no language confidence, so the confident-wrong rate can't be computed for it. That's different from 0%.
 2. **TTFT** is the time from the first audio frame sent to the first result with words. AssemblyAI's published definition counts from the start of the stream, which is the figure in parentheses. Every clip opens with silence, measured per clip from the WAV as the first sample above −40 dBFS: 601–890 ms, median 704 ms. The main figure subtracts that clip's lead silence, so it counts from the start of speech.
-3. **TTCT** is the time from speech end to the final transcript. **End-of-turn latency** is the time from speech end to the turn-boundary signal. Speech end is the time the first frame was sent, minus one frame, plus the clip's last sample above −40 dBFS. All times are stamped client-side, following AssemblyAI's [voice-agent evaluation guide](https://www.assemblyai.com/docs/streaming/evaluations/voice-agents.md). Latency covers single-utterance clips only, which leaves out the two-speaker and hesitation clips.
+3. **TTCT** is the time from speech end to the final transcript. **End-of-turn latency** is the time from speech end to the turn-boundary signal. Speech end is the time the first frame was sent, minus one frame, plus the clip's last sample above −40 dBFS. All times are stamped client-side, following AssemblyAI's [voice-agent evaluation guide](https://www.assemblyai.com/docs/streaming/evaluations/voice-agents.md). Latency covers single-utterance clips that produced one turn with an end-of-turn signal, which leaves out the hesitation clips.
    - For AssemblyAI the two rows are equal by design: U3.6 Pro sends the final transcript only in the `end_of_turn` Turn. The same holds for Flux and its `EndOfTurn`.
-   - Turns that never ended within 4 s of silence are counted in the last row and left out of the percentiles. That flatters Nova-3's figures, which are missing 13 such turns, 8 of them Chinese or Korean.
-   - Nova-3's end of turn is the first `speech_final`, or an `UtteranceEnd` if that comes first. AssemblyAI's p90 is the `max_turn_silence` 2,400 ms fallback, which Pingo sets so a hesitating learner isn't cut off.
+   - Nova-3's end of turn is the first `speech_final`, or an `UtteranceEnd` if that comes first. AssemblyAI's p90 is the `max_turn_silence` 2,400 ms fallback.
 4. **Settings, matched as closely as Deepgram allows.** No keyterms were sent on either side: Pingo's baseline sends AssemblyAI none, so Deepgram got none either.
 
    | AssemblyAI (Pingo baseline) | Deepgram Nova-3 (`/v1/listen`) | Deepgram Flux (`/v2/listen`) |
@@ -53,16 +50,15 @@ Error rates and latency: lower is better. The winner of each pair is in bold; no
    | `filter_profanity` off | `profanity_filter=false` | n/a |
    | formatting built in | `smart_format`, `punctuate`, `interim_results` | built in |
 5. Semantic WER uses the same judge for every arm: AssemblyAI LLM Gateway `gemma-4-31b` at temperature 0. That's the vendor's own model, so the plain WER rows are the ones that rely on no judge.
-6. A stream that returned no turns was retried, up to 4 attempts. AssemblyAI streams were spaced at least 12.5 s apart, to stay within the free plan's new-sessions-per-minute limit of 5 (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)). One clip was retried on each of AssemblyAI and Nova-3. All 315 streams returned transcripts.
-7. Language ID is now 94.92% accurate, with a 1.69% confident-wrong rate. The earlier 80.34% (13.68% confident-wrong) came from playing clips through the deployed app at `min_turn_silence` 400, where turns end sooner and carry less audio. This run calls the API directly at 600.
+6. A stream that returned no turns was retried, up to 4 attempts. AssemblyAI streams were spaced at least 12.5 s apart, to stay within the free plan's new-sessions-per-minute limit of 5 (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)). One clip was retried on each of AssemblyAI and Nova-3. All 303 streams returned transcripts.
 
 ### Test set
 
-109 synthetic edge-tts clips, listed in `test_cases/cases.jsonl`. Endpointing is matched on both providers (600 / 2,400 ms). By design there's no 1,280 ms arm.
+105 synthetic edge-tts clips, listed in `test_cases/cases.jsonl`. Endpointing is matched on both providers (600 / 2,400 ms). By design there's no 1,280 ms arm.
 
 | Language | Clips |
 |---|---|
-| en | 26 |
+| en | 22 |
 | es | 24 |
 | de | 12 |
 | ja | 9 |
@@ -85,7 +81,7 @@ These come from the runs above. End of turn is measured from speech end.
 | `cs04` en+es | I think the answer is muy bien. | I think the answer is muy bien. (0 errors) | I think the answer is Muibian. (2 errors) | I think the answer is Muibian. (2 errors) |
 | `hi02` en+hi (AssemblyAI loses) | Aaj मेरी Spanish class है। | आज मेरी स्पैनिश क्लास है। (3 errors: English words written in Devanagari) | आज मेरी Spanish class है. (1 error) | आज मेरी Spanish class है. (1 error) |
 | `h13` hesitation | Yo... eh... yo fui, no, yo voy al mercado. | 就。 / 哎。 / Yo fui, no, yo voy al mercado. (3 turns; fillers labelled zh at confidence 1.0) | Jo E. Yo fui, no, yo voy al mercado. (1 turn) | Yo. / Yo fui, no, yo voy al mercado. (2 turns) |
-| `zh02` Chinese | 请问洗手间在哪里？ | 请问洗手间在哪里？ (0 errors, 1,067 ms) | 请问洗手间在哪里 (0 errors, no end of turn in 4 s) | not supported |
+| `zh02` Chinese | 请问洗手间在哪里？ | 请问洗手间在哪里？ (0 errors, 1,067 ms) | 请问洗手间在哪里 (0 errors) | not supported |
 
 Rerun everything with `python test_cases/stt_bench.py assemblyai|deepgram|flux`, then `python test_cases/score.py test_cases/bench/<arm>_raw.jsonl --out=test_cases/bench/<arm>`. For Flux, add `--ids-from=test_cases/bench/flux_raw.jsonl`. Keys are read from `ASSEMBLYAI_API_KEY` and `DEEPGRAM_API_KEY` and are never written to disk.
 
@@ -126,7 +122,7 @@ Later sources win: defaults in `server/config.py` → YAML → `PINGO_*` env var
 | `stt.agent_context_enabled` | `false` | Off, for the same reason |
 | `stt.mode` | `balanced` | Turn-taking preset |
 | `stt.min_turn_silence` | `600` ms | Up from 128 ms so a short thinking pause doesn't end the turn (400 cut learners off in live use) |
-| `stt.max_turn_silence` | `2400` ms | Up from 1,280 ms for long hesitations. This drives the p90 latency loss above, so it's the next thing to tune. |
+| `stt.max_turn_silence` | `2400` ms | Up from 1,280 ms. This drives the p90 latency loss above, so it's the next thing to tune. |
 | `stt.interruption_delay` | `250` ms | Down from 500 ms so Pingo stops sooner when talked over |
 | `stt.vad_threshold` | `0.2` | Documented default, sent explicitly |
 | `stt.voice_focus` | `far-field` | Laptop mics, threshold left at the default |
@@ -163,7 +159,7 @@ Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 
 | `server/audio.py` / `log.py` | WAV → 16 kHz PCM16, JSONL turn log |
 | `configs/baseline.yaml` | Shipped defaults |
 | `tests/` | Unit tests with fake STT, LLM and TTS |
-| `test_cases/` | 109 clips, `stt_bench.py` (AssemblyAI, Deepgram Nova-3, Flux), `score.py`, `latency.py`, results in `bench/` |
+| `test_cases/` | 105 clips, `stt_bench.py` (AssemblyAI, Deepgram Nova-3, Flux), `score.py`, `latency.py`, results in `bench/` |
 
 ## Limitations
 

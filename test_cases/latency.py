@@ -36,7 +36,7 @@ PER = int(os.environ.get("PER", 20))
 CONFIG = {"min_turn_silence": int(os.environ.get("MIN_SIL", 600)),
           "max_turn_silence": int(os.environ.get("MAX_SIL", 2400))}
 # Single-speaker clips with no planned pauses: one clip should be one turn.
-SKIP = ("two_speaker", "pause_filler")
+SKIP = ("pause_filler",)
 
 
 def last_voiced_frame(pcm, threshold=328):  # 328/32768 = -40 dBFS

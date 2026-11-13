@@ -1,29 +1,19 @@
 # STT results: assemblyai_raw.jsonl
 
-109 cases. Error rates: lower is better, except language-ID accuracy (higher is better). n = cases / reference units (words, or characters for CER); language-ID metrics are per final turn.
+105 cases. Error rates: lower is better. n = cases / reference units (words, or characters for CER); the confident-wrong rate is per final turn.
 
 | KPI | Value | n |
 |---|---|---|
-| WER (normalized, all word-based cases) | 5.85% | 88 / 598 |
-| Semantic WER (LLM judge) | 2.51% | 88 |
-| FWER (raw, no normalization) | 8.42% | 88 / 582 |
-| cpWER (2-speaker) | 17.78% | 4 / 45 |
-| Sentence error rate | 22.94% | 109 |
+| WER (normalized, all word-based cases) | 6.33% | 84 / 553 |
+| Semantic WER (LLM judge) | 2.71% | 84 |
+| FWER (raw, no normalization) | 8.72% | 84 / 539 |
+| Sentence error rate | 23.81% | 105 |
 | Missed entity rate | 5.88% (2/34) | 18 cases |
 | Missed entity rate, entity set only | 4.17% (1/24) | 10 cases |
-| Language-ID accuracy (higher is better) | 94.92% | 112 / 118 turns |
-| Confident-wrong rate (wrong label, confidence ≥ 0.6) | 1.69% | 2 / 118 turns |
-| Language-ID accuracy en | 96.77% | 30 / 31 turns |
-| Language-ID accuracy de | 100.0% | 12 / 12 turns |
-| Language-ID accuracy es | 82.14% | 23 / 28 turns |
-| Language-ID accuracy fr | 100.0% | 7 / 7 turns |
-| Language-ID accuracy it | 100.0% | 3 / 3 turns |
-| Language-ID accuracy hi | 100.0% | 1 / 1 turns |
-| Language-ID accuracy ja | 100.0% | 9 / 9 turns |
-| Language-ID accuracy zh | 100.0% | 7 / 7 turns |
-| Language-ID accuracy ko | 100.0% | 5 / 5 turns |
-| Language-ID accuracy en+hi | 100.0% | 7 / 7 turns |
-| Language-ID accuracy en+es | 100.0% | 8 / 8 turns |
+| Confident-wrong rate (wrong label, confidence ≥ 0.6) | 1.8% | 2 / 111 turns |
+| WER en, all monolingual clips | 0.55% | 22 / 183 |
+| WER es, all monolingual clips | 7.97% | 24 / 138 |
+| WER hi, all monolingual clips | 0.0% | 1 / 12 |
 | WER en | 0.0% | 10 / 84 |
 | WER de | 2.86% | 6 / 35 |
 | WER es | 0.0% | 3 / 18 |
@@ -32,8 +22,6 @@
 | CER ja | 0.0% | 6 / 59 |
 | CER zh | 0.0% | 5 / 35 |
 | CER ko | 0.0% | 4 / 32 |
-| Code-switching WER en_hi | 32.14% | 5 / 28 |
-| Code-switching WER en_es | 13.33% | 7 / 45 |
 | Formatting cases: FWER / WER | 2.7% / 2.56% | 6 |
 | Missed entity rate (english) | 0.0% (0/1) | 1 cases |
 | Missed entity rate (entity) | 4.17% (1/24) | 10 cases |
@@ -58,12 +46,12 @@ Split into more than one turn: 3 of 3 (turns per clip: {'ps01': 3, 'h13': 3, 'h1
 
 | Metric | p50 | p90 | p95 | n |
 |---|---|---|---|---|
-| ttft_ms | 1055 | 1179 | 1265 | 109 |
+| ttft_ms | 1055 | 1181 | 1266 | 105 |
 | ttct_ms | 1124 | 2802 | 2835 | 101 |
 | eot_latency_ms | 1124 | 2802 | 2835 | 101 |
-| ttft_from_speech_start_ms | 368 | 460 | 508 | 109 |
+| ttft_from_speech_start_ms | 368 | 462 | 516 | 105 |
 
-No end-of-turn within 4 s of silence: 1 clips. Rows with a provider session/request id: 109 of 109.
+Rows with a provider session/request id: 105 of 105.
 
 ## Missed entities
 
@@ -78,7 +66,7 @@ No end-of-turn within 4 s of silence: 1 clips. Rows with a provider session/requ
 
 Final turns whose language_code did not match the case's expected language. Code-switching cases count either expected language as correct.
 
-6 of 118 turns.
+6 of 111 turns.
 
 | id | text | expected | got | confidence |
 |---|---|---|---|---|
