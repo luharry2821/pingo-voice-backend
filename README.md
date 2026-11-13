@@ -158,19 +158,6 @@ Protocol: the client sends `start` (`target_language`, optional `native_language
 
 Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026: streaming is $0.45/hr of open session time, idle included. `gemma-4-31b` costs $0.14 / 1M input tokens and $0.40 / 1M output tokens. TTS costs $15 / 1M characters. Each turn's log line records its usage.
 
-## Layout
-
-| Path | What it does |
-|---|---|
-| `server/app.py` | FastAPI app, `/health`, `/ws`, origin and per-IP limits |
-| `server/session.py` | One learner session: STT events, language rules, practice state, barge-in, TTS plan, log |
-| `server/stt.py` / `llm.py` / `tts.py` | AssemblyAI streaming STT, LLM Gateway, TTS clients |
-| `server/config.py` | Defaults, YAML, env, `--set`, per-session merge |
-| `server/audio.py` / `log.py` | WAV → 16 kHz PCM16, JSONL turn log |
-| `configs/baseline.yaml` | Shipped defaults |
-| `tests/` | Unit tests with fake STT, LLM and TTS |
-| `test_cases/` | 105 clips, `stt_bench.py` (AssemblyAI, Deepgram Nova-3, Flux), `score.py`, `latency.py`, results in `bench/` |
-
 ## Limitations
 
 - Synthetic audio only, small per-language samples, and one run per provider.
@@ -178,3 +165,48 @@ Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 
 - Concurrency hasn't been load-tested. On the free plan, 5 new TTS sessions a minute limit the account to about 2 new learners a minute; the per-IP limits live in one process's memory. Render's free plan is demo-only.
 - TTS speaks six languages, and nothing checks the accuracy of the LLM's grading. There's no phoneme-level pronunciation score and no TTS speed control.
 - Browser echo can trigger a false barge-in. Headphones or a higher `vad_threshold` help.
+
+## Repository files
+
+| Path | What it is |
+|---|---|
+| `README.md` | This file |
+| `.env.example` | Template for `ASSEMBLYAI_API_KEY` (copy to `.env`) |
+| `.gitignore` | Files git ignores (`.env`, venv, caches) |
+| `requirements.txt` | Runtime Python dependencies |
+| `requirements-dev.txt` | Extra dependencies for tests and the eval |
+| `render.yaml` | Render Blueprint for the free Python web service |
+| `.github/workflows/keep-warm.yml` | Pings `/health` every 10 minutes so the free Render service doesn't sleep |
+| `configs/baseline.yaml` | Shipped STT, LLM and TTS defaults |
+| **`server/`** | **The backend** |
+| `server/__init__.py` | Package overview: the pipeline and what each module does |
+| `server/__main__.py` | `python -m server` entry point; starts uvicorn |
+| `server/app.py` | FastAPI app: `/health`, the `/ws` WebSocket, CORS/Origin check and per-IP limits |
+| `server/session.py` | One learner session: STT events, language rules, practice state, barge-in, TTS plan, log |
+| `server/stt.py` | AssemblyAI streaming STT client (official Python SDK) |
+| `server/llm.py` | The tutor: AssemblyAI LLM Gateway call, JSON lesson schema and cleanup |
+| `server/tts.py` | AssemblyAI WebSocket TTS client |
+| `server/config.py` | Defaults, YAML, `PINGO_*` env vars, `--set`, per-session merge |
+| `server/audio.py` | WAV to 16 kHz mono PCM16, used by the eval scripts |
+| `server/log.py` | Appends one JSONL line per final learner turn |
+| **`tests/`** | **Unit tests, fake STT/LLM/TTS, no network** |
+| `tests/test_backend.py` | End-to-end pipeline with fake AssemblyAI clients |
+| `tests/test_tutor.py` | Tutor schema, practice state and speech plan |
+| `tests/test_routing.py` | Native-language turns are new phrases, not attempts |
+| `tests/test_other_language.py` | Third-language speech is taught; language-confidence rules |
+| `tests/test_barge_in.py` | Barge-in while the browser is still playing audio |
+| `tests/test_glitches.py` | Cleanup of bad model replies seen in production |
+| `tests/test_salvage.py` | Truncated model replies still teach their finished fields |
+| `tests/test_voice_focus.py` | Voice Focus and profanity-filter settings |
+| `tests/test_score.py` | Scoring logic in `test_cases/score.py` |
+| **`test_cases/`** | **The evaluation** |
+| `test_cases/README.md` | How the test set and benchmark work |
+| `test_cases/cases.jsonl` | The 105 cases: reference text, languages, entities, tags |
+| `test_cases/audio/` | One 16 kHz mono WAV per case (105 files) |
+| `test_cases/make_cases.py` | Builds `cases.jsonl` and the WAVs with edge-tts |
+| `test_cases/stt_bench.py` | Streams every clip live to AssemblyAI, Deepgram Nova-3 or Flux |
+| `test_cases/score.py` | Scores one provider's raw output: WER, semantic WER, entities, SER, TTFT |
+| `test_cases/latency.py` | End of speech to first reply audio through Pingo's `/ws` |
+| `test_cases/latency_raw.jsonl` | Raw output of `latency.py` |
+| `test_cases/bench/*_raw.jsonl` | Raw benchmark output per provider, with session/request ids |
+| `test_cases/bench/assemblyai/`, `deepgram/`, `flux/` | Scored results per provider (`results.json`, `RESULTS.md`) |
