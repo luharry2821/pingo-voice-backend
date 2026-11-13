@@ -92,6 +92,9 @@ Protocol: the client sends `start` (`target_language`, optional `native_language
   - **VAD threshold, 0.2** (`vad_threshold`). Beginners speak softly when unsure. A low threshold means a quiet "sí" still counts.
   - **Interruption delay, 250 ms** (`interruption_delay`). When a learner cuts in, Pingo stops almost instantly, so it feels like a conversation, not a lecture.
   - **Voice Focus, far-field** (`voice_focus`). TV on, roommate on a call, and Pingo still hears only the learner.
+- **Confidence, from the STT stream to the learner.** AssemblyAI returns two confidence scores, and Pingo uses each one where it helps the learner:
+  - **Language confidence.** Every finished turn in the STT stream carries a language label and a confidence score. Pingo switches the learner's own language only at 0.6 or higher with 3 or more words, on two turns in a row, and the tutor prompt gets the label and its score, so the tutor can overrule a wrong label. One misheard turn never flips the learner into the wrong language.
+  - **Word confidence in the UI.** Every word in the stream, partial or final, carries its own confidence score. The UI colours final words green (0.85 or higher, clear), yellow (0.6 to 0.85, unsure) or red (below 0.6, unclear), and words that aren't final yet stay grey while the learner is still talking. Learners see at a glance which word to practise again. Confidence is a sign of pronunciation, not a pronunciation score.
 
 Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026: streaming is $0.45/hr of open session time, idle included. `gemma-4-31b` costs $0.14 / 1M input tokens and $0.40 / 1M output tokens. TTS costs $15 / 1M characters. Each turn's log line records its usage.
 
