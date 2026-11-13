@@ -5,8 +5,8 @@
 | KPI | Value | n |
 |---|---|---|
 | WER (normalized, all word-based cases) | 9.7% | 88 / 598 |
-| Semantic WER (LLM judge) | 4.01% | 88 |
-| FWER (raw, no normalization) | 14.26% | 88 / 582 |
+| Semantic WER (LLM judge) | 4.18% | 88 |
+| FWER (raw, no normalization) | 14.09% | 88 / 582 |
 | cpWER (2-speaker) | 8.89% | 4 / 45 |
 | Sentence error rate | 28.44% | 109 |
 | Missed entity rate | 20.59% (7/34) | 18 cases |
@@ -45,10 +45,25 @@
 | KPI | Value | n |
 |---|---|---|
 | WER | 19.11% | 26 / 157 |
-| Semantic WER | 10.19% | 26 |
-| FWER | 24.05% | 26 / 158 |
+| Semantic WER | 10.83% | 26 |
+| FWER | 23.42% | 26 / 158 |
 | CER | 0.0% | 5 / 35 |
 | Sentence error rate | 41.94% | 31 |
+
+## Hesitation clips (3)
+
+Split into more than one turn: 2 of 3 (turns per clip: {'ps01': 2, 'h13': 1, 'h14': 2}). WER 24.0%.
+
+## Latency (client-side, ms)
+
+| Metric | p50 | p90 | p95 | n |
+|---|---|---|---|---|
+| ttft_ms | 1067 | 1169 | 1194 | 109 |
+| ttct_ms | 936 | 1020 | 1032 | 89 |
+| eot_latency_ms | 939 | 1024 | 1035 | 89 |
+| ttft_from_speech_start_ms | 378 | 473 | 502 | 109 |
+
+No end-of-turn within 4 s of silence: 13 clips. Rows with a provider session/request id: 109 of 109.
 
 ## Missed entities
 

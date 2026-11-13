@@ -1,24 +1,36 @@
 """Head-to-head streaming STT: AssemblyAI vs Deepgram on the same clips, same machine, real time.
 
-Usage (repo root): python test_cases/stt_bench.py assemblyai|deepgram [out.jsonl]
+Usage (repo root): python test_cases/stt_bench.py ARM [out.jsonl]
+ARM is one of ARMS below (default output test_cases/bench/<ARM>_raw.jsonl).
 Keys come from the environment (ASSEMBLYAI_API_KEY, DEEPGRAM_API_KEY); nothing is logged.
+Every row carries the provider's own id for that stream (AssemblyAI Begin `id`,
+Deepgram `request_id`), so each call can be traced on the provider's side.
 
 Each clip gets a fresh stream. Audio is the clip's 16 kHz PCM16, sent in 50 ms
 frames, each frame sent when its 50 ms have elapsed (like a mic), then 4 s of
 silence. Output lines are what score.py reads (id, turns, hypothesis), so
 score.py scores both providers with the same normalization, plus latency fields.
 
-Providers and settings:
-  assemblyai  universal-3-6-pro through the server's own StreamingSTT (official SDK),
-              Pingo's baseline config (configs/baseline.yaml): language_detection,
-              the learner-context prompt, min_turn_silence 600, max_turn_silence 2400.
-              A turn = a Turn event with end_of_turn true (transcript + language_code).
-  deepgram    wss://api.deepgram.com/v1/listen, DG_PARAMS below: nova-3, language=multi
-              (code-switching, 55 languages), smart_format, interim_results,
-              endpointing=600 (silence before speech_final, matched to our 600 ms),
-              utterance_end_ms=1000. A turn = the is_final results up to and including
-              one with speech_final true (or an UtteranceEnd); its language is the most
-              common word-level `language` in that turn.
+Arms:
+  assemblyai        universal-3-6-pro through the server's own StreamingSTT (official SDK),
+                    Pingo's baseline config (configs/baseline.yaml): language_detection,
+                    the learner-context prompt, min_turn_silence 600, max_turn_silence 2400.
+                    AssemblyAI turn = a Turn event with end_of_turn true (transcript +
+                    language_code). Streams are opened at most 5 a minute (the free plan's
+                    new-sessions-per-minute limit, docs/streaming/rate-limits).
+  deepgram          wss://api.deepgram.com/v1/listen, nova-3, language=multi
+                    (code-switching), smart_format, punctuate, interim_results, vad_events,
+                    profanity_filter=false, endpointing=600 (= min_turn_silence),
+                    utterance_end_ms=2400 (= max_turn_silence); no keyterms (Pingo sends none).
+                    Deepgram turn = the is_final results up to and including one with
+                    speech_final true (or an UtteranceEnd); its language is the most
+                    common word-level `language` in that turn.
+  flux              wss://api.deepgram.com/v2/listen, flux-general-multi (Deepgram's
+                    voice-agent model, native EndOfTurn), eot_threshold 0.7 (default),
+                    eot_timeout_ms 2400 (= max_turn_silence), 80 ms frames as Deepgram
+                    recommends. Only clips whose languages Flux supports (en es fr de hi
+                    ru pt ja it nl), so no Chinese or Korean. Turn = an EndOfTurn TurnInfo;
+                    language = its `languages[0]`.
 
 Latency, AssemblyAI's definitions (docs/streaming/evaluations/voice-agents.md), all
 stamped client-side when the message reaches this process's event loop:
@@ -26,7 +38,8 @@ stamped client-side when the message reaches this process's event loop:
   ttct_ms         last final result of the utterance - speech end
   eot_latency_ms  end-of-turn signal - speech end (AssemblyAI: the end_of_turn Turn;
                   Deepgram: speech_final, or UtteranceEnd if that comes first)
-  speech end      first frame time + the clip's last sample above -40 dBFS (from the WAV)
+  speech end      first frame send time - one frame + the clip's last sample above
+                  -40 dBFS (from the WAV)
 TTCT and end-of-turn are only reported for single-utterance clips that produced
 exactly one turn (two_speaker and pause_filler clips are skipped for latency).
 A clip whose turn only ended when the stream closed (no end-of-turn signal in
@@ -38,12 +51,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from server.audio import read_pcm16_mono
 
 D = os.path.dirname(os.path.abspath(__file__))
-PROVIDER = sys.argv[1] if len(sys.argv) > 1 else "assemblyai"
-OUT = sys.argv[2] if len(sys.argv) > 2 else f"{D}/bench/{PROVIDER}_raw.jsonl"
+ARM = sys.argv[1] if len(sys.argv) > 1 else "assemblyai"
+ARMS = {"assemblyai": {}, "deepgram": {}, "flux": {}}
+PROVIDER = "deepgram" if ARM == "flux" else ARM
+OUT = sys.argv[2] if len(sys.argv) > 2 else f"{D}/bench/{ARM}_raw.jsonl"
 FRAME = 1600; SIL = b"\x00" * FRAME; RATE = 16000; TAIL_FRAMES = 80
 DG_PARAMS = {"model": "nova-3", "language": "multi", "encoding": "linear16", "sample_rate": RATE, "channels": 1,
-             "smart_format": "true", "punctuate": "true", "interim_results": "true", "endpointing": 600,
-             "utterance_end_ms": 1000, "vad_events": "true"}
+             "smart_format": "true", "punctuate": "true", "interim_results": "true",
+             "endpointing": 600, "utterance_end_ms": 2400, "profanity_filter": "false", "vad_events": "true"}
+AAI_MIN_GAP_S = 12.5  # 5 new streams a minute on the free plan
 NO_LATENCY = ("two_speaker", "pause_filler")
 
 
@@ -71,7 +87,8 @@ async def play(send, pcm):
 async def run_assemblyai(pcm):
     from server.config import load_settings
     from server.stt import StreamingSTT, stt_query_params
-    params = stt_query_params(load_settings(f"{os.path.dirname(D)}/configs/baseline.yaml")["stt"])
+    stt_settings = load_settings(f"{os.path.dirname(D)}/configs/baseline.yaml")["stt"]
+    params = stt_query_params(stt_settings)
     events = []
     async def on_event(event):
         events.append((time.monotonic(), event))
@@ -80,13 +97,14 @@ async def run_assemblyai(pcm):
     t_start = await play(stt.send_audio, pcm)
     t_close = time.monotonic()
     await asyncio.sleep(0.5); await stt.close()
+    session_id = next((e.get("id") for _, e in events if e.get("type") == "Begin"), None)
     first = next((t for t, e in events if e.get("type") == "Turn" and (e.get("transcript") or "").strip()), None)
     turns = []
     for t, e in events:
         if e.get("type") == "Turn" and e.get("end_of_turn") and (e.get("transcript") or "").strip():
             turns.append({"text": e["transcript"], "language_code": e.get("language_code"),
                           "language_confidence": e.get("language_confidence"), "t_final": t, "t_boundary": t})
-    return t_start, first, turns, t_close
+    return t_start, first, turns, t_close, session_id
 
 
 async def run_deepgram(pcm):
@@ -110,6 +128,8 @@ async def run_deepgram(pcm):
     def words(e):
         alt = ((e.get("channel") or {}).get("alternatives") or [{}])[0]
         return alt
+    session_id = next((e.get("request_id") or (e.get("metadata") or {}).get("request_id") for _, e in events
+                       if e.get("request_id") or (e.get("metadata") or {}).get("request_id")), None)
     first = next((t for t, e in events if e.get("type") == "Results" and words(e).get("transcript", "").strip()), None)
     turns, cur = [], None
     for t, e in events:
@@ -130,15 +150,60 @@ async def run_deepgram(pcm):
         lang = c["langs"].most_common(1)[0][0] if c["langs"] else None
         out.append({"text": " ".join(c["parts"]), "language_code": lang.split("-")[0].lower() if lang else None,
                     "language_confidence": None, "t_final": c["t_final"], "t_boundary": c["t_boundary"]})
-    return t_start, first, out, t_close
+    return t_start, first, out, t_close, session_id
+
+
+async def run_flux(pcm):
+    """Flux multilingual, native EndOfTurn. 80 ms frames per Deepgram's guide."""
+    import websockets
+    params = {"model": "flux-general-multi", "encoding": "linear16", "sample_rate": RATE,
+              "eot_threshold": .7, "eot_timeout_ms": 2400}
+    events = []
+    async with websockets.connect("wss://api.deepgram.com/v2/listen?" + urllib.parse.urlencode(params),
+                                  additional_headers={"Authorization": f"Token {os.environ['DEEPGRAM_API_KEY']}"},
+                                  max_size=None, open_timeout=30) as ws:
+        async def rx():
+            async for msg in ws:
+                if isinstance(msg, str):
+                    events.append((time.monotonic(), json.loads(msg)))
+        task = asyncio.create_task(rx())
+        size = 2560  # 80 ms, 16 kHz PCM16
+        frames = [pcm[i:i+size] for i in range(0, len(pcm), size)] + [b"\x00" * size] * 50
+        origin = time.monotonic(); t_start = None
+        for k, frame in enumerate(frames):
+            await asyncio.sleep(max(0, origin + (k+1) * .08 - time.monotonic()))
+            await ws.send(frame)
+            if t_start is None:
+                t_start = time.monotonic()
+        t_close = time.monotonic()
+        await ws.send(json.dumps({"type": "CloseStream"}))
+        try:
+            await asyncio.wait_for(task, 5)
+        except Exception:
+            task.cancel()
+    session_id = next((e.get("request_id") for _, e in events if e.get("request_id")), None)
+    first = next((t for t, e in events if e.get("type") == "TurnInfo" and e.get("transcript", "").strip()), None)
+    turns = []
+    pending = None
+    for t,e in events:
+        if e.get("type") != "TurnInfo" or not e.get("transcript", "").strip():
+            continue
+        pending = {"text": e["transcript"], "language_code": (e.get("languages") or [None])[0],
+                   "language_confidence": None, "t_final": t, "t_boundary": None}
+        if e.get("event") == "EndOfTurn":
+            pending["t_boundary"] = t
+            turns.append(pending); pending = None
+    if pending:
+        turns.append(pending)
+    return t_start, first, turns, t_close, session_id
 
 
 async def one(case):
     pcm = read_pcm16_mono(f"{D}/{case['audio']}"); pcm += SIL[: (-len(pcm)) % FRAME]
-    runner = run_assemblyai if PROVIDER == "assemblyai" else run_deepgram
-    t_start, first, turns, t_close = await runner(pcm)
-    t_end = t_start - 0.05 + speech_end_s(pcm)  # frame 0 holds 0-50 ms and leaves at 50 ms
-    row = {"id": case["id"], "provider": PROVIDER,
+    runner = run_flux if ARM == "flux" else run_assemblyai if PROVIDER == "assemblyai" else run_deepgram
+    t_start, first, turns, t_close, session_id = await runner(pcm)
+    t_end = t_start - (.08 if ARM == "flux" else .05) + speech_end_s(pcm)  # frame 0 holds 0-50 ms and leaves at 50 ms
+    row = {"id": case["id"], "arm": ARM, "provider": PROVIDER, "session_id": session_id,
            "turns": [{k: v for k, v in t.items() if not k.startswith("t_")} for t in turns],
            "hypothesis": " ".join(t["text"] for t in turns)}
     if first is not None:
@@ -168,8 +233,14 @@ def latency_summary(rows):
     return out
 
 
+_last_open = 0.0
+
+
 async def main():
     cases = [json.loads(l) for l in open(f"{D}/cases.jsonl")]
+    if ARM == "flux":
+        supported = {"en", "es", "fr", "de", "hi", "ru", "pt", "ja", "it", "nl"}
+        cases = [c for c in cases if set(c["languages"]) <= supported]
     if os.environ.get("ONLY"):
         cases = [c for c in cases if c["id"].startswith(tuple(os.environ["ONLY"].split(",")))]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -183,8 +254,13 @@ async def main():
             # Retry a dropped or refused stream (e.g. "Too many concurrent sessions",
             # which comes back as a stream with no turns). Every clip has speech.
             for attempt in range(4):
+                if PROVIDER == "assemblyai":
+                    global _last_open
+                    await asyncio.sleep(max(0, _last_open + AAI_MIN_GAP_S - time.monotonic()))
+                    _last_open = time.monotonic()
                 try:
                     row = await asyncio.wait_for(one(c), 90)
+                    row["attempts"] = attempt + 1
                     if row["turns"]:
                         break
                     print(f"{c['id']}: no turns", file=sys.stderr)
@@ -192,10 +268,10 @@ async def main():
                     print(f"{c['id']}: {type(exc).__name__}", file=sys.stderr)
                 await asyncio.sleep(10)
             else:
-                row = {"id": c["id"], "provider": PROVIDER, "turns": [], "hypothesis": "", "error": "failed 4 times"}
+                row = {"id": c["id"], "provider": PROVIDER, "turns": [], "hypothesis": "", "error": "failed 4 times", "attempts": 4}
             rows.append(row); f.write(json.dumps(row, ensure_ascii=False) + "\n"); f.flush()
             print(json.dumps(row, ensure_ascii=False), flush=True)
-    print(json.dumps({"provider": PROVIDER, **latency_summary(rows),
+    print(json.dumps({"arm": ARM, **latency_summary(rows),
                       "no_eot_in_4s": sum(1 for r in rows if r.get("no_eot_in_4s"))}))
 
 if __name__ == "__main__":

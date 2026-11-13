@@ -1,6 +1,6 @@
 """Score one provider's raw JSONL against cases.jsonl -> results.json + RESULTS.md.
 
-Usage (repo root): python test_cases/score.py test_cases/bench/<provider>_raw.jsonl --out=test_cases/bench/<provider> [--no-judge]
+Usage (repo root): python test_cases/score.py test_cases/bench/<arm>_raw.jsonl --out=test_cases/bench/<arm> [--no-judge] [--ids-from=<raw.jsonl>]
 Needs: pip install jiwer whisper-normalizer requests. Semantic WER uses ASSEMBLYAI_API_KEY (LLM Gateway).
 
 This is the end of the eval pipeline: make_cases.py builds the clips and
@@ -40,6 +40,9 @@ args = [a for a in sys.argv[1:] if not a.startswith("--")]
 OUT_DIR = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--out=")), D)
 RAW = args[0] if args else f"{D}/bench/assemblyai_raw.jsonl"
 JUDGE = "--no-judge" not in sys.argv
+# --ids-from=<raw.jsonl> scores only the case ids in that file (e.g. the Flux
+# language subset), so another provider can be scored on the same clips.
+IDS_FROM = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--ids-from=")), None)
 # Languages scored by characters (CER) instead of words.
 CJK = {"ja", "zh", "ko"}
 # Cutoff copied from server/session.py: 0.6 in _note_native before a turn
@@ -251,6 +254,10 @@ if __name__ == "__main__":
     # Load ground truth and STT outputs, both keyed by case id.
     cases = {json.loads(l)["id"]: json.loads(l) for l in open(f"{D}/cases.jsonl")}
     raw = {json.loads(l)["id"]: json.loads(l) for l in open(RAW)}
+    if IDS_FROM:
+        keep = {json.loads(l)["id"] for l in open(IDS_FROM)}
+        cases = {k: v for k, v in cases.items() if k in keep}
+        raw = {k: v for k, v in raw.items() if k in keep}
     rows = []
     # One row per case: errors, pass/fail, entities and planted mistakes.
     for cid, c in cases.items():
@@ -342,8 +349,36 @@ if __name__ == "__main__":
     # Language-ID KPIs are per final turn, not per case. Code-switching
     # labels are scored against either expected language (see language_id_metrics).
     res.update(language_id_metrics(cases, raw))
+    # Hesitation clips: one spoken sentence with 1.2-1.5 s pauses. A turn split
+    # means the STT ended the learner's turn mid-sentence.
+    pause = by(lambda r: r["category"] == "pause_filler")
+    res["pause_clips"] = {"n_cases": len(pause), "turns": {r["id"]: r["turns"] for r in pause},
+                          "n_split": sum(r["turns"] > 1 for r in pause), "wer": rate(pause)}
+    # Latency as recorded by stt_bench.py (AssemblyAI voice-agent definitions).
+    def pctl(v, q):
+        v = sorted(v); k = (len(v) - 1) * q; lo = int(k); hi = min(lo + 1, len(v) - 1)
+        return round(v[lo] + (v[hi] - v[lo]) * (k - lo))
+    res["latency_ms"] = {}
+    for key in ("ttft_ms", "ttct_ms", "eot_latency_ms"):
+        v = [x[key] for x in raw.values() if key in x]
+        if v:
+            res["latency_ms"][key] = {"n": len(v), "p50": pctl(v, .5), "p90": pctl(v, .9), "p95": pctl(v, .95)}
+    # TTFT from speech start: the published TTFT counts from the first audio frame,
+    # which includes each clip's leading silence. Subtract that clip's measured
+    # lead (first sample above -40 dBFS in the WAV) for a from-speech-start view.
+    sys.path.insert(0, os.path.dirname(D))
+    from server.audio import read_pcm16_mono
+    def lead_ms(c):
+        s = memoryview(read_pcm16_mono(f"{D}/{c['audio']}")).cast("h")
+        return next((i for i, x in enumerate(s) if abs(x) > 328), 0) / 16
+    v = [x["ttft_ms"] - lead_ms(cases[cid]) for cid, x in raw.items() if "ttft_ms" in x and cid in cases]
+    if v:
+        res["latency_ms"]["ttft_from_speech_start_ms"] = {"n": len(v), "p50": pctl(v, .5), "p90": pctl(v, .9), "p95": pctl(v, .95)}
+    res["latency_ms"]["no_eot_in_4s"] = sum(1 for x in raw.values() if x.get("no_eot_in_4s"))
+    res["session_ids"] = sum(1 for x in raw.values() if x.get("session_id"))
     res["cases"] = rows
     # Machine-readable results (also used for the Notion/Lovable tables).
+    os.makedirs(OUT_DIR, exist_ok=True)
     json.dump(res, open(f"{OUT_DIR}/results.json", "w"), ensure_ascii=False, indent=1)
     # Human-readable RESULTS.md: KPI table, hard-set table, missed entities, planted
     # failed cases.
@@ -375,6 +410,13 @@ if __name__ == "__main__":
           f"| CER | {p(h['cer'])} | {h['cer']['n_cases']} / {h['cer']['n_units']} |",
           f"| Sentence error rate | {p(h['sentence_error_rate'])} | {h['n_cases']} |",
           ]
+    pc = res["pause_clips"]
+    L += ["", f"## Hesitation clips ({pc['n_cases']})", "",
+          f"Split into more than one turn: {pc['n_split']} of {pc['n_cases']} (turns per clip: {pc['turns']}). WER {p(pc['wer'])}."]
+    lat = res["latency_ms"]
+    L += ["", "## Latency (client-side, ms)", "", "| Metric | p50 | p90 | p95 | n |", "|---|---|---|---|---|"]
+    L += [f"| {k} | {v['p50']} | {v['p90']} | {v['p95']} | {v['n']} |" for k, v in lat.items() if isinstance(v, dict)]
+    L += ["", f"No end-of-turn within 4 s of silence: {lat['no_eot_in_4s']} clips. Rows with a provider session/request id: {res['session_ids']} of {len(raw)}."]
     mer = res["missed_entity_rate"]
     L += ["", "## Missed entities", "",
           f"{mer['n_missed']} of {mer['n_entities']} entities missed after the same normalization as WER/CER.",

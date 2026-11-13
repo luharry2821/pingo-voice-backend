@@ -50,6 +50,21 @@
 | CER | 5.71% | 5 / 35 |
 | Sentence error rate | 48.39% | 31 |
 
+## Hesitation clips (3)
+
+Split into more than one turn: 3 of 3 (turns per clip: {'ps01': 3, 'h13': 3, 'h14': 3}). WER 12.0%.
+
+## Latency (client-side, ms)
+
+| Metric | p50 | p90 | p95 | n |
+|---|---|---|---|---|
+| ttft_ms | 1055 | 1179 | 1265 | 109 |
+| ttct_ms | 1124 | 2802 | 2835 | 101 |
+| eot_latency_ms | 1124 | 2802 | 2835 | 101 |
+| ttft_from_speech_start_ms | 368 | 460 | 508 | 109 |
+
+No end-of-turn within 4 s of silence: 1 clips. Rows with a provider session/request id: 109 of 109.
+
 ## Missed entities
 
 2 of 34 entities missed after the same normalization as WER/CER.

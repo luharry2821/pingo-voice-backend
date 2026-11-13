@@ -6,13 +6,13 @@
   "n_units": 598
  },
  "semantic_wer": {
-  "value_pct": 4.01,
+  "value_pct": 4.18,
   "n_cases": 88,
   "n_units": 598,
   "judge": "AssemblyAI LLM Gateway gemma-4-31b, temperature 0, one batched call"
  },
  "fwer": {
-  "value_pct": 14.26,
+  "value_pct": 14.09,
   "n_cases": 88,
   "n_units": 582
  },
@@ -89,12 +89,12 @@
    "n_units": 157
   },
   "fwer": {
-   "value_pct": 24.05,
+   "value_pct": 23.42,
    "n_cases": 26,
    "n_units": 158
   },
   "semantic_wer": {
-   "value_pct": 10.19,
+   "value_pct": 10.83,
    "n_cases": 26,
    "n_units": 157
   },
@@ -401,6 +401,48 @@
    "confidence": null
   }
  ],
+ "pause_clips": {
+  "n_cases": 3,
+  "turns": {
+   "ps01": 2,
+   "h13": 1,
+   "h14": 2
+  },
+  "n_split": 2,
+  "wer": {
+   "value_pct": 24.0,
+   "n_cases": 3,
+   "n_units": 25
+  }
+ },
+ "latency_ms": {
+  "ttft_ms": {
+   "n": 109,
+   "p50": 1067,
+   "p90": 1169,
+   "p95": 1194
+  },
+  "ttct_ms": {
+   "n": 89,
+   "p50": 936,
+   "p90": 1020,
+   "p95": 1032
+  },
+  "eot_latency_ms": {
+   "n": 89,
+   "p50": 939,
+   "p90": 1024,
+   "p95": 1035
+  },
+  "ttft_from_speech_start_ms": {
+   "n": 109,
+   "p50": 378,
+   "p90": 473,
+   "p95": 502
+  },
+  "no_eot_in_4s": 13
+ },
+ "session_ids": 109,
  "cases": [
   {
    "id": "en01",
@@ -3199,13 +3241,13 @@
     "en"
    ],
    "reference": "I am very hungry, I want to eat now.",
-   "hypothesis": "I am very hungry. I want to eat now.",
+   "hypothesis": "I am very hungry, I want to eat now.",
    "turns": 1,
    "detected_language": [
     "en"
    ],
    "metric": "WER",
-   "F_E": 1,
+   "F_E": 0,
    "F_N": 9,
    "S": 0,
    "D": 0,
@@ -3287,7 +3329,7 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "meaning_errors": 2
+   "meaning_errors": 3
   },
   {
    "id": "h13",

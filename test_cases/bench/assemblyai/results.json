@@ -333,6 +333,48 @@
    "confidence": 1.0
   }
  ],
+ "pause_clips": {
+  "n_cases": 3,
+  "turns": {
+   "ps01": 3,
+   "h13": 3,
+   "h14": 3
+  },
+  "n_split": 3,
+  "wer": {
+   "value_pct": 12.0,
+   "n_cases": 3,
+   "n_units": 25
+  }
+ },
+ "latency_ms": {
+  "ttft_ms": {
+   "n": 109,
+   "p50": 1055,
+   "p90": 1179,
+   "p95": 1265
+  },
+  "ttct_ms": {
+   "n": 101,
+   "p50": 1124,
+   "p90": 2802,
+   "p95": 2835
+  },
+  "eot_latency_ms": {
+   "n": 101,
+   "p50": 1124,
+   "p90": 2802,
+   "p95": 2835
+  },
+  "ttft_from_speech_start_ms": {
+   "n": 109,
+   "p50": 368,
+   "p90": 460,
+   "p95": 508
+  },
+  "no_eot_in_4s": 1
+ },
+ "session_ids": 109,
  "cases": [
   {
    "id": "en01",

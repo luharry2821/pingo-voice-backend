@@ -124,7 +124,7 @@ class LanguageIdMetricsTests(unittest.TestCase):
         self.assertNotIn("en", m["language_id_accuracy_by_language"])
 
     def test_committed_runs_regression(self):
-        """The committed AssemblyAI and Deepgram runs keep their recorded language-ID numbers, so a definition change is visible."""
+        """The committed AssemblyAI, Deepgram Nova-3 and Flux runs keep their recorded language-ID numbers, so a definition change is visible."""
         with open(ROOT / "test_cases" / "cases.jsonl") as fh:
             cases = {json.loads(l)["id"]: json.loads(l) for l in fh}
         def load(name):
@@ -138,6 +138,13 @@ class LanguageIdMetricsTests(unittest.TestCase):
         # Deepgram streaming returns no language confidence: not comparable, not 0%.
         self.assertTrue(dg["confident_wrong_rate"]["not_comparable"])
         self.assertIsNone(dg["confident_wrong_rate"]["value_pct"])
+        # Flux runs only on its supported languages: score it on the clips it ran.
+        fx = load("flux")
+        self.assertEqual(len(fx), 97)
+        fm = _metrics({k: v for k, v in cases.items() if k in fx}, fx)
+        self.assertEqual((fm["language_id_accuracy"]["n_correct"], fm["language_id_accuracy"]["n_turns"]), (102, 105))
+        self.assertTrue(fm["confident_wrong_rate"]["not_comparable"])
+        self.assertTrue(all(r.get("session_id") for r in fx.values()))
 
     def test_no_labels_is_not_comparable(self):
         """A provider with no language labels at all is "not comparable", not 0% accurate."""
