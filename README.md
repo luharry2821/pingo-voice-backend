@@ -24,6 +24,8 @@ Metric definitions follow AssemblyAI's [voice-agent evaluation guide](https://ww
 | TTFT, p90 (reported only; the guide says it says little for real-time STT) | none | 1,184 ms | 1,165 ms | 109 | Tie |
 | Pingo pipeline: end of speech → first reply audio, p90 (not an STT metric) | ≤ 2,500 ms | 6,386 ms | not run | 100 turns | Fails |
 
+AssemblyAI's TTCT and end-of-turn rows are the same by design, not by accident: Universal-3.6 Pro sends the finalized transcript only in the `end_of_turn` Turn message, so both timestamps are that one message. Deepgram's latency percentiles cover only the 89 clips where it sent an end of turn. Its 13 never-ended turns are left out of them and counted in their own row, so its p90 would be worse if they were included.
+
 **Where AssemblyAI wins:** accuracy. WER, missed entities and sentence errors are all clearly lower, and it gets entities and formatting right ("Dr. Nguyen … São Paulo … November 3rd", "March 5th, 2027") where Deepgram writes "Ngwin", "03/05/2027" and "einundzwanzigsten April". It also always ended the turn on its own. Deepgram never sent an end-of-turn on 13 clips, 8 of them Chinese or Korean, and only returned their transcripts when the stream closed.
 
 **Where AssemblyAI loses:**
