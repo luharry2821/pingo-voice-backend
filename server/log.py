@@ -4,7 +4,7 @@ Pipeline position: the last step of every turn. After STT -> LLM tutor -> TTS,
 server/session.py hands a finished record to write_turn(). Each line holds the
 transcript, words and language STT returned, what the tutor said, timings and
 usage (audio seconds, tokens, TTS characters) and the config used. The eval
-scorer (test_cases/score.py) reads these lines to compute WER and the other
+scorer (archive/test_cases/score.py) reads these lines to compute WER and the other
 KPIs. No API key is ever written.
 """
 

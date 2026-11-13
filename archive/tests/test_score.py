@@ -1,4 +1,4 @@
-"""Language-ID accuracy and confident-wrong rate in test_cases/score.py.
+"""Language-ID accuracy and confident-wrong rate in archive/test_cases/score.py.
 
 These KPIs score AssemblyAI's language_code against each case's expected
 language, per final turn. The 0.6 cutoff is the one Pingo uses before

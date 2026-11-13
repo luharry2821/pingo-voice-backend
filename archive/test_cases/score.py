@@ -1,6 +1,6 @@
 """Score one provider's raw JSONL against cases.jsonl -> results.json + RESULTS.md.
 
-Usage (repo root): python test_cases/score.py test_cases/bench/<arm>_raw.jsonl --out=test_cases/bench/<arm> [--no-judge] [--ids-from=<raw.jsonl>]
+Usage (repo root): python archive/test_cases/score.py archive/test_cases/bench/<arm>_raw.jsonl --out=archive/test_cases/bench/<arm> [--no-judge] [--ids-from=<raw.jsonl>]
 Needs: pip install jiwer whisper-normalizer requests. Semantic WER uses ASSEMBLYAI_API_KEY (LLM Gateway).
 
 This is the end of the eval pipeline: make_cases.py builds the clips and

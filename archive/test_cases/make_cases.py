@@ -1,6 +1,6 @@
 """Build the STT test set: cases.jsonl + one 16 kHz mono WAV per case (edge-tts neural voices).
 
-Run from the repo root: .venv/bin/python test_cases/make_cases.py
+Run from the repo root: .venv/bin/python archive/test_cases/make_cases.py
 
 First step of the eval pipeline: this script synthesises each test sentence
 with a neural voice, converts it with ffmpeg to the exact format the browser

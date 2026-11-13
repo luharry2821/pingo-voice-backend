@@ -12,8 +12,8 @@ import unittest
 
 import server.llm as llm
 from server.llm import parse_lesson_text
-from tests import test_tutor
-from tests.test_tutor import _run
+from archive.tests import test_tutor
+from archive.tests.test_tutor import _run
 
 
 def _reply(**fields):
@@ -195,7 +195,7 @@ class PinPracticePhraseTests(unittest.TestCase):
     """_pin_practice_phrase: echoes are pinned to the stored phrase, a new longer phrase is not."""
 
     def _session(self):
-        from tests.test_tutor import PracticeStateTests
+        from archive.tests.test_tutor import PracticeStateTests
 
         session, _llm, _tts, _sent = PracticeStateTests._session(PracticeStateTests(), [], [])
         session.practice_target = "Hola"

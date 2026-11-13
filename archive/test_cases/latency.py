@@ -1,10 +1,10 @@
 """Pipeline latency: end of speech -> first reply audio through Pingo's /ws, client side.
 
 This is a whole-pipeline number (STT + tutor LLM + TTS + network), not one of
-AssemblyAI's STT metrics; test_cases/stt_bench.py measures those (TTFT, TTCT,
+AssemblyAI's STT metrics; archive/test_cases/stt_bench.py measures those (TTFT, TTCT,
 end-of-turn finalization latency) on the STT stream alone.
 
-Usage (repo root): python test_cases/latency.py [wss://pingo-voice-backend.onrender.com/ws] [out.jsonl]
+Usage (repo root): python archive/test_cases/latency.py [wss://pingo-voice-backend.onrender.com/ws] [out.jsonl]
 
 Acts like the browser: one WebSocket session, a mic stream that never stops
 (clip audio, then silence), and the same turn settings the Lovable app sends
@@ -24,7 +24,7 @@ session warms 2 TTS voices; sessions are spaced 30 s apart to stay well under
 the account's 5 TTS sessions a minute.
 """
 import asyncio, json, os, statistics, sys, time
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import websockets
 from server.audio import read_pcm16_mono
 

@@ -16,8 +16,8 @@ import unittest
 from server.config import DEFAULT_SYSTEM_PROMPT
 from server.llm import build_user_text
 from server.session import is_other_script
-from tests import test_tutor
-from tests.test_tutor import _run
+from archive.tests import test_tutor
+from archive.tests.test_tutor import _run
 
 
 class OtherScriptTests(unittest.TestCase):

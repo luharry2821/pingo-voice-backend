@@ -11,7 +11,7 @@ import unittest
 
 from server import llm
 from server.llm import Lesson, salvage_lesson
-from tests.test_tutor import _run
+from archive.tests.test_tutor import _run
 
 # Live, "Kiitos." with target Spanish: the reply looped until max_tokens.
 LOOPED_REPLY = (

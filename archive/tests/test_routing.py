@@ -12,8 +12,8 @@ import unittest
 from server.config import DEFAULT_SYSTEM_PROMPT
 from server.llm import parse_lesson_text
 from server.session import speech_plans
-from tests import test_tutor
-from tests.test_tutor import _run, _turn
+from archive.tests import test_tutor
+from archive.tests.test_tutor import _run, _turn
 
 
 class PromptTests(unittest.TestCase):

@@ -1,7 +1,7 @@
 """Head-to-head streaming STT: AssemblyAI vs Deepgram on the same clips, same machine, real time.
 
-Usage (repo root): python test_cases/stt_bench.py ARM [out.jsonl]
-ARM is one of ARMS below (default output test_cases/bench/<ARM>_raw.jsonl).
+Usage (repo root): python archive/test_cases/stt_bench.py ARM [out.jsonl]
+ARM is one of ARMS below (default output archive/test_cases/bench/<ARM>_raw.jsonl).
 Keys come from the environment (ASSEMBLYAI_API_KEY, DEEPGRAM_API_KEY); nothing is logged.
 Every row carries the provider's own id for that stream (AssemblyAI Begin `id`,
 Deepgram `request_id`), so each call can be traced on the provider's side.
@@ -47,7 +47,7 @@ the 4 s of trailing silence) gets no_eot_in_4s instead of a latency.
 """
 import asyncio, json, os, sys, time, urllib.parse
 from collections import Counter
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from server.audio import read_pcm16_mono
 
 D = os.path.dirname(os.path.abspath(__file__))

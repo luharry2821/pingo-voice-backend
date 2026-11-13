@@ -8,7 +8,7 @@ Live app: [pingo-ai.lovable.app](https://pingo-ai.lovable.app) (UI built in Lova
 
 **Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English, Spanish and English + Spanish code-switching).**
 
-The same 105 clips were streamed live to each provider from one machine and scored with the same `score.py`. Results: [`assemblyai`](test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](test_cases/bench/deepgram/RESULTS.md), [`flux`](test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `test_cases/bench/*_raw.jsonl`.
+The same 105 clips were streamed live to each provider from one machine and scored with the same `score.py`. Results: [`assemblyai`](archive/test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](archive/test_cases/bench/deepgram/RESULTS.md), [`flux`](archive/test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `archive/test_cases/bench/*_raw.jsonl`.
 
 ### Scorecard
 
@@ -46,7 +46,7 @@ Error rates and latency: lower is better. The winner of each pair is in bold; no
 
 ### How we calculate
 
-All numbers come from `test_cases/score.py`, the same code for every provider. A clip's hypothesis is its final turns joined with spaces. S, D, I = substituted, deleted, inserted words from a `jiwer` alignment; N = reference words.
+All numbers come from `archive/test_cases/score.py`, the same code for every provider. A clip's hypothesis is its final turns joined with spaces. S, D, I = substituted, deleted, inserted words from a `jiwer` alignment; N = reference words.
 
 - **Normalization (WER rows):** English-only clips use Whisper's `EnglishTextNormalizer`. All other clips use a Whisper-style basic normalizer: NFKC, lowercase, drop `<…>`/`[…]` tags and `(…)` asides, turn punctuation and symbols into spaces (combining marks kept, for Devanagari), collapse whitespace. Japanese, Chinese and Korean clips are scored per character (CER) and are not in any WER row.
 - **WER (average)** = (ΣS + ΣD + ΣI) / ΣN, pooled over all word-based clips (84 clips / 553 words). Pooled means total errors over total words, not a mean of per-clip rates.
@@ -60,7 +60,7 @@ All numbers come from `test_cases/score.py`, the same code for every provider. A
 
 ### Test set
 
-105 synthetic edge-tts clips, listed in `test_cases/cases.jsonl`. Every clip, with its audio and each provider's session ID, is in the [Notion test cases table](https://heavenly-comb-246.notion.site/Pingo-STT-Test-Cases-105-416ff952949a81dcb6b8c0c8cb4c6b89). Endpointing is matched on both providers (600 / 2,400 ms). By design there's no 1,280 ms arm.
+105 synthetic edge-tts clips, listed in `archive/test_cases/cases.jsonl`. Every clip, with its audio and each provider's session ID, is in the [Notion test cases table](https://heavenly-comb-246.notion.site/Pingo-STT-Test-Cases-105-416ff952949a81dcb6b8c0c8cb4c6b89). Endpointing is matched on both providers (600 / 2,400 ms). By design there's no 1,280 ms arm.
 
 | Language | Clips |
 |---|---|
@@ -89,7 +89,7 @@ These come from the runs above.
 | `h13` hesitation | Yo... eh... yo fui, no, yo voy al mercado. | 就。 / 哎。 / Yo fui, no, yo voy al mercado. (3 turns; fillers labelled zh at confidence 1.0) | Jo E. Yo fui, no, yo voy al mercado. (1 turn) | Yo. / Yo fui, no, yo voy al mercado. (2 turns) |
 | `zh02` Chinese | 请问洗手间在哪里？ | 请问洗手间在哪里？ (0 errors) | 请问洗手间在哪里 (0 errors) | not supported |
 
-Rerun everything with `python test_cases/stt_bench.py assemblyai|deepgram|flux`, then `python test_cases/score.py test_cases/bench/<arm>_raw.jsonl --out=test_cases/bench/<arm>`. For Flux, add `--ids-from=test_cases/bench/flux_raw.jsonl`. Keys are read from `ASSEMBLYAI_API_KEY` and `DEEPGRAM_API_KEY` and are never written to disk.
+Rerun everything with `python archive/test_cases/stt_bench.py assemblyai|deepgram|flux`, then `python archive/test_cases/score.py archive/test_cases/bench/<arm>_raw.jsonl --out=archive/test_cases/bench/<arm>`. For Flux, add `--ids-from=archive/test_cases/bench/flux_raw.jsonl`. Keys are read from `ASSEMBLYAI_API_KEY` and `DEEPGRAM_API_KEY` and are never written to disk.
 
 ## Architecture
 
@@ -208,24 +208,24 @@ Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 
 | `server/config.py` | Defaults, YAML, `PINGO_*` env vars, `--set`, per-session merge |
 | `server/audio.py` | WAV to 16 kHz mono PCM16, used by the eval scripts |
 | `server/log.py` | Appends one JSONL line per final learner turn |
-| **`tests/`** | **Unit tests, fake STT/LLM/TTS, no network** |
-| `tests/test_backend.py` | End-to-end pipeline with fake AssemblyAI clients |
-| `tests/test_tutor.py` | Tutor schema, practice state and speech plan |
-| `tests/test_routing.py` | Native-language turns are new phrases, not attempts |
-| `tests/test_other_language.py` | Third-language speech is taught; language-confidence rules |
-| `tests/test_barge_in.py` | Barge-in while the browser is still playing audio |
-| `tests/test_glitches.py` | Cleanup of bad model replies seen in production |
-| `tests/test_salvage.py` | Truncated model replies still teach their finished fields |
-| `tests/test_voice_focus.py` | Voice Focus and profanity-filter settings |
-| `tests/test_score.py` | Scoring logic in `test_cases/score.py` |
-| **`test_cases/`** | **The evaluation** |
-| `test_cases/README.md` | How the test set and benchmark work |
-| `test_cases/cases.jsonl` | The 105 cases: reference text, languages, entities, tags |
-| `test_cases/audio/` | One 16 kHz mono WAV per case (105 files) |
-| `test_cases/make_cases.py` | Builds `cases.jsonl` and the WAVs with edge-tts |
-| `test_cases/stt_bench.py` | Streams every clip live to AssemblyAI, Deepgram Nova-3 or Flux |
-| `test_cases/score.py` | Scores one provider's raw output: WER, semantic WER, entities, SER, TTFT |
-| `test_cases/latency.py` | End of speech to first reply audio through Pingo's `/ws` |
-| `test_cases/latency_raw.jsonl` | Raw output of `latency.py` |
-| `test_cases/bench/*_raw.jsonl` | Raw benchmark output per provider, with session/request ids |
-| `test_cases/bench/assemblyai/`, `deepgram/`, `flux/` | Scored results per provider (`results.json`, `RESULTS.md`) |
+| **`archive/tests/`** | **Unit tests, fake STT/LLM/TTS, no network** |
+| `archive/tests/test_backend.py` | End-to-end pipeline with fake AssemblyAI clients |
+| `archive/tests/test_tutor.py` | Tutor schema, practice state and speech plan |
+| `archive/tests/test_routing.py` | Native-language turns are new phrases, not attempts |
+| `archive/tests/test_other_language.py` | Third-language speech is taught; language-confidence rules |
+| `archive/tests/test_barge_in.py` | Barge-in while the browser is still playing audio |
+| `archive/tests/test_glitches.py` | Cleanup of bad model replies seen in production |
+| `archive/tests/test_salvage.py` | Truncated model replies still teach their finished fields |
+| `archive/tests/test_voice_focus.py` | Voice Focus and profanity-filter settings |
+| `archive/tests/test_score.py` | Scoring logic in `archive/test_cases/score.py` |
+| **`archive/test_cases/`** | **The evaluation** |
+| `archive/test_cases/README.md` | How the test set and benchmark work |
+| `archive/test_cases/cases.jsonl` | The 105 cases: reference text, languages, entities, tags |
+| `archive/test_cases/audio/` | One 16 kHz mono WAV per case (105 files) |
+| `archive/test_cases/make_cases.py` | Builds `cases.jsonl` and the WAVs with edge-tts |
+| `archive/test_cases/stt_bench.py` | Streams every clip live to AssemblyAI, Deepgram Nova-3 or Flux |
+| `archive/test_cases/score.py` | Scores one provider's raw output: WER, semantic WER, entities, SER, TTFT |
+| `archive/test_cases/latency.py` | End of speech to first reply audio through Pingo's `/ws` |
+| `archive/test_cases/latency_raw.jsonl` | Raw output of `latency.py` |
+| `archive/test_cases/bench/*_raw.jsonl` | Raw benchmark output per provider, with session/request ids |
+| `archive/test_cases/bench/assemblyai/`, `deepgram/`, `flux/` | Scored results per provider (`results.json`, `RESULTS.md`) |

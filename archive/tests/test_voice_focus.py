@@ -20,8 +20,8 @@ from server.config import (
     normalize_voice_focus_threshold,
 )
 from server.stt import build_parameters, stt_query_params
-from tests import test_tutor
-from tests.test_tutor import _run
+from archive.tests import test_tutor
+from archive.tests.test_tutor import _run
 
 
 class VoiceFocusConfigTests(unittest.TestCase):
