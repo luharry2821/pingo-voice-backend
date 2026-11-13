@@ -181,7 +181,7 @@ Rerun everything with `python archive/test_cases/stt_bench.py assemblyai|deepgra
 
 This is the general playbook for evaluating AssemblyAI against a customer's current STT vendor, and the Deepgram benchmark above is one run of it.
 
-Deck: [Download PPTX](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/export/pptx) · [Download PDF](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/export/pdf) · [View in Google Slides](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/edit) · [Customer Evaluation page](https://pingo-ai.lovable.app/evals/customer)
+Deck: [Download PDF](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/export/pdf) · [View in Google Slides](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/edit) · [Customer Evaluation page](https://pingo-ai.lovable.app/evals/customer)
 
 ### 1. Understand
 
