@@ -177,6 +177,31 @@ These come from the runs above.
 
 Rerun everything with `python archive/test_cases/stt_bench.py assemblyai|deepgram|flux`, then `python archive/test_cases/score.py archive/test_cases/bench/<arm>_raw.jsonl --out=archive/test_cases/bench/<arm>`. For Flux, add `--ids-from=archive/test_cases/bench/flux_raw.jsonl`. Keys are read from `ASSEMBLYAI_API_KEY` and `DEEPGRAM_API_KEY` and are never written to disk.
 
+## Customer evaluation approach
+
+The general playbook for evaluating AssemblyAI against a customer's current STT vendor. The Deepgram benchmark above is one run of it. Full version: the [Customer Evaluation page](https://pingo-ai.lovable.app/evals/customer) and the deck ([PPTX](docs/customer-evaluation-flow.pptx), [PDF](docs/customer-evaluation-flow.pdf)).
+
+```mermaid
+flowchart TD
+  subgraph U["Understand"]
+    S1["1. Discovery<br/>What they built, the user pain, current STT setup, real learner audio"]
+    S2["2. Success criteria<br/>How they measure today, which KPIs, where the blind spots are"]
+  end
+  subgraph B["Build the benchmark"]
+    S3["3. Source of truth<br/>Human transcripts first, models outside both vendors, keep learner mistakes as spoken"]
+    S4["4. Truth File Corrector<br/>Check the answer key against the audio; fix the labels, not the models"]
+  end
+  subgraph R["Run and score"]
+    S5["5. Run, score, validate<br/>Same audio, real-time pace, matched endpointing; vendors get audio only; score from raw output with session IDs"]
+    S6["6. Measure<br/>Accuracy: WER, FWER, sentence errors, semantic WER, missed entities, code-switching WER<br/>Latency: TTFT, TTCT, end-of-turn, turns that never end (p50/p90)<br/>Pricing: cost per learner hour"]
+  end
+  subgraph D["Improve and decide"]
+    S7["7. Diagnose, tune, pilot<br/>Group failures, tune one setting at a time, re-score, pilot with go-live criteria"]
+  end
+  S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
+  S7 -. "re-score and repeat" .-> S5
+```
+
 ## Repository files
 
 | Path | What it is |
@@ -221,6 +246,7 @@ Rerun everything with `python archive/test_cases/stt_bench.py assemblyai|deepgra
 | `archive/test_cases/latency_raw.jsonl` | Raw output of `latency.py` |
 | `archive/test_cases/bench/*_raw.jsonl` | Raw benchmark output per provider, with session/request ids |
 | `archive/test_cases/bench/assemblyai/`, `deepgram/`, `flux/` | Scored results per provider (`results.json`, `RESULTS.md`) |
+| `docs/customer-evaluation-flow.pptx`, `.pdf` | The customer evaluation approach deck |
 | **`yc-demo/`** | **YC extra credit: the voice-clone demo (React + Vite, Vercel Functions in `api/`, shared server code in `server/`)** |
 
 ## Extra credit: YC demo
