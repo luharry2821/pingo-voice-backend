@@ -12,26 +12,26 @@ The same 109 clips were streamed live to each provider from one machine and scor
 
 ### Scorecard
 
-Error rates and latency: lower is better. The winner of each pair is in bold; no bold means there's no clear winner. Nova-3 is compared with AssemblyAI on all 109 clips. Flux is compared with AssemblyAI on the 97 clips in Flux's languages, which leaves out Chinese and Korean.
+Error rates and latency: lower is better. The winner of each pair is in bold; no bold means there's no clear winner. Nova-3 is compared with AssemblyAI on all 109 clips. Flux returned results on 97 of 109 clips; it does not support Chinese or Korean.
 
-| Metric | AssemblyAI U3.6 Pro (n=109) | Deepgram Nova-3 (n=109) | AssemblyAI, Flux clips (n=97) | Deepgram Flux (n=97) |
-|---|---|---|---|---|
-| WER, normalized (88 clips / 598 words) | **5.85%** | 9.70% | **5.85%** | 8.86% |
-| Semantic WER, LLM judge (88 clips) | **2.51%** | 4.18% | **2.51%** | 4.52% |
-| Missed entity rate | **5.88%** (2/34) | 20.59% (7/34) | **6.45%** (2/31) | 19.35% (6/31) |
-| Sentence error rate | **22.94%** | 28.44% | **24.74%** | 30.93% |
-| Hard-set WER (26 clips / 157 words) | **10.83%** | 19.11% | **10.83%** | 15.92% |
-| English + Spanish WER (7 clips / 45 words) | **13.33%** | 26.67% | **13.33%** | 28.89% |
-| English + Hindi WER (5 clips / 28 words) | 32.14% | **10.71%** | 32.14% | **7.14%** |
-| Two-speaker cpWER (4 clips / 45 words) | 17.78% | **8.89%** | 17.78% | **4.44%** |
-| Language-ID accuracy, per final turn (higher is better) | 94.92% (112/118) | **96.52%** (111/115) | 94.34% (100/106) | **97.14%** (102/105) |
-| Confident-wrong language rate (confidence ≥ 0.6) | 1.69% (2/118) | not comparable¹ | 1.89% (2/106) | not comparable¹ |
-| Hesitation clips: turns per clip, ps01 / h13 / h14 (1 is ideal) | 3 / 3 / 3 | **2 / 1 / 2** | 3 / 3 / 3 | **3 / 2 / 2** |
-| Hesitation clips: WER (3 clips / 25 words) | **12.0%** | 24.0% | 12.0% | **8.0%** |
-| TTFT from speech start², p50 / p90 (from stream start) | 368 / 460 ms (1,055 / 1,179) | 378 / 473 ms (1,067 / 1,169) | 367 / 448 ms (1,055 / 1,163) | 356 / 576 ms (1,056 / 1,293) |
-| TTCT³, p50 / p90 | 1,124 / 2,802 ms (n=101) | **936 / 1,020 ms** (n=89) | 1,131 / 2,804 ms (n=89) | **982 / 1,993 ms** (n=90) |
-| End-of-turn latency³, p50 / p90 | 1,124 / 2,802 ms (n=101) | **939 / 1,024 ms** (n=89) | 1,131 / 2,804 ms (n=89) | **982 / 1,993 ms** (n=90) |
-| No end of turn within 4 s of silence | **1 / 102** | 13 / 102 | 1 / 90 | **0 / 90** |
+| Metric | AssemblyAI U3.6 Pro (n=109) | Deepgram Nova-3 (n=109) | Deepgram Flux (n=97) |
+|---|---|---|---|
+| WER, normalized (88 clips / 598 words) | **5.85%** | 9.70% | 8.86% |
+| Semantic WER, LLM judge (88 clips) | **2.51%** | 4.18% | 4.52% |
+| Missed entity rate | **5.88%** (2/34) | 20.59% (7/34) | 19.35% (6/31) |
+| Sentence error rate | **22.94%** | 28.44% | 30.93% |
+| Hard-set WER (26 clips / 157 words) | **10.83%** | 19.11% | 15.92% |
+| English + Spanish WER (7 clips / 45 words) | **13.33%** | 26.67% | 28.89% |
+| English + Hindi WER (5 clips / 28 words) | 32.14% | **10.71%** | **7.14%** |
+| Two-speaker cpWER (4 clips / 45 words) | 17.78% | **8.89%** | **4.44%** |
+| Language-ID accuracy, per final turn (higher is better) | 94.92% (112/118) | **96.52%** (111/115) | **97.14%** (102/105) |
+| Confident-wrong language rate (confidence ≥ 0.6) | 1.69% (2/118) | not comparable¹ | not comparable¹ |
+| Hesitation clips: turns per clip, ps01 / h13 / h14 (1 is ideal) | 3 / 3 / 3 | **2 / 1 / 2** | **3 / 2 / 2** |
+| Hesitation clips: WER (3 clips / 25 words) | **12.0%** | 24.0% | **8.0%** |
+| TTFT from speech start², p50 / p90 (from stream start) | 368 / 460 ms (1,055 / 1,179) | 378 / 473 ms (1,067 / 1,169) | 356 / 576 ms (1,056 / 1,293) |
+| TTCT³, p50 / p90 | 1,124 / 2,802 ms (n=101) | **936 / 1,020 ms** (n=89) | **982 / 1,993 ms** (n=90) |
+| End-of-turn latency³, p50 / p90 | 1,124 / 2,802 ms (n=101) | **939 / 1,024 ms** (n=89) | **982 / 1,993 ms** (n=90) |
+| No end of turn within 4 s of silence | **1 / 102** | 13 / 102 | **0 / 90** |
 
 1. Deepgram returns no language confidence, so the confident-wrong rate can't be computed for it. That's different from 0%.
 2. **TTFT** is the time from the first audio frame sent to the first result with words. AssemblyAI's published definition counts from the start of the stream, which is the figure in parentheses. Every clip opens with silence, measured per clip from the WAV as the first sample above −40 dBFS: 601–890 ms, median 704 ms. The main figure subtracts that clip's lead silence, so it counts from the start of speech.
@@ -88,7 +88,7 @@ These come from the runs above. End of turn is measured from speech end.
 | `h13` hesitation | Yo... eh... yo fui, no, yo voy al mercado. | 就。 / 哎。 / Yo fui, no, yo voy al mercado. (3 turns; fillers labelled zh at confidence 1.0) | Jo E. Yo fui, no, yo voy al mercado. (1 turn) | Yo. / Yo fui, no, yo voy al mercado. (2 turns) |
 | `zh02` Chinese | 请问洗手间在哪里？ | 请问洗手间在哪里？ (0 errors, 1,067 ms) | 请问洗手间在哪里 (0 errors, no end of turn in 4 s) | not supported |
 
-Rerun everything with `python test_cases/stt_bench.py assemblyai|deepgram|flux`, then `python test_cases/score.py test_cases/bench/<arm>_raw.jsonl --out=test_cases/bench/<arm>`. For Flux, add `--ids-from=test_cases/bench/flux_raw.jsonl`, and add the same flag to an AssemblyAI run to score it on the same clips. Keys are read from `ASSEMBLYAI_API_KEY` and `DEEPGRAM_API_KEY` and are never written to disk.
+Rerun everything with `python test_cases/stt_bench.py assemblyai|deepgram|flux`, then `python test_cases/score.py test_cases/bench/<arm>_raw.jsonl --out=test_cases/bench/<arm>`. For Flux, add `--ids-from=test_cases/bench/flux_raw.jsonl`. Keys are read from `ASSEMBLYAI_API_KEY` and `DEEPGRAM_API_KEY` and are never written to disk.
 
 ## Architecture
 
