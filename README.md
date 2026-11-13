@@ -4,6 +4,92 @@ Pingo is a real-time voice tutor for language learners, built only on AssemblyAI
 
 Live app: [pingo-ai.lovable.app](https://pingo-ai.lovable.app) (UI built in Lovable). Backend: [pingo-voice-backend.onrender.com](https://pingo-voice-backend.onrender.com) (this repo, a WebSocket server). The API key stays on the server.
 
+## Architecture
+
+```mermaid
+flowchart LR
+  A[Browser mic<br/>Lovable app] -- 16 kHz PCM16 over /ws --> B[Pingo server<br/>FastAPI on Render]
+  B --> C[AssemblyAI Streaming STT<br/>universal-3-6-pro]
+  C -- final turn + language --> B
+  B --> D[AssemblyAI LLM Gateway<br/>gemma-4-31b]
+  D -- JSON lesson --> B
+  B --> E[AssemblyAI TTS<br/>24 kHz PCM]
+  E --> B
+  B -- transcript, lesson, audio --> A
+```
+
+| Part | What Pingo uses | Settings |
+|---|---|---|
+| Frontend | Lovable app ([pingo-ai.lovable.app](https://pingo-ai.lovable.app)) | Mic captured at 16 kHz `pcm_s16le`, sent over one WebSocket |
+| Backend | Python FastAPI WebSocket server (`server/`), hosted on Render | Holds the only API key; CORS/Origin check, per-IP limits |
+| Speech-to-text | AssemblyAI Streaming STT, model `universal-3-6-pro` (official Python SDK) | Language detection on, `balanced` mode, 600 / 2,400 ms turn silence, Voice Focus `far-field`, profanity filter off, no keyterms |
+| Tutor LLM | AssemblyAI LLM Gateway, model `gemma-4-31b` | Temperature 0.2, max 450 tokens, strict JSON via `response_format` |
+| Text-to-speech | AssemblyAI TTS (`tts.us.assemblyai.com`), 24 kHz PCM | One voice per language: `aai-kyla` (English), a Spanish voice id, `aai-donatien` (French), `aai-magdalena` (German), `aai-giada` (Italian), `aai-nelson` (Portuguese) |
+| Eval judge | AssemblyAI LLM Gateway, `gemma-4-31b`, temperature 0 | Only for the semantic WER row |
+
+Everything runs on one vendor and one key (`ASSEMBLYAI_API_KEY`).
+
+On each finished turn (`end_of_turn` with words), the server asks the tutor model for a structured lesson and streams the TTS back. The model also decides whether the turn is an attempt at the pending phrase and grades it. Partials only update the on-screen transcript. STT detects 32 languages, and TTS and tutoring cover six: English, Spanish, French, German, Italian and Portuguese.
+
+## Run it
+
+Python 3.12+ (Render uses 3.12.11).
+
+```bash
+git clone https://github.com/luharry2821/pingo-voice-backend.git
+cd pingo-voice-backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+export ASSEMBLYAI_API_KEY=your_key      # or cp .env.example .env
+python -m server                        # 127.0.0.1:8000, GET /health, WS /ws
+```
+
+Flags: `--config` (default `configs/baseline.yaml`, or `PINGO_CONFIG`), `--host`, `--port` (or `PORT`), `--target-language`, `--log`, `--set stt.max_turn_silence=1800` (repeatable).
+
+Frontend: the UI is the Lovable app at [pingo-ai.lovable.app](https://pingo-ai.lovable.app); it isn't in this repo. It connects to `VITE_BACKEND_WS_URL`, which defaults to `wss://pingo-voice-backend.onrender.com/ws`. To use a local backend, build the frontend with `VITE_BACKEND_WS_URL=ws://127.0.0.1:8000/ws` and serve it from `localhost`. The server already accepts `localhost` origins (`server/app.py`), so nothing else needs changing.
+
+Deploy: `render.yaml` is a Blueprint for a free Python service (`python -m server --host 0.0.0.0 --port $PORT`), with `ASSEMBLYAI_API_KEY` set in the dashboard. The free plan sleeps after 15 minutes, so `.github/workflows/keep-warm.yml` pings `/health` every 10 minutes.
+
+## Configuration
+
+Later sources win: defaults in `server/config.py` → YAML → `PINGO_*` env vars → `--set`. Each browser `start` / `update_config` message is merged per session, so one learner's changes don't affect another. An empty client `prompt` does not clear the server prompt.
+
+| Setting | Baseline | Why |
+|---|---|---|
+| `stt.speech_model` | `universal-3-6-pro` | 32 languages, native code-switching |
+| `stt.language_detection` | `true` | `language_code` and `language_confidence` on each turn |
+| `stt.language_codes` | `[]` | Open to all 32 languages |
+| `stt.prompt` | short learner-context string | Context about the audio, not instructions |
+| `stt.keyterms_prompt` | `[]` | Off. Boosting the target phrase can make STT "hear" the correct form and hide a learner's mistake. |
+| `stt.agent_context_enabled` | `false` | Off, for the same reason |
+| `stt.mode` | `balanced` | Turn-taking preset |
+| `stt.min_turn_silence` | `600` ms | Up from 128 ms so a short thinking pause doesn't end the turn (400 cut learners off in live use) |
+| `stt.max_turn_silence` | `2400` ms | Up from 1,280 ms. |
+| `stt.interruption_delay` | `250` ms | Down from 500 ms so Pingo stops sooner when talked over |
+| `stt.vad_threshold` | `0.2` | Documented default, sent explicitly |
+| `stt.voice_focus` | `far-field` | Laptop mics, threshold left at the default |
+| `stt.filter_profanity` | `false` | Masking would rewrite what the learner said |
+| `llm.model` / `temperature` / `max_tokens` | `gemma-4-31b` / `0.2` / `450` | Strict JSON via `response_format`, consistent lessons |
+| `tts.voices` | one per language | Catalog voices, plus a voice id for Spanish |
+
+Access control: `PINGO_ALLOWED_ORIGINS`, `PINGO_ALLOWED_ORIGIN_REGEX`, `PINGO_MAX_CONNECTIONS_PER_IP` (default 3), `PINGO_MAX_NEW_CONNECTIONS_PER_IP_PER_MINUTE` (default 10) and `PINGO_TRUST_PROXY_HEADERS` (on by default under Render).
+
+Protocol: the client sends `start` (`target_language`, optional `native_language` and `config`), binary PCM16 frames, `update_config`, `set_target`, `replay` and `stop`. The server sends `status`, `transcript` (partial or final, with language), `lesson`, `agent_text`, `tts_start` + PCM + `tts_end`, `barge_in` and `error`.
+
+## Key decisions
+
+- **One vendor, one key.** STT, LLM Gateway and TTS are all AssemblyAI, server-side.
+- **Act on finished turns only.** Partials are displayed, never acted on.
+- **Language labels are hints.** Wrong labels at high confidence do happen: in the benchmark run, the hesitation sounds in a Spanish clip (`h13`, "eh…") came back as Chinese at confidence 1.0. So the rules rely on persistence rather than a single score:
+  - Changing the learner's own language takes **two consecutive** turns in the same language, each with ≥ 3 words and confidence ≥ 0.6, in a TTS language that isn't the target.
+  - A turn is treated as a request about a third language if it's in a non-Latin script, or if it's Latin-script with confidence ≥ 0.5. Either way, the tutor prompt always carries the label and its score.
+- **Keyterms and agent context off,** so STT doesn't normalize away the learner's mistakes.
+- **The LLM grades practice attempts** (`correct` / `close` / `try_again`). The server pins the stored phrase on attempts, so the lesson card shows the phrase being practised. A longer phrase that contains the stored one ("Hola, ¿cómo estás?" after "Hola") counts as a new phrase. After two misses, Pingo reads the phrase slowly, syllable by syllable.
+- **Who may connect.** CORS and a WebSocket Origin check allow only the Lovable app, its previews and localhost. Each IP gets at most 3 open sockets and 10 new ones a minute. There are no accounts; this is a demo endpoint.
+- **TTS sessions are reused.** On the free plan the account can open 5 new TTS sessions a minute (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)), so each connection warms one session per voice on `start`.
+
+Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026: streaming is $0.45/hr of open session time, idle included. `gemma-4-31b` costs $0.14 / 1M input tokens and $0.40 / 1M output tokens. TTS costs $15 / 1M characters. Each turn's log line records its usage.
+
 ## Evaluation: AssemblyAI vs Deepgram on the same audio
 
 **Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English, Spanish and English + Spanish code-switching).**
@@ -90,92 +176,6 @@ These come from the runs above.
 | `zh02` Chinese | 请问洗手间在哪里？ | 请问洗手间在哪里？ (0 errors) | 请问洗手间在哪里 (0 errors) | not supported |
 
 Rerun everything with `python archive/test_cases/stt_bench.py assemblyai|deepgram|flux`, then `python archive/test_cases/score.py archive/test_cases/bench/<arm>_raw.jsonl --out=archive/test_cases/bench/<arm>`. For Flux, add `--ids-from=archive/test_cases/bench/flux_raw.jsonl`. Keys are read from `ASSEMBLYAI_API_KEY` and `DEEPGRAM_API_KEY` and are never written to disk.
-
-## Architecture
-
-```mermaid
-flowchart LR
-  A[Browser mic<br/>Lovable app] -- 16 kHz PCM16 over /ws --> B[Pingo server<br/>FastAPI on Render]
-  B --> C[AssemblyAI Streaming STT<br/>universal-3-6-pro]
-  C -- final turn + language --> B
-  B --> D[AssemblyAI LLM Gateway<br/>gemma-4-31b]
-  D -- JSON lesson --> B
-  B --> E[AssemblyAI TTS<br/>24 kHz PCM]
-  E --> B
-  B -- transcript, lesson, audio --> A
-```
-
-| Part | What Pingo uses | Settings |
-|---|---|---|
-| Frontend | Lovable app ([pingo-ai.lovable.app](https://pingo-ai.lovable.app)) | Mic captured at 16 kHz `pcm_s16le`, sent over one WebSocket |
-| Backend | Python FastAPI WebSocket server (`server/`), hosted on Render | Holds the only API key; CORS/Origin check, per-IP limits |
-| Speech-to-text | AssemblyAI Streaming STT, model `universal-3-6-pro` (official Python SDK) | Language detection on, `balanced` mode, 600 / 2,400 ms turn silence, Voice Focus `far-field`, profanity filter off, no keyterms |
-| Tutor LLM | AssemblyAI LLM Gateway, model `gemma-4-31b` | Temperature 0.2, max 450 tokens, strict JSON via `response_format` |
-| Text-to-speech | AssemblyAI TTS (`tts.us.assemblyai.com`), 24 kHz PCM | One voice per language: `aai-kyla` (English), a Spanish voice id, `aai-donatien` (French), `aai-magdalena` (German), `aai-giada` (Italian), `aai-nelson` (Portuguese) |
-| Eval judge | AssemblyAI LLM Gateway, `gemma-4-31b`, temperature 0 | Only for the semantic WER row |
-
-Everything runs on one vendor and one key (`ASSEMBLYAI_API_KEY`).
-
-On each finished turn (`end_of_turn` with words), the server asks the tutor model for a structured lesson and streams the TTS back. The model also decides whether the turn is an attempt at the pending phrase and grades it. Partials only update the on-screen transcript. STT detects 32 languages, and TTS and tutoring cover six: English, Spanish, French, German, Italian and Portuguese.
-
-## Run it
-
-Python 3.12+ (Render uses 3.12.11).
-
-```bash
-git clone https://github.com/luharry2821/pingo-voice-backend.git
-cd pingo-voice-backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-export ASSEMBLYAI_API_KEY=your_key      # or cp .env.example .env
-python -m server                        # 127.0.0.1:8000, GET /health, WS /ws
-```
-
-Flags: `--config` (default `configs/baseline.yaml`, or `PINGO_CONFIG`), `--host`, `--port` (or `PORT`), `--target-language`, `--log`, `--set stt.max_turn_silence=1800` (repeatable).
-
-Frontend: the UI is the Lovable app at [pingo-ai.lovable.app](https://pingo-ai.lovable.app); it isn't in this repo. It connects to `VITE_BACKEND_WS_URL`, which defaults to `wss://pingo-voice-backend.onrender.com/ws`. To use a local backend, build the frontend with `VITE_BACKEND_WS_URL=ws://127.0.0.1:8000/ws` and serve it from `localhost`. The server already accepts `localhost` origins (`server/app.py`), so nothing else needs changing.
-
-Deploy: `render.yaml` is a Blueprint for a free Python service (`python -m server --host 0.0.0.0 --port $PORT`), with `ASSEMBLYAI_API_KEY` set in the dashboard. The free plan sleeps after 15 minutes, so `.github/workflows/keep-warm.yml` pings `/health` every 10 minutes.
-
-## Configuration
-
-Later sources win: defaults in `server/config.py` → YAML → `PINGO_*` env vars → `--set`. Each browser `start` / `update_config` message is merged per session, so one learner's changes don't affect another. An empty client `prompt` does not clear the server prompt.
-
-| Setting | Baseline | Why |
-|---|---|---|
-| `stt.speech_model` | `universal-3-6-pro` | 32 languages, native code-switching |
-| `stt.language_detection` | `true` | `language_code` and `language_confidence` on each turn |
-| `stt.language_codes` | `[]` | Open to all 32 languages |
-| `stt.prompt` | short learner-context string | Context about the audio, not instructions |
-| `stt.keyterms_prompt` | `[]` | Off. Boosting the target phrase can make STT "hear" the correct form and hide a learner's mistake. |
-| `stt.agent_context_enabled` | `false` | Off, for the same reason |
-| `stt.mode` | `balanced` | Turn-taking preset |
-| `stt.min_turn_silence` | `600` ms | Up from 128 ms so a short thinking pause doesn't end the turn (400 cut learners off in live use) |
-| `stt.max_turn_silence` | `2400` ms | Up from 1,280 ms. |
-| `stt.interruption_delay` | `250` ms | Down from 500 ms so Pingo stops sooner when talked over |
-| `stt.vad_threshold` | `0.2` | Documented default, sent explicitly |
-| `stt.voice_focus` | `far-field` | Laptop mics, threshold left at the default |
-| `stt.filter_profanity` | `false` | Masking would rewrite what the learner said |
-| `llm.model` / `temperature` / `max_tokens` | `gemma-4-31b` / `0.2` / `450` | Strict JSON via `response_format`, consistent lessons |
-| `tts.voices` | one per language | Catalog voices, plus a voice id for Spanish |
-
-Access control: `PINGO_ALLOWED_ORIGINS`, `PINGO_ALLOWED_ORIGIN_REGEX`, `PINGO_MAX_CONNECTIONS_PER_IP` (default 3), `PINGO_MAX_NEW_CONNECTIONS_PER_IP_PER_MINUTE` (default 10) and `PINGO_TRUST_PROXY_HEADERS` (on by default under Render).
-
-Protocol: the client sends `start` (`target_language`, optional `native_language` and `config`), binary PCM16 frames, `update_config`, `set_target`, `replay` and `stop`. The server sends `status`, `transcript` (partial or final, with language), `lesson`, `agent_text`, `tts_start` + PCM + `tts_end`, `barge_in` and `error`.
-
-## Key decisions
-
-- **One vendor, one key.** STT, LLM Gateway and TTS are all AssemblyAI, server-side.
-- **Act on finished turns only.** Partials are displayed, never acted on.
-- **Language labels are hints.** Wrong labels at high confidence do happen: in the benchmark run, the hesitation sounds in a Spanish clip (`h13`, "eh…") came back as Chinese at confidence 1.0. So the rules rely on persistence rather than a single score:
-  - Changing the learner's own language takes **two consecutive** turns in the same language, each with ≥ 3 words and confidence ≥ 0.6, in a TTS language that isn't the target.
-  - A turn is treated as a request about a third language if it's in a non-Latin script, or if it's Latin-script with confidence ≥ 0.5. Either way, the tutor prompt always carries the label and its score.
-- **Keyterms and agent context off,** so STT doesn't normalize away the learner's mistakes.
-- **The LLM grades practice attempts** (`correct` / `close` / `try_again`). The server pins the stored phrase on attempts, so the lesson card shows the phrase being practised. A longer phrase that contains the stored one ("Hola, ¿cómo estás?" after "Hola") counts as a new phrase. After two misses, Pingo reads the phrase slowly, syllable by syllable.
-- **Who may connect.** CORS and a WebSocket Origin check allow only the Lovable app, its previews and localhost. Each IP gets at most 3 open sockets and 10 new ones a minute. There are no accounts; this is a demo endpoint.
-- **TTS sessions are reused.** On the free plan the account can open 5 new TTS sessions a minute (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)), so each connection warms one session per voice on `start`.
-
-Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026: streaming is $0.45/hr of open session time, idle included. `gemma-4-31b` costs $0.14 / 1M input tokens and $0.40 / 1M output tokens. TTS costs $15 / 1M characters. Each turn's log line records its usage.
 
 ## Repository files
 
