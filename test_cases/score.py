@@ -313,9 +313,9 @@ if __name__ == "__main__":
                           for l in ("en", "de", "es", "fr", "it")},
       "cer_by_language": {l: rate(by(lambda r, l=l: r["languages"] == [l] and r["category"] != "planted_mistake")) for l in ("ja", "zh", "ko")},
       "sentence_error_rate": {"value_pct": round(100 * sum(not r["pass"] for r in rows) / len(rows), 2), "n_cases": len(rows)},
-      # Code-switching WER (average): pooled over every clip whose cases.jsonl lists
-      # more than one language (en+es and en+hi), whatever its category.
-      "codeswitch_wer_all": rate(by(lambda r: len(r["languages"]) > 1 and r["metric"] == "WER")),
+      # Code-switching WER (English + Spanish, average): pooled over every clip whose
+      # cases.jsonl languages are exactly en and es, whatever its category.
+      "codeswitch_wer_en_es": rate(by(lambda r: sorted(r["languages"]) == ["en", "es"] and r["metric"] == "WER")),
       "codeswitch_wer": {"en_hi": rate(by(lambda r: r["category"] == "codeswitch_en_hi")),
                          "en_es": rate(by(lambda r: r["category"] == "codeswitch_en_es"))},
       "hard_only": {"n_cases": len(hard), "wer": rate(hard_word), "fwer": rate(hard_word, "F_E", "F_N"),
@@ -372,7 +372,7 @@ if __name__ == "__main__":
          f"| Missed entity rate | {p(res['missed_entity_rate'])} ({res['missed_entity_rate']['n_missed']}/{res['missed_entity_rate']['n_entities']}) | {res['missed_entity_rate']['n_cases']} cases |",
          f"| Missed entity rate, entity set only | {p(res['missed_entity_rate_entity_set'])} ({res['missed_entity_rate_entity_set']['n_missed']}/{res['missed_entity_rate_entity_set']['n_entities']}) | {res['missed_entity_rate_entity_set']['n_cases']} cases |",
          f"| Confident-wrong rate (wrong label, confidence ≥ {res['confident_wrong_rate']['cutoff']}) | {p(res['confident_wrong_rate'])} | {res['confident_wrong_rate']['n_confident_wrong']} / {res['confident_wrong_rate']['n_turns']} turns |"]
-    v = res["codeswitch_wer_all"]; L.append(f"| Code-switching WER, all mixed-language clips | {p(v)} | {v['n_cases']} / {v['n_units']} |")
+    v = res["codeswitch_wer_en_es"]; L.append(f"| Code-switching WER, English + Spanish clips | {p(v)} | {v['n_cases']} / {v['n_units']} |")
     for l, v in res["wer_monolingual"].items(): L.append(f"| WER {l}, all monolingual clips | {p(v)} | {v['n_cases']} / {v['n_units']} |")
     for l, v in res["wer_by_language"].items(): L.append(f"| WER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")
     for l, v in res["cer_by_language"].items(): L.append(f"| CER {l} | {p(v)} | {v['n_cases']} / {v['n_units']} |")

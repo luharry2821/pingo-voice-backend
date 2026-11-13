@@ -6,7 +6,7 @@ Live app: [pingo-ai.lovable.app](https://pingo-ai.lovable.app) (UI built in Lova
 
 ## Evaluation: AssemblyAI vs Deepgram on the same audio
 
-**Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English and Spanish); Deepgram is slightly better on code-switching.**
+**Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English, Spanish and English + Spanish code-switching).**
 
 The same 105 clips were streamed live to each provider from one machine and scored with the same `score.py`. The runs took place on 13 November 2026, between about 4:45 and 5:25 AM PT. Results: [`assemblyai`](test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](test_cases/bench/deepgram/RESULTS.md), [`flux`](test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `test_cases/bench/*_raw.jsonl`.
 
@@ -24,7 +24,7 @@ Error rates and latency: lower is better. The winner of each pair is in bold; no
 | English WER (22 clips / 183 words) | **0.55%** | 4.37% | 4.37% |
 | Spanish WER (24 clips / 138 words) | **7.97%** | 15.22% | 11.59% |
 | Hindi WER (1 clip / 12 words) | 0.0% | 0.0% | 0.0% |
-| Code-switching WER (average, 15 clips / 92 words) | 21.74% | **19.57%** | **18.48%** |
+| Code-switching WER (English + Spanish, average, 8 clips / 54 words) | **14.81%** | 27.78% | 27.78% |
 | Confident-wrong language rate (confidence ≥ 0.6) | 1.80% (2/111) | not comparable¹ | not comparable¹ |
 | Hesitation clips: turns per clip, ps01 / h13 / h14 (1 is ideal) | 3 / 3 / 3 | **2 / 1 / 2** | **3 / 2 / 2** |
 | Hesitation clips: WER (3 clips / 25 words) | **12.0%** | 24.0% | **8.0%** |
@@ -55,7 +55,7 @@ All numbers come from `test_cases/score.py`, the same code for every provider. A
 - **Normalization (WER rows):** English-only clips use Whisper's `EnglishTextNormalizer`. All other clips use a Whisper-style basic normalizer: NFKC, lowercase, drop `<…>`/`[…]` tags and `(…)` asides, turn punctuation and symbols into spaces (combining marks kept, for Devanagari), collapse whitespace. Japanese, Chinese and Korean clips are scored per character (CER) and are not in any WER row.
 - **WER (average)** = (ΣS + ΣD + ΣI) / ΣN, pooled over all word-based clips (84 clips / 553 words). Pooled means total errors over total words, not a mean of per-clip rates.
 - **English / Spanish / Hindi WER** = the same formula over clips whose only language is `en`, `es` or `hi`. Mixed-language clips are not included.
-- **Code-switching WER (average)** = (S + D + I) / N pooled over the 15 clips that mix two languages (8 en+es, 7 en+hi; `languages` has more than one entry). Words must be written in the language spoken, so an English word in Hindi script counts as an error.
+- **Code-switching WER (English + Spanish, average)** = (S + D + I) / N pooled over the 8 clips whose `languages` are exactly `en` and `es`. Each word must be transcribed in the language spoken.
 - **Semantic WER** = Σ meaning-changing errors / ΣN over the same 84 clips. One batched LLM-judge call (AssemblyAI LLM Gateway `gemma-4-31b`, temperature 0) gets each clip's reference, hypothesis and error list and returns how many of those errors change the meaning; each clip's count is capped at its error count.
 - **Missed entity rate** = tagged entities not found in the hypothesis / all tagged entities. Matching uses the WER normalization and a whole-word match (CJK: substring match with spaces removed).
 - **Sentence error rate** = clips with at least one word (or, for CJK, character) error after normalization / all clips.

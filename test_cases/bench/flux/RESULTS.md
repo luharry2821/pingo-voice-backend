@@ -11,7 +11,7 @@
 | Missed entity rate | 19.35% (6/31) | 17 cases |
 | Missed entity rate, entity set only | 19.05% (4/21) | 9 cases |
 | Confident-wrong rate (wrong label, confidence ≥ 0.6) | not comparable | 0 / 97 turns |
-| Code-switching WER, all mixed-language clips | 18.48% | 15 / 92 |
+| Code-switching WER, English + Spanish clips | 27.78% | 8 / 54 |
 | WER en, all monolingual clips | 4.37% | 22 / 183 |
 | WER es, all monolingual clips | 11.59% | 24 / 138 |
 | WER hi, all monolingual clips | 0.0% | 1 / 12 |
