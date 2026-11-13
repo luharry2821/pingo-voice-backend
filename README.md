@@ -108,6 +108,8 @@ On each finished turn (`end_of_turn` with words), the server asks the tutor mode
 Python 3.12+ (Render uses 3.12.11).
 
 ```bash
+git clone https://github.com/luharry2821/pingo-voice-backend.git
+cd pingo-voice-backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 export ASSEMBLYAI_API_KEY=your_key      # or cp .env.example .env
@@ -117,6 +119,8 @@ python -m server                        # 127.0.0.1:8000, GET /health, WS /ws
 Flags: `--config` (default `configs/baseline.yaml`, or `PINGO_CONFIG`), `--host`, `--port` (or `PORT`), `--target-language`, `--log`, `--set stt.max_turn_silence=1800` (repeatable).
 
 Tests and eval: `pip install -r requirements-dev.txt`, then `python -m unittest discover -s tests -t .`. The eval also needs `DEEPGRAM_API_KEY` for the Deepgram run. Rebuilding the clips (`python test_cases/make_cases.py`) needs ffmpeg.
+
+Frontend: the UI is the Lovable app at [pingo-ai.lovable.app](https://pingo-ai.lovable.app); it isn't in this repo. It connects to `VITE_BACKEND_WS_URL`, which defaults to `wss://pingo-voice-backend.onrender.com/ws`. To use a local backend, build the frontend with `VITE_BACKEND_WS_URL=ws://127.0.0.1:8000/ws` and serve it from `localhost`. The server already accepts `localhost` origins (`server/app.py`), so nothing else needs changing.
 
 Deploy: `render.yaml` is a Blueprint for a free Python service (`python -m server --host 0.0.0.0 --port $PORT`), with `ASSEMBLYAI_API_KEY` set in the dashboard. The free plan sleeps after 15 minutes, so `.github/workflows/keep-warm.yml` pings `/health` every 10 minutes.
 
