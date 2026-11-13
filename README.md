@@ -179,28 +179,31 @@ Rerun everything with `python archive/test_cases/stt_bench.py assemblyai|deepgra
 
 ## Customer evaluation approach
 
-The general playbook for evaluating AssemblyAI against a customer's current STT vendor. The Deepgram benchmark above is one run of it. Full version: the [Customer Evaluation page](https://pingo-ai.lovable.app/evals/customer) and the deck ([PPTX](docs/customer-evaluation-flow.pptx), [PDF](docs/customer-evaluation-flow.pdf)).
+This is the general playbook for evaluating AssemblyAI against a customer's current STT vendor, and the Deepgram benchmark above is one run of it.
 
-```mermaid
-flowchart TD
-  subgraph U["Understand"]
-    S1["1. Discovery<br/>What they built, the user pain, current STT setup, real learner audio"]
-    S2["2. Success criteria<br/>How they measure today, which KPIs, where the blind spots are"]
-  end
-  subgraph B["Build the benchmark"]
-    S3["3. Source of truth<br/>Human transcripts first, models outside both vendors, keep learner mistakes as spoken"]
-    S4["4. Truth File Corrector<br/>Check the answer key against the audio; fix the labels, not the models"]
-  end
-  subgraph R["Run and score"]
-    S5["5. Run, score, validate<br/>Same audio, real-time pace, matched endpointing; vendors get audio only; score from raw output with session IDs"]
-    S6["6. Measure<br/>Accuracy: WER, FWER, sentence errors, semantic WER, missed entities, code-switching WER<br/>Latency: TTFT, TTCT, end-of-turn, turns that never end (p50/p90)<br/>Pricing: cost per learner hour"]
-  end
-  subgraph D["Improve and decide"]
-    S7["7. Diagnose, tune, pilot<br/>Group failures, tune one setting at a time, re-score, pilot with go-live criteria"]
-  end
-  S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
-  S7 -. "re-score and repeat" .-> S5
-```
+Deck: [Google Slides](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/edit) · [PPTX](docs/customer-evaluation-flow.pptx) · [PDF](docs/customer-evaluation-flow.pdf) · [Customer Evaluation page](https://pingo-ai.lovable.app/evals/customer)
+
+### 1. Understand
+
+- **Discovery.** Learn what they're building, the product and its flow architecture. Find the user pain, review the current STT setup and collect real learner audio. *Goal: what they built, where learners struggle, and the baseline to beat.*
+- **Success criteria.** Find out how they measure today, whether they measure it correctly, which KPIs they track and where the blind spots are. *Goal: their product through its KPIs, and whether those numbers hold up.*
+
+### 2. Build the benchmark
+
+- **Source of truth.** Use human transcripts first, then models outside both vendors, and keep learner mistakes as spoken. *Goal: a fair answer key that no vendor wrote.*
+- **Truth File Corrector.** Load the answer key into AssemblyAI, check it against the audio, and fix the labels, not the models. *Goal: a corrected source of truth we can trust.*
+
+### 3. Run and score
+
+- **Run, score and validate.** Stream every clip live to Universal-3.6 Pro at real-time pace, then re-run the current vendor on the same audio with the closest matching endpointing. Vendors get audio and settings only; the answer key stays with us. Score from raw output saved with session IDs. *Goal: same audio, same scoring, nothing hidden.*
+- **What we measure.**
+  - *Accuracy:* WER, FWER, sentence error rate, semantic WER, missed entity rate and code-switching WER.
+  - *Latency:* TTFT, TTCT, end-of-turn latency and turns that never end, all at p50 and p90.
+  - *Pricing:* cost per learner hour, session time with pauses included, and add-ons in use.
+
+### 4. Improve and decide
+
+- **Diagnose, tune and pilot.** Group the failures, tune one setting at a time, re-score and repeat, then pilot with go-live criteria. *Goal: a clear yes, backed by their own data.*
 
 ## Repository files
 
