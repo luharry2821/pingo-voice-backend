@@ -60,7 +60,7 @@ All numbers come from `test_cases/score.py`, the same code for every provider. A
 
 ### Test set
 
-105 synthetic edge-tts clips, listed in `test_cases/cases.jsonl`. Endpointing is matched on both providers (600 / 2,400 ms). By design there's no 1,280 ms arm.
+105 synthetic edge-tts clips, listed in `test_cases/cases.jsonl`. Every clip, with its audio and each provider's session ID, is in the [Notion test cases table](https://heavenly-comb-246.notion.site/Pingo-STT-Test-Cases-105-416ff952949a81dcb6b8c0c8cb4c6b89). Endpointing is matched on both providers (600 / 2,400 ms). By design there's no 1,280 ms arm.
 
 | Language | Clips |
 |---|---|
