@@ -93,7 +93,28 @@ Rerun everything with `python test_cases/stt_bench.py assemblyai|deepgram|flux`,
 
 ## Architecture
 
-Browser mic (16 kHz `pcm_s16le`) → `/ws` on this server → AssemblyAI streaming STT (`universal-3-6-pro`) → AssemblyAI LLM Gateway (`gemma-4-31b`) → AssemblyAI TTS (24 kHz PCM) → browser. It uses one vendor and one key (`ASSEMBLYAI_API_KEY`).
+```mermaid
+flowchart LR
+  A[Browser mic<br/>Lovable app] -- 16 kHz PCM16 over /ws --> B[Pingo server<br/>FastAPI on Render]
+  B --> C[AssemblyAI Streaming STT<br/>universal-3-6-pro]
+  C -- final turn + language --> B
+  B --> D[AssemblyAI LLM Gateway<br/>gemma-4-31b]
+  D -- JSON lesson --> B
+  B --> E[AssemblyAI TTS<br/>24 kHz PCM]
+  E --> B
+  B -- transcript, lesson, audio --> A
+```
+
+| Part | What Pingo uses | Settings |
+|---|---|---|
+| Frontend | Lovable app ([pingo-ai.lovable.app](https://pingo-ai.lovable.app)) | Mic captured at 16 kHz `pcm_s16le`, sent over one WebSocket |
+| Backend | Python FastAPI WebSocket server (`server/`), hosted on Render | Holds the only API key; CORS/Origin check, per-IP limits |
+| Speech-to-text | AssemblyAI Streaming STT, model `universal-3-6-pro` (official Python SDK) | Language detection on, `balanced` mode, 600 / 2,400 ms turn silence, Voice Focus `far-field`, profanity filter off, no keyterms |
+| Tutor LLM | AssemblyAI LLM Gateway, model `gemma-4-31b` | Temperature 0.2, max 450 tokens, strict JSON via `response_format` |
+| Text-to-speech | AssemblyAI TTS (`tts.us.assemblyai.com`), 24 kHz PCM | One voice per language: `aai-kyla` (English), a Spanish voice id, `aai-donatien` (French), `aai-magdalena` (German), `aai-giada` (Italian), `aai-nelson` (Portuguese) |
+| Eval judge | AssemblyAI LLM Gateway, `gemma-4-31b`, temperature 0 | Only for the semantic WER row |
+
+Everything runs on one vendor and one key (`ASSEMBLYAI_API_KEY`).
 
 On each finished turn (`end_of_turn` with words), the server asks the tutor model for a structured lesson and streams the TTS back. The model also decides whether the turn is an attempt at the pending phrase and grades it. Partials only update the on-screen transcript. STT detects 32 languages, and TTS and tutoring cover six: English, Spanish, French, German, Italian and Portuguese.
 
