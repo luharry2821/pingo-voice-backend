@@ -81,6 +81,11 @@
   "value_pct": 23.81,
   "n_cases": 105
  },
+ "codeswitch_wer_all": {
+  "value_pct": 21.74,
+  "n_cases": 15,
+  "n_units": 92
+ },
  "codeswitch_wer": {
   "en_hi": {
    "value_pct": 32.14,
