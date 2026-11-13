@@ -1,0 +1,5 @@
+-r requirements.txt
+jiwer==4.0.0
+whisper-normalizer==1.0.1
+# Optional: rebuild synthetic audio (also requires ffmpeg).
+edge-tts==7.3.1

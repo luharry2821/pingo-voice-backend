@@ -191,5 +191,53 @@ class PinnedPracticePhraseTests(unittest.TestCase):
         _run(scenario())
 
 
+class PinPracticePhraseTests(unittest.TestCase):
+    """_pin_practice_phrase: echoes are pinned to the stored phrase, a new longer phrase is not."""
+
+    def _session(self):
+        from tests.test_tutor import PracticeStateTests
+
+        session, _llm, _tts, _sent = PracticeStateTests._session(PracticeStateTests(), [], [])
+        session.practice_target = "Hola"
+        session.practice_card = {"pronunciation": "OH-lah", "syllables": "ho - la"}
+        return session
+
+    def _pin(self, intent, phrase):
+        from types import SimpleNamespace
+
+        lesson = SimpleNamespace(intent=intent, translation=phrase, pronunciation="x", syllables="y")
+        self._session()._pin_practice_phrase(lesson)
+        return lesson
+
+    def test_pronunciation_of_a_longer_phrase_is_a_new_phrase(self):
+        lesson = self._pin("pronunciation", "Hola, ¿cómo estás?")
+        self.assertEqual(lesson.translation, "Hola, ¿cómo estás?")
+        self.assertEqual(lesson.syllables, "y")
+
+    def test_pronunciation_of_the_same_or_no_phrase_is_pinned(self):
+        for phrase in ("", "hola", "¡Hola!"):
+            with self.subTest(phrase=phrase):
+                lesson = self._pin("pronunciation", phrase)
+                self.assertEqual(lesson.translation, "Hola")
+                self.assertEqual(lesson.syllables, "ho - la")
+
+    def test_attempt_echo_is_still_pinned(self):
+        self.assertEqual(self._pin("practice_attempt", "Hola. corticosteroids").translation, "Hola")
+
+    def test_teach_turn_is_never_pinned(self):
+        self.assertEqual(self._pin("teach_phrase", "Hola, ¿cómo estás?").translation, "Hola, ¿cómo estás?")
+
+    def test_new_longer_phrase_becomes_the_practice_target(self):
+        from types import SimpleNamespace
+
+        session = self._session()
+        session.misses = 2
+        lesson = SimpleNamespace(intent="pronunciation", translation="Hola, ¿cómo estás?", pronunciation="OH-lah KOH-moh",
+                                 syllables="ho - la, co - mo es - tas", reply="", verdict="none", detected_errors=[])
+        session._apply_practice(lesson)
+        self.assertEqual(session.practice_target, "Hola, ¿cómo estás?")
+        self.assertEqual(session.misses, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

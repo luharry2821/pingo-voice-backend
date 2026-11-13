@@ -1,9 +1,7 @@
 """Audio helpers: turn a WAV file into 16 kHz mono PCM16, the format streaming STT expects.
 
-Pipeline position: used by file mode (python -m server --input clip.wav) and
-the eval scripts to feed recorded clips into the same pipeline as a live mic
-(mic audio -> STT -> LLM tutor -> TTS -> browser). Live browsers already send
-16 kHz PCM16, so they skip this file. Pure standard library, no numpy.
+Used by the eval scripts to stream recorded clips like a live mic. Live
+browsers already send 16 kHz PCM16, so they skip this file. Pure standard library, no numpy.
 
 PCM16 = signed 16-bit samples, little-endian, 2 bytes per sample (mono).
 """
@@ -70,24 +68,6 @@ def resample_pcm16(pcm, src_rate, dst_rate):
         value = src[left] + (src[right] - src[left]) * frac
         dst[index] = max(-32768, min(32767, int(round(value))))
     return _to_le(dst)
-
-
-def iter_chunks(pcm, sample_rate=TARGET_RATE, chunk_ms=50):
-    """Yield ~chunk_ms slices. 50 ms at 16 kHz mono s16 is 1600 bytes."""
-    # Bytes per chunk: samples per chunk times 2 bytes per sample.
-    size = sample_rate * chunk_ms // 1000 * 2
-    if size <= 0:
-        raise ValueError("chunk_ms is too small")
-    for start in range(0, len(pcm), size):
-        yield pcm[start : start + size]
-
-
-def silence(ms, sample_rate=TARGET_RATE):
-    """`ms` milliseconds of PCM16 silence (zero samples) at sample_rate.
-
-    File mode appends this after a clip so STT sees the pause that ends a turn.
-    """
-    return b"\x00\x00" * (sample_rate * ms // 1000)
 
 
 def _from_le(pcm):

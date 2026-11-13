@@ -3,10 +3,12 @@
 Covers the whole path (mic audio -> STT -> LLM tutor -> TTS -> browser) using
 _FakeSTT / _FakeLLM / _FakeTTS stand-ins: config loading and STT parameters,
 WAV handling, lesson JSON parsing and the LLM request shape, the Session
-(file mode log line, audio accounting, barge-in, replay, restarts, chat
+(turn log line, audio accounting, barge-in, replay, restarts, chat
 memory) and the real FastAPI WebSocket endpoint.
 """
 
+import sys
+import time
 import asyncio
 import json
 import os
@@ -14,7 +16,7 @@ import tempfile
 import unittest
 import wave
 
-from server.audio import iter_chunks, read_pcm16_mono, resample_pcm16
+from server.audio import read_pcm16_mono, resample_pcm16
 from server.config import bind_address, default_settings, load_settings, merge_session_config
 from server.llm import error_strings, parse_lesson_text
 from server.log import write_turn
@@ -32,7 +34,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(params["speech_model"], "universal-3-6-pro")
         self.assertEqual(params["mode"], "balanced")
         self.assertEqual(params["interruption_delay"], 250)
-        self.assertEqual(params["min_turn_silence"], 400)
+        self.assertEqual(params["min_turn_silence"], 600)
         self.assertEqual(params["max_turn_silence"], 2400)
         self.assertEqual(params["vad_threshold"], 0.2)
         self.assertIn("language learner", params["prompt"])
@@ -118,7 +120,7 @@ class AudioTests(unittest.TestCase):
         self.assertEqual(len(out), 16000 * 2)
 
     def test_wav_stereo_becomes_16k_mono(self):
-        """A stereo 8 kHz WAV becomes 16 kHz mono, and 50 ms chunks rejoin to the same bytes."""
+        """A stereo 8 kHz WAV becomes 16 kHz mono."""
         path = os.path.join(tempfile.mkdtemp(), "clip.wav")
         with wave.open(path, "wb") as handle:
             handle.setnchannels(2)
@@ -127,9 +129,6 @@ class AudioTests(unittest.TestCase):
             handle.writeframes(b"\x00\x00\x02\x00" * 800)
         pcm = read_pcm16_mono(path)
         self.assertEqual(len(pcm), 1600 * 2)
-        chunks = list(iter_chunks(pcm, chunk_ms=50))
-        self.assertTrue(all(len(chunk) <= 1600 for chunk in chunks))
-        self.assertEqual(b"".join(chunks), pcm)
 
 
 class LessonParseTests(unittest.TestCase):
@@ -351,6 +350,128 @@ class _SlowLLM(_FakeLLM):
         return await super().complete(**kwargs)
 
 
+# Test-only driver: stream a WAV into a Session like a mic and wait for the logged reply.
+async def run_file(
+    path,
+    settings,
+    api_key,
+    *,
+    case_id="",
+    session_id="",
+    pace=True,
+    stt_factory=None,
+    llm=None,
+    tts=None,
+    chunk_ms=50,
+    quiet_s=1.5,
+    timeout_s=90,
+):
+    """Stream a WAV at real-time pace, then wait until the tutor reply is logged."""
+    # A fake STT (tests) does not need a real key.
+    if not api_key and stt_factory is None:
+        print("ASSEMBLYAI_API_KEY is not set.", file=sys.stderr)
+        return 2
+    pcm = read_pcm16_mono(path)
+    # TTS audio from the reply is collected here and written to last_reply.pcm at the
+    # end.
+    audio = bytearray()
+    saw_lesson = False
+
+    async def send(payload):
+        """Stand-in for the browser socket: collect TTS audio, print lesson and error messages."""
+        nonlocal saw_lesson
+        if isinstance(payload, (bytes, bytearray)):
+            audio.extend(payload)
+            return
+        if payload.get("type") == "lesson":
+            saw_lesson = True
+            print(json.dumps(payload, ensure_ascii=False), flush=True)
+        elif payload.get("type") == "error":
+            print(json.dumps(payload, ensure_ascii=False), flush=True, file=sys.stderr)
+
+    session = Session(
+        settings,
+        api_key,
+        send,
+        case_id=case_id,
+        session_id=session_id,
+        stt_factory=stt_factory,
+        llm=llm,
+        tts=tts,
+        log_path=settings["log"]["path"],
+    )
+    # Same `start` message the browser sends.
+    await session.handle_text(
+        {
+            "type": "start",
+            "target_language": settings.get("target_language") or "es",
+            "case_id": case_id,
+            "session_id": session.session_id,
+        }
+    )
+    if session.stt is None:
+        await session.close()
+        return 1
+
+    await _stream_pcm(session, pcm, chunk_ms, pace)
+    # Silence after the clip lets endpointing emit the final turn. Cover the
+    # configured max_turn_silence when a run raised it past the balanced default.
+    tail_ms = 2000
+    if settings["stt"].get("max_turn_silence"):
+        tail_ms = max(tail_ms, int(settings["stt"]["max_turn_silence"]) + 700)
+    await _stream_pcm(session, b"\x00\x00" * (16 * tail_ms), chunk_ms, pace)
+
+    # Wait until a tutor reply has been logged and nothing has been busy for quiet_s, or
+    # until timeout_s. session.ready holds finished turns; session.job is the reply in
+    # progress.
+    deadline = time.monotonic() + timeout_s
+    quiet_since = None
+    while time.monotonic() < deadline:
+        busy = session.job is not None and not session.job.done()
+        if session.ready and not busy:
+            if quiet_since is None:
+                quiet_since = time.monotonic()
+            elif time.monotonic() - quiet_since >= quiet_s:
+                break
+        else:
+            quiet_since = None
+        await asyncio.sleep(0.05)
+    # while-else: this runs only when the deadline passed without a break.
+    else:
+        if not session.ready and not saw_lesson:
+            print("Timed out waiting for a final turn and a tutor reply.", file=sys.stderr)
+
+    await session.shutdown()
+    if audio:
+        directory = os.path.dirname(settings["log"]["path"]) or "."
+        os.makedirs(directory, exist_ok=True)
+        out_path = os.path.join(directory, "last_reply.pcm")
+        with open(out_path, "wb") as handle:
+            handle.write(audio)
+        print(f"wrote {out_path} ({len(audio)} bytes, 24 kHz pcm16)", flush=True)
+    # Exit code 0 means at least one turn was logged.
+    return 0 if session.turns_logged else 1
+
+
+async def _stream_pcm(session, pcm, chunk_ms, pace):
+    """Feed PCM to the session in chunk_ms pieces, sleeping to match real time if pace is True.
+
+    Pacing against a fixed start time (not a sleep per chunk) avoids drift, so
+    STT endpointing behaves as it would with a live microphone.
+    """
+    started = time.monotonic()
+    sent_ms = 0
+    size = 32 * chunk_ms
+    for chunk in (pcm[i : i + size] for i in range(0, len(pcm), size)):
+        await session.handle_audio(chunk)
+        sent_ms += chunk_ms
+        if pace:
+            delay = started + (sent_ms / 1000.0) - time.monotonic()
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+
+
 def _run(coro):
     """Run a coroutine to completion on a fresh event loop."""
     return asyncio.run(coro)
@@ -358,10 +479,9 @@ def _run(coro):
 
 class SessionTests(unittest.TestCase):
     """Session behaviour: logging, audio accounting, barge-in, replay and restarts."""
-    def test_file_mode_writes_the_eval_line_and_appends(self):
-        """File mode writes one complete eval line (STT, LLM, timings, usage, config) and later writes append.
+    def test_a_turn_writes_the_log_line_and_appends(self):
+        """A finished turn writes one complete log line (STT, LLM, timings, usage, config) and later writes append.
         """
-        from server.__main__ import run_file
 
         folder = tempfile.mkdtemp()
         wav_path = os.path.join(folder, "clip.wav")
@@ -738,6 +858,91 @@ class WebSocketTests(unittest.TestCase):
                 body = socket.receive_json()
         self.assertEqual(body["type"], "error")
         self.assertIn("ASSEMBLYAI_API_KEY", body["message"])
+
+
+class AccessTests(unittest.TestCase):
+    """Who may open /ws: Origin allow-list, CORS and the per-IP connection cap."""
+
+    def _app(self, env=None):
+        from server.app import create_app
+
+        return create_app(load_settings("configs/baseline.yaml"), "", stt_factory=_FakeSTT, llm=_FakeLLM(), tts=_FakeTTS(),
+                          log_path=os.path.join(tempfile.mkdtemp(), "t.jsonl"), env=env or {})
+
+    def test_origin_rules(self):
+        from server.app import DEFAULT_ORIGIN_REGEX, allowed_origins, origin_allowed
+
+        origins = allowed_origins({})
+        ok = ["https://pingo-ai.lovable.app", "https://id-preview--1216d0da-cf60-4a31-91c4-6916a3d74f35.lovable.app",
+              "https://1216d0da-cf60-4a31-91c4-6916a3d74f35.lovableproject.com", "http://localhost:8080",
+              "http://127.0.0.1:5173", None, ""]
+        bad = ["https://evil.lovable.app", "https://pingo-ai.lovable.app.evil.com", "http://localhost.evil.com",
+               "https://example.com", "null"]
+        for origin in ok:
+            self.assertTrue(origin_allowed(origin, origins, DEFAULT_ORIGIN_REGEX), origin)
+        for origin in bad:
+            self.assertFalse(origin_allowed(origin, origins, DEFAULT_ORIGIN_REGEX), origin)
+        self.assertEqual(allowed_origins({"PINGO_ALLOWED_ORIGINS": "https://a.example, https://b.example/"}),
+                         ["https://a.example", "https://b.example"])
+
+    def test_foreign_origin_is_refused_and_live_app_is_served(self):
+        from fastapi.testclient import TestClient
+        from starlette.websockets import WebSocketDisconnect
+
+        with TestClient(self._app()) as client:
+            with self.assertRaises(WebSocketDisconnect):
+                with client.websocket_connect("/ws", headers={"origin": "https://example.com"}) as socket:
+                    socket.receive_json()
+            for headers in ({"origin": "https://pingo-ai.lovable.app"}, {}):
+                with client.websocket_connect("/ws", headers=headers) as socket:
+                    socket.send_json({"type": "start", "target_language": "es"})
+                    self.assertEqual(socket.receive_json()["type"], "error")  # no key in this test app
+
+    def test_cors_allows_only_the_app(self):
+        from fastapi.testclient import TestClient
+
+        with TestClient(self._app()) as client:
+            good = client.get("/health", headers={"origin": "https://pingo-ai.lovable.app"})
+            self.assertEqual(good.headers.get("access-control-allow-origin"), "https://pingo-ai.lovable.app")
+            bad = client.get("/health", headers={"origin": "https://example.com"})
+            self.assertIsNone(bad.headers.get("access-control-allow-origin"))
+
+    def test_per_ip_open_connection_cap(self):
+        from fastapi.testclient import TestClient
+
+        with TestClient(self._app({"PINGO_MAX_CONNECTIONS_PER_IP": "2"})) as client:
+            with client.websocket_connect("/ws"), client.websocket_connect("/ws"):
+                with client.websocket_connect("/ws") as third:
+                    body = third.receive_json()
+                    self.assertEqual(body["type"], "error")
+                    self.assertIn("Too many open", body["message"])
+            with client.websocket_connect("/ws") as again:
+                again.send_json({"type": "start", "target_language": "es"})
+                self.assertIn("ASSEMBLYAI_API_KEY", again.receive_json()["message"])
+
+    def test_limiter_counts_new_connections_per_minute(self):
+        from server.app import ConnectionLimiter
+
+        now = [0.0]
+        limiter = ConnectionLimiter(0, 2, clock=lambda: now[0])
+        self.assertIsNone(limiter.acquire("1.2.3.4")); limiter.release("1.2.3.4")
+        self.assertIsNone(limiter.acquire("1.2.3.4")); limiter.release("1.2.3.4")
+        self.assertIn("Wait a minute", limiter.acquire("1.2.3.4"))
+        self.assertIsNone(limiter.acquire("5.6.7.8"))
+        now[0] = 61
+        self.assertIsNone(limiter.acquire("1.2.3.4"))
+
+    def test_client_ip_uses_proxy_headers_only_when_trusted(self):
+        from types import SimpleNamespace
+
+        from server.app import client_ip
+
+        ws = SimpleNamespace(headers={"x-forwarded-for": "81.97.145.24, 172.71.195.123", "cf-connecting-ip": "81.97.145.24"},
+                             client=SimpleNamespace(host="10.0.0.1"))
+        self.assertEqual(client_ip(ws, True), "81.97.145.24")
+        self.assertEqual(client_ip(ws, False), "10.0.0.1")
+        ws.headers = {"x-forwarded-for": "81.97.145.24, 10.2.3.4"}
+        self.assertEqual(client_ip(ws, True), "81.97.145.24")
 
 
 if __name__ == "__main__":

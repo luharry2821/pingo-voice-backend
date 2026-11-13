@@ -10,20 +10,10 @@ model text, and the slow read after two misses (server/session.py).
 import unittest
 
 from server.config import DEFAULT_SYSTEM_PROMPT
-from server.llm import build_user_text, parse_lesson_text
+from server.llm import parse_lesson_text
 from server.session import speech_plans
 from tests import test_tutor
 from tests.test_tutor import _run, _turn
-
-
-class UserTextTests(unittest.TestCase):
-    """The per-turn prompt leaves the attempt decision to the model."""
-    def test_no_rule_based_routing_line(self):
-        """A pending phrase adds no routing or verdict line; the model decides and grades."""
-        text = build_user_text("Good morning", "en", 0.9, "spanish", "english", "Hola")
-        self.assertNotIn("Routing", text)
-        self.assertNotIn("verdict", text)
-        self.assertTrue(text.endswith("Good morning"))
 
 
 class PromptTests(unittest.TestCase):

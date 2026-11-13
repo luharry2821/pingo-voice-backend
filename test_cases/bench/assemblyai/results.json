@@ -1,7 +1,7 @@
 {
  "n_cases": 109,
  "wer_overall": {
-  "value_pct": 6.35,
+  "value_pct": 5.85,
   "n_cases": 88,
   "n_units": 598
  },
@@ -12,14 +12,9 @@
   "judge": "AssemblyAI LLM Gateway gemma-4-31b, temperature 0, one batched call"
  },
  "fwer": {
-  "value_pct": 8.59,
+  "value_pct": 8.42,
   "n_cases": 88,
   "n_units": 582
- },
- "mer_overall": {
-  "value_pct": 6.34,
-  "n_cases": 88,
-  "n_units": 599
  },
  "cpwer": {
   "value_pct": 17.78,
@@ -27,33 +22,6 @@
   "n_units": 45
  },
  "wer_by_language": {
-  "en": {
-   "value_pct": 0.0,
-   "n_cases": 10,
-   "n_units": 84
-  },
-  "de": {
-   "value_pct": 2.86,
-   "n_cases": 6,
-   "n_units": 35
-  },
-  "es": {
-   "value_pct": 0.0,
-   "n_cases": 3,
-   "n_units": 18
-  },
-  "fr": {
-   "value_pct": 0.0,
-   "n_cases": 2,
-   "n_units": 14
-  },
-  "it": {
-   "value_pct": 16.67,
-   "n_cases": 1,
-   "n_units": 6
-  }
- },
- "mer_by_language": {
   "en": {
    "value_pct": 0.0,
    "n_cases": 10,
@@ -98,12 +66,12 @@
   }
  },
  "sentence_error_rate": {
-  "value_pct": 24.77,
+  "value_pct": 22.94,
   "n_cases": 109
  },
  "codeswitch_wer": {
   "en_hi": {
-   "value_pct": 42.86,
+   "value_pct": 32.14,
    "n_cases": 5,
    "n_units": 28
   },
@@ -113,20 +81,6 @@
    "n_units": 45
   }
  },
- "mistake_preservation_rate": {
-  "value_pct": 69.44,
-  "n_mistakes": 36,
-  "n_preserved": 25,
-  "n_cases": 33,
-  "higher_is_better": true
- },
- "mistake_preservation_rate_excl_ambiguous_audio": {
-  "value_pct": 75.0,
-  "n_mistakes": 32,
-  "n_preserved": 24,
-  "n_cases": 33,
-  "higher_is_better": true
- },
  "hard_only": {
   "n_cases": 31,
   "wer": {
@@ -134,13 +88,8 @@
    "n_cases": 26,
    "n_units": 157
   },
-  "mer": {
-   "value_pct": 10.76,
-   "n_cases": 26,
-   "n_units": 158
-  },
   "fwer": {
-   "value_pct": 15.19,
+   "value_pct": 15.82,
    "n_cases": 26,
    "n_units": 158
   },
@@ -157,20 +106,6 @@
   "sentence_error_rate": {
    "value_pct": 48.39,
    "n_cases": 31
-  },
-  "mistake_preservation_rate": {
-   "value_pct": 52.38,
-   "n_mistakes": 21,
-   "n_preserved": 11,
-   "n_cases": 18,
-   "higher_is_better": true
-  },
-  "mistake_preservation_rate_excl_ambiguous_audio": {
-   "value_pct": 58.82,
-   "n_mistakes": 17,
-   "n_preserved": 10,
-   "n_cases": 18,
-   "higher_is_better": true
   }
  },
  "formatting_fwer": {
@@ -262,35 +197,35 @@
   }
  },
  "language_id_accuracy": {
-  "value_pct": 80.34,
-  "n_correct": 94,
-  "n_turns": 117,
+  "value_pct": 94.92,
+  "n_correct": 112,
+  "n_turns": 118,
   "higher_is_better": true,
   "n_cases": 109
  },
  "confident_wrong_rate": {
-  "value_pct": 13.68,
-  "n_confident_wrong": 16,
-  "n_turns": 117,
+  "value_pct": 1.69,
+  "n_confident_wrong": 2,
+  "n_turns": 118,
   "cutoff": 0.6
  },
  "language_id_accuracy_by_language": {
   "en": {
-   "value_pct": 87.1,
-   "n_correct": 27,
+   "value_pct": 96.77,
+   "n_correct": 30,
    "n_turns": 31,
    "higher_is_better": true
   },
   "de": {
-   "value_pct": 75.0,
-   "n_correct": 9,
+   "value_pct": 100.0,
+   "n_correct": 12,
    "n_turns": 12,
    "higher_is_better": true
   },
   "es": {
-   "value_pct": 81.48,
-   "n_correct": 22,
-   "n_turns": 27,
+   "value_pct": 82.14,
+   "n_correct": 23,
+   "n_turns": 28,
    "higher_is_better": true
   },
   "fr": {
@@ -312,110 +247,54 @@
    "higher_is_better": true
   },
   "ja": {
-   "value_pct": 77.78,
-   "n_correct": 7,
+   "value_pct": 100.0,
+   "n_correct": 9,
    "n_turns": 9,
    "higher_is_better": true
   },
   "zh": {
-   "value_pct": 57.14,
-   "n_correct": 4,
+   "value_pct": 100.0,
+   "n_correct": 7,
    "n_turns": 7,
    "higher_is_better": true
   },
   "ko": {
-   "value_pct": 40.0,
-   "n_correct": 2,
+   "value_pct": 100.0,
+   "n_correct": 5,
    "n_turns": 5,
    "higher_is_better": true
   },
   "en+hi": {
-   "value_pct": 71.43,
-   "n_correct": 5,
+   "value_pct": 100.0,
+   "n_correct": 7,
    "n_turns": 7,
    "higher_is_better": true
   },
   "en+es": {
-   "value_pct": 87.5,
-   "n_correct": 7,
+   "value_pct": 100.0,
+   "n_correct": 8,
    "n_turns": 8,
    "higher_is_better": true
   }
  },
  "language_id_mislabeled": [
   {
-   "id": "zh01",
-   "text": "我想喝水。",
+   "id": "en07",
+   "text": "Was my pronunciation of croissant okay?",
    "expected": [
-    "zh"
+    "en"
    ],
-   "got": "ja",
-   "confidence": 1.0
+   "got": "fr",
+   "confidence": 0.277492
   },
   {
-   "id": "zh02",
-   "text": "请问洗手间在哪里？",
-   "expected": [
-    "zh"
-   ],
-   "got": "ja",
-   "confidence": 1.0
-  },
-  {
-   "id": "zh03",
-   "text": "我在学习中文。",
-   "expected": [
-    "zh"
-   ],
-   "got": "ja",
-   "confidence": 1.0
-  },
-  {
-   "id": "ko01",
-   "text": "물 주세요.",
-   "expected": [
-    "ko"
-   ],
-   "got": "zh",
-   "confidence": 1.0
-  },
-  {
-   "id": "ko02",
-   "text": "화장실이 어디예요?",
-   "expected": [
-    "ko"
-   ],
-   "got": "zh",
-   "confidence": 1.0
-  },
-  {
-   "id": "es01",
-   "text": "¿Dónde está el baño?",
+   "id": "fm06",
+   "text": "Mi examen es el 15 de julio.",
    "expected": [
     "es"
    ],
-   "got": "ko",
-   "confidence": 1.0
-  },
-  {
-   "id": "hi01",
-   "text": "मुझे एक कॉफ़ी चाहिए, प्लीज़।",
-   "expected": [
-    "en",
-    "hi"
-   ],
-   "got": "it",
-   "confidence": 0.812307
-  },
-  {
-   "id": "cs01",
-   "text": "Quiero un café, please.",
-   "expected": [
-    "en",
-    "es"
-   ],
-   "got": "hi",
-   "confidence": 0.624842
+   "got": "ca",
+   "confidence": 0.206431
   },
   {
    "id": "pm01",
@@ -427,130 +306,30 @@
    "confidence": 0.255212
   },
   {
-   "id": "pm05",
-   "text": "Ich habe Hunger nicht.",
-   "expected": [
-    "de"
-   ],
-   "got": "es",
-   "confidence": 0.64365
-  },
-  {
-   "id": "pm13",
-   "text": "私は学生王です。",
-   "expected": [
-    "ja"
-   ],
-   "got": "en",
-   "confidence": 0.870774
-  },
-  {
-   "id": "pm18",
-   "text": "Ella son muy simpática.",
+   "id": "h17",
+   "text": "C.",
    "expected": [
     "es"
    ],
-   "got": "fr",
-   "confidence": 0.530655
+   "got": "vi",
+   "confidence": 0.148354
   },
   {
-   "id": "pm20",
-   "text": "I go to school yesterday.",
-   "expected": [
-    "en"
-   ],
-   "got": "es",
-   "confidence": 0.880234
-  },
-  {
-   "id": "pm21",
-   "text": "Tengo un perro en casa.",
+   "id": "h13",
+   "text": "就。",
    "expected": [
     "es"
-   ],
-   "got": "en",
-   "confidence": 0.302449
-  },
-  {
-   "id": "h01",
-   "text": "Quiero un carro rojo.",
-   "expected": [
-    "es"
-   ],
-   "got": "hi",
-   "confidence": 0.622754
-  },
-  {
-   "id": "h04",
-   "text": "Ich gehe in die Park.",
-   "expected": [
-    "de"
-   ],
-   "got": "nl",
-   "confidence": 0.288636
-  },
-  {
-   "id": "h05",
-   "text": "私は日本へ行きます。",
-   "expected": [
-    "ja"
-   ],
-   "got": "nl",
-   "confidence": 0.284323
-  },
-  {
-   "id": "h09",
-   "text": "할머니, 밥 먹어?",
-   "expected": [
-    "ko"
    ],
    "got": "zh",
    "confidence": 1.0
   },
   {
-   "id": "h10",
-   "text": "मैं कल स्कूल जाएगा था।",
+   "id": "h13",
+   "text": "哎。",
    "expected": [
-    "en",
-    "hi"
+    "es"
    ],
    "got": "zh",
-   "confidence": 1.0
-  },
-  {
-   "id": "h18",
-   "text": "Danke!",
-   "expected": [
-    "de"
-   ],
-   "got": "es",
-   "confidence": 0.988113
-  },
-  {
-   "id": "h14",
-   "text": "I want to.",
-   "expected": [
-    "en"
-   ],
-   "got": "es",
-   "confidence": 0.442537
-  },
-  {
-   "id": "h14",
-   "text": "Um.",
-   "expected": [
-    "en"
-   ],
-   "got": "es",
-   "confidence": 0.346639
-  },
-  {
-   "id": "ent09",
-   "text": "Dr. Nguyen booked a flight to São Paulo on November 3rd.",
-   "expected": [
-    "en"
-   ],
-   "got": "ja",
    "confidence": 1.0
   }
  ],
@@ -739,7 +518,7 @@
    "hypothesis": "Was my pronunciation of croissant okay?",
    "turns": 1,
    "detected_language": [
-    "en"
+    "fr"
    ],
    "metric": "WER",
    "F_E": 0,
@@ -1163,7 +942,7 @@
    "hypothesis": "我想喝水。",
    "turns": 1,
    "detected_language": [
-    "ja"
+    "zh"
    ],
    "metric": "CER",
    "S": 0,
@@ -1189,7 +968,7 @@
    "hypothesis": "请问洗手间在哪里？",
    "turns": 1,
    "detected_language": [
-    "ja"
+    "zh"
    ],
    "metric": "CER",
    "S": 0,
@@ -1215,7 +994,7 @@
    "hypothesis": "我在学习中文。",
    "turns": 1,
    "detected_language": [
-    "ja"
+    "zh"
    ],
    "metric": "CER",
    "S": 0,
@@ -1267,7 +1046,7 @@
    "hypothesis": "물 주세요.",
    "turns": 1,
    "detected_language": [
-    "zh"
+    "ko"
    ],
    "metric": "CER",
    "S": 0,
@@ -1293,7 +1072,7 @@
    "hypothesis": "화장실이 어디예요?",
    "turns": 1,
    "detected_language": [
-    "zh"
+    "ko"
    ],
    "metric": "CER",
    "S": 0,
@@ -1371,7 +1150,7 @@
    "hypothesis": "¿Dónde está el baño?",
    "turns": 1,
    "detected_language": [
-    "ko"
+    "es"
    ],
    "metric": "WER",
    "F_E": 0,
@@ -1548,7 +1327,7 @@
    "hypothesis": "मुझे एक कॉफ़ी चाहिए, प्लीज़।",
    "turns": 1,
    "detected_language": [
-    "it"
+    "hi"
    ],
    "metric": "WER",
    "F_E": 2,
@@ -1678,27 +1457,23 @@
     "hi"
    ],
    "reference": "Please मुझे next lesson दिखाओ।",
-   "hypothesis": "प्लीज़ मुझे नेक्स्ट लेसन दिखाओ।",
+   "hypothesis": "Please मुझे next lesson दिखाओ.",
    "turns": 1,
    "detected_language": [
-    "hi"
+    "en"
    ],
    "metric": "WER",
-   "F_E": 3,
+   "F_E": 1,
    "F_N": 5,
-   "S": 3,
+   "S": 0,
    "D": 0,
    "I": 0,
-   "H": 2,
+   "H": 5,
    "N": 5,
-   "E": 3,
-   "errors": [
-    "S: please→प्लीज़",
-    "S: next→नेक्स्ट",
-    "S: lesson→लेसन"
-   ],
-   "rate_pct": 60.0,
-   "pass": false,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
    "hard": false,
    "entities": [],
    "entities_missed": [],
@@ -1715,7 +1490,7 @@
    "hypothesis": "Quiero un café, please.",
    "turns": 1,
    "detected_language": [
-    "hi"
+    "es"
    ],
    "metric": "WER",
    "F_E": 0,
@@ -1997,7 +1772,7 @@
    "hypothesis": "Mi examen es el 15 de julio.",
    "turns": 1,
    "detected_language": [
-    "es"
+    "ca"
    ],
    "metric": "WER",
    "F_E": 0,
@@ -2203,16 +1978,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Yo tengo hambre.",
-   "planted_mistake": "es",
-   "mistakes": [
-    {
-     "mistake": "es",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2242,16 +2007,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "El problema es muy difícil.",
-   "planted_mistake": "La problema",
-   "mistakes": [
-    {
-     "mistake": "La problema",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2281,16 +2036,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Ayer yo comí pizza con mis amigos.",
-   "planted_mistake": "como",
-   "mistakes": [
-    {
-     "mistake": "como",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2320,16 +2065,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Mi madre está muy cansada hoy.",
-   "planted_mistake": "es muy cansada",
-   "mistakes": [
-    {
-     "mistake": "es muy cansada",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2342,7 +2077,7 @@
    "hypothesis": "Ich habe Hunger nicht.",
    "turns": 1,
    "detected_language": [
-    "es"
+    "de"
    ],
    "metric": "WER",
    "F_E": 0,
@@ -2359,16 +2094,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Ich habe keinen Hunger.",
-   "planted_mistake": "Hunger nicht",
-   "mistakes": [
-    {
-     "mistake": "Hunger nicht",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2398,16 +2123,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Das Mädchen ist sehr nett.",
-   "planted_mistake": "Der Mädchen",
-   "mistakes": [
-    {
-     "mistake": "Der Mädchen",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2437,16 +2152,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Gestern bin ich ins Kino gegangen.",
-   "planted_mistake": "Gestern ich bin",
-   "mistakes": [
-    {
-     "mistake": "Gestern ich bin",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2476,16 +2181,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Le garçon est très grand.",
-   "planted_mistake": "La garçon",
-   "mistakes": [
-    {
-     "mistake": "La garçon",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2515,16 +2210,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Je suis allé au marché ce matin.",
-   "planted_mistake": "J'ai allé",
-   "mistakes": [
-    {
-     "mistake": "J'ai allé",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2554,16 +2239,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Io ho fame.",
-   "planted_mistake": "sono fame",
-   "mistakes": [
-    {
-     "mistake": "sono fame",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2593,16 +2268,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "She doesn't like coffee.",
-   "planted_mistake": "don't",
-   "mistakes": [
-    {
-     "mistake": "don't",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2632,16 +2297,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Yesterday I went to the library.",
-   "planted_mistake": "I go",
-   "mistakes": [
-    {
-     "mistake": "I go",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2651,36 +2306,24 @@
     "ja"
    ],
    "reference": "私は学生をです。",
-   "hypothesis": "私は学生王です。",
+   "hypothesis": "私は学生をです。",
    "turns": 1,
    "detected_language": [
-    "en"
+    "ja"
    ],
    "metric": "CER",
-   "S": 1,
+   "S": 0,
    "D": 0,
    "I": 0,
-   "H": 6,
+   "H": 7,
    "N": 7,
-   "E": 1,
-   "errors": [
-    "S: を→王"
-   ],
-   "rate_pct": 14.29,
-   "pass": false,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
    "hard": false,
    "entities": [],
-   "entities_missed": [],
-   "intended_correct": "私は学生です。",
-   "planted_mistake": "学生をです",
-   "mistakes": [
-    {
-     "mistake": "学生をです",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false
+   "entities_missed": []
   },
   {
    "id": "pm14",
@@ -2693,7 +2336,7 @@
    "hypothesis": "मेरी ब्रदर बहुत स्मार्ट है।",
    "turns": 1,
    "detected_language": [
-    "en"
+    "hi"
    ],
    "metric": "WER",
    "F_E": 2,
@@ -2713,16 +2356,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "मेरा brother बहुत smart है।",
-   "planted_mistake": "मेरी",
-   "mistakes": [
-    {
-     "mistake": "मेरी",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2754,16 +2387,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Yo tengo hambre.",
-   "planted_mistake": "tango",
-   "mistakes": [
-    {
-     "mistake": "tango",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false,
    "meaning_errors": 1
   },
   {
@@ -2795,17 +2418,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Je suis allé au cinéma.",
-   "planted_mistake": "allée",
-   "mistakes": [
-    {
-     "mistake": "allée",
-     "preserved": false,
-     "audio_ambiguous": true
-    }
-   ],
-   "mistake_preserved": false,
-   "audio_ambiguous": "allée/allé are homophones",
    "meaning_errors": 0
   },
   {
@@ -2818,7 +2430,7 @@
    "hypothesis": "Ella son muy simpática.",
    "turns": 1,
    "detected_language": [
-    "fr"
+    "es"
    ],
    "metric": "WER",
    "F_E": 0,
@@ -2835,17 +2447,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Ella es muy simpática.",
-   "planted_mistake": "Ella son",
-   "mistakes": [
-    {
-     "mistake": "Ella son",
-     "preserved": true,
-     "audio_ambiguous": true
-    }
-   ],
-   "mistake_preserved": true,
-   "audio_ambiguous": "Whisper heard 'Ellas son' (would be correct)",
    "meaning_errors": 0
   },
   {
@@ -2875,16 +2476,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Nosotros vamos al parque.",
-   "planted_mistake": "Nosotros va",
-   "mistakes": [
-    {
-     "mistake": "Nosotros va",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -2897,7 +2488,7 @@
    "hypothesis": "I go to school yesterday.",
    "turns": 1,
    "detected_language": [
-    "es"
+    "en"
    ],
    "metric": "WER",
    "F_E": 1,
@@ -2916,17 +2507,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "I went to school yesterday.",
-   "planted_mistake": "goed",
-   "mistakes": [
-    {
-     "mistake": "goed",
-     "preserved": false,
-     "audio_ambiguous": true
-    }
-   ],
-   "mistake_preserved": false,
-   "audio_ambiguous": "TTS audio sounds like 'go' (Whisper + AssemblyAI pre-recorded)",
    "meaning_errors": 1
   },
   {
@@ -2939,7 +2519,7 @@
    "hypothesis": "Tengo un perro en casa.",
    "turns": 1,
    "detected_language": [
-    "en"
+    "es"
    ],
    "metric": "WER",
    "F_E": 1,
@@ -2958,16 +2538,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Tengo un perro en casa.",
-   "planted_mistake": "pero",
-   "mistakes": [
-    {
-     "mistake": "pero",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false,
    "meaning_errors": 1
   },
   {
@@ -2977,13 +2547,13 @@
     "es"
    ],
    "reference": "Feliz ano nuevo.",
-   "hypothesis": "Feliz año nuevo.",
+   "hypothesis": "¡Feliz año nuevo!",
    "turns": 1,
    "detected_language": [
     "es"
    ],
    "metric": "WER",
-   "F_E": 1,
+   "F_E": 3,
    "F_N": 3,
    "S": 1,
    "D": 0,
@@ -2999,16 +2569,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Feliz año nuevo.",
-   "planted_mistake": "ano",
-   "mistakes": [
-    {
-     "mistake": "ano",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false,
    "meaning_errors": 1
   },
   {
@@ -3019,7 +2579,7 @@
     "es"
    ],
    "reference": "I want los tacos, pero no quiero la frijoles.",
-   "hypothesis": "Iguan los tacos, pero no quiero la frijoles.",
+   "hypothesis": "Igual los tacos, pero no quiero la frijoles.",
    "turns": 1,
    "detected_language": [
     "es"
@@ -3034,7 +2594,7 @@
    "N": 9,
    "E": 2,
    "errors": [
-    "S: i→iguan",
+    "S: i→igual",
     "D: want"
    ],
    "rate_pct": 22.22,
@@ -3042,16 +2602,6 @@
    "hard": false,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "I want los tacos, pero no quiero los frijoles.",
-   "planted_mistake": "la frijoles",
-   "mistakes": [
-    {
-     "mistake": "la frijoles",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 2
   },
   {
@@ -3097,7 +2647,7 @@
    "hypothesis": "Quiero un carro rojo.",
    "turns": 1,
    "detected_language": [
-    "hi"
+    "es"
    ],
    "metric": "WER",
    "F_E": 1,
@@ -3116,16 +2666,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Quiero un carro rojo.",
-   "planted_mistake": "caro",
-   "mistakes": [
-    {
-     "mistake": "caro",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false,
    "meaning_errors": 1
   },
   {
@@ -3157,16 +2697,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Vamos a la casa de mi abuela.",
-   "planted_mistake": "caza",
-   "mistakes": [
-    {
-     "mistake": "caza",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false,
    "meaning_errors": 1
   },
   {
@@ -3196,16 +2726,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Je voudrais un café.",
-   "planted_mistake": "une café",
-   "mistakes": [
-    {
-     "mistake": "une café",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -3218,7 +2738,7 @@
    "hypothesis": "Ich gehe in die Park.",
    "turns": 1,
    "detected_language": [
-    "nl"
+    "de"
    ],
    "metric": "WER",
    "F_E": 0,
@@ -3235,16 +2755,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Ich gehe in den Park.",
-   "planted_mistake": "die Park",
-   "mistakes": [
-    {
-     "mistake": "die Park",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -3257,7 +2767,7 @@
    "hypothesis": "私は日本へ行きます。",
    "turns": 1,
    "detected_language": [
-    "nl"
+    "ja"
    ],
    "metric": "CER",
    "S": 1,
@@ -3275,17 +2785,7 @@
    "entities": [
     "日本"
    ],
-   "entities_missed": [],
-   "intended_correct": "私は日本へ行きます。",
-   "planted_mistake": "私を",
-   "mistakes": [
-    {
-     "mistake": "私を",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false
+   "entities_missed": []
   },
   {
    "id": "h06",
@@ -3311,17 +2811,7 @@
    "pass": true,
    "hard": true,
    "entities": [],
-   "entities_missed": [],
-   "intended_correct": "私は寿司を食べます。",
-   "planted_mistake": "寿司が",
-   "mistakes": [
-    {
-     "mistake": "寿司が",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true
+   "entities_missed": []
   },
   {
    "id": "h07",
@@ -3349,17 +2839,7 @@
    "pass": false,
    "hard": true,
    "entities": [],
-   "entities_missed": [],
-   "intended_correct": "我有三本书。",
-   "planted_mistake": "三个书",
-   "mistakes": [
-    {
-     "mistake": "三个书",
-     "preserved": false,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false
+   "entities_missed": []
   },
   {
    "id": "h08",
@@ -3385,17 +2865,7 @@
    "pass": true,
    "hard": true,
    "entities": [],
-   "entities_missed": [],
-   "intended_correct": "我买了一辆车。",
-   "planted_mistake": "一只车",
-   "mistakes": [
-    {
-     "mistake": "一只车",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true
+   "entities_missed": []
   },
   {
    "id": "h09",
@@ -3407,7 +2877,7 @@
    "hypothesis": "할머니, 밥 먹어?",
    "turns": 1,
    "detected_language": [
-    "zh"
+    "ko"
    ],
    "metric": "CER",
    "S": 0,
@@ -3421,17 +2891,7 @@
    "pass": true,
    "hard": true,
    "entities": [],
-   "entities_missed": [],
-   "intended_correct": "할머니, 진지 드셨어요?",
-   "planted_mistake": "밥 먹어",
-   "mistakes": [
-    {
-     "mistake": "밥 먹어",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true
+   "entities_missed": []
   },
   {
    "id": "h10",
@@ -3444,7 +2904,7 @@
    "hypothesis": "मैं कल स्कूल जाएगा था।",
    "turns": 1,
    "detected_language": [
-    "zh"
+    "hi"
    ],
    "metric": "WER",
    "F_E": 1,
@@ -3463,16 +2923,6 @@
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "मैं कल school गया था।",
-   "planted_mistake": "जाएगा",
-   "mistakes": [
-    {
-     "mistake": "जाएगा",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": true,
    "meaning_errors": 0
   },
   {
@@ -3605,27 +3055,29 @@
     "es"
    ],
    "reference": "Sí.",
-   "hypothesis": "Sí.",
+   "hypothesis": "C.",
    "turns": 1,
    "detected_language": [
-    "es"
+    "vi"
    ],
    "metric": "WER",
-   "F_E": 0,
+   "F_E": 1,
    "F_N": 1,
-   "S": 0,
+   "S": 1,
    "D": 0,
    "I": 0,
-   "H": 1,
+   "H": 0,
    "N": 1,
-   "E": 0,
-   "errors": [],
-   "rate_pct": 0.0,
-   "pass": true,
+   "E": 1,
+   "errors": [
+    "S: sí→c"
+   ],
+   "rate_pct": 100.0,
+   "pass": false,
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "meaning_errors": 0
+   "meaning_errors": 1
   },
   {
    "id": "h18",
@@ -3637,7 +3089,7 @@
    "hypothesis": "Danke!",
    "turns": 1,
    "detected_language": [
-    "es"
+    "de"
    ],
    "metric": "WER",
    "F_E": 1,
@@ -3721,60 +3173,27 @@
     "es"
    ],
    "reference": "Ayer yo va al mercado y compré una manzanas y la tomates porque mi madre es muy hambre.",
-   "hypothesis": "Ayer yo va al mercado y compré una manzana si la tomates porque mi madre es muy hambre.",
+   "hypothesis": "Ayer yo va al mercado y compré una manzanas y la tomates porque mi madre es muy hambre.",
    "turns": 1,
    "detected_language": [
     "es"
    ],
    "metric": "WER",
-   "F_E": 2,
+   "F_E": 0,
    "F_N": 18,
-   "S": 2,
+   "S": 0,
    "D": 0,
    "I": 0,
-   "H": 16,
+   "H": 18,
    "N": 18,
-   "E": 2,
-   "errors": [
-    "S: manzanas→manzana",
-    "S: y→si"
-   ],
-   "rate_pct": 11.11,
-   "pass": false,
+   "E": 0,
+   "errors": [],
+   "rate_pct": 0.0,
+   "pass": true,
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "intended_correct": "Ayer yo fui al mercado y compré unas manzanas y los tomates porque mi madre tiene mucha hambre.",
-   "planted_mistake": [
-    "yo va",
-    "una manzanas",
-    "la tomates",
-    "es muy hambre"
-   ],
-   "mistakes": [
-    {
-     "mistake": "yo va",
-     "preserved": true,
-     "audio_ambiguous": false
-    },
-    {
-     "mistake": "una manzanas",
-     "preserved": false,
-     "audio_ambiguous": true
-    },
-    {
-     "mistake": "la tomates",
-     "preserved": true,
-     "audio_ambiguous": false
-    },
-    {
-     "mistake": "es muy hambre",
-     "preserved": true,
-     "audio_ambiguous": false
-    }
-   ],
-   "mistake_preserved": false,
-   "meaning_errors": 2
+   "meaning_errors": 0
   },
   {
    "id": "h13",
@@ -3783,30 +3202,32 @@
     "es"
    ],
    "reference": "Yo... eh... yo fui, no, yo voy al mercado.",
-   "hypothesis": "Yo. Yo fui, no, yo voy al mercado.",
-   "turns": 2,
+   "hypothesis": "就。 哎。 Yo fui, no, yo voy al mercado.",
+   "turns": 3,
    "detected_language": [
-    "es",
+    "zh",
+    "zh",
     "es"
    ],
    "metric": "WER",
    "F_E": 3,
    "F_N": 9,
-   "S": 0,
-   "D": 1,
+   "S": 2,
+   "D": 0,
    "I": 0,
-   "H": 8,
+   "H": 7,
    "N": 9,
-   "E": 1,
+   "E": 2,
    "errors": [
-    "D: eh"
+    "S: yo→就",
+    "S: eh→哎"
    ],
-   "rate_pct": 11.11,
+   "rate_pct": 22.22,
    "pass": false,
    "hard": true,
    "entities": [],
    "entities_missed": [],
-   "meaning_errors": 0
+   "meaning_errors": 1
   },
   {
    "id": "h14",
@@ -3818,8 +3239,8 @@
    "hypothesis": "I want to. Um. I mean, I need to practice the past tense.",
    "turns": 3,
    "detected_language": [
-    "es",
-    "es",
+    "en",
+    "en",
     "en"
    ],
    "metric": "WER",
@@ -4108,7 +3529,7 @@
    "hypothesis": "Dr. Nguyen booked a flight to São Paulo on November 3rd.",
    "turns": 1,
    "detected_language": [
-    "ja"
+    "en"
    ],
    "metric": "WER",
    "F_E": 0,

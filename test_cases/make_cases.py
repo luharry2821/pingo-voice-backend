@@ -5,8 +5,8 @@ Run from the repo root: .venv/bin/python test_cases/make_cases.py
 First step of the eval pipeline: this script synthesises each test sentence
 with a neural voice, converts it with ffmpeg to the exact format the browser
 mic sends (16 kHz, mono, 16-bit PCM), and writes the ground truth to
-cases.jsonl. run_render.py then plays the WAVs through Pingo (mic audio ->
-STT -> LLM tutor -> TTS) and score.py compares the transcripts with the
+cases.jsonl. stt_bench.py then streams the WAVs to each STT provider in real time
+and score.py compares the transcripts with the
 ground truth. Existing WAVs are reused, so re-running only fills gaps.
 
 Case groups: C (plain sentences by language, code-switching, formatting),
@@ -143,7 +143,7 @@ async def planted(c):
     r.update(intended_correct=good, planted_mistake=bad); return r
 # hard set, round 2: (id, category, languages, spoken, voice, intended_correct or None, planted mistake(s) or None, notes)
 HARD = [
- ("h01","planted_mistake",["es"],"Quiero un caro rojo.","es-MX-JorgeNeural","Quiero un carro rojo.","caro","real-word swap caro/carro"),
+ ("h01","planted_mistake",["es"],"Quiero un caro rojo.","es-MX-JorgeNeural","Quiero un carro rojo.","caro","real-word swap"),
  ("h02","planted_mistake",["es"],"Vamos a la caza de mi abuela.","es-ES-AlvaroNeural","Vamos a la casa de mi abuela.","caza","real-word swap casa/caza (Castilian voice)"),
  ("h03","planted_mistake",["fr"],"Je voudrais une café.","fr-FR-DeniseNeural","Je voudrais un café.","une café","gender"),
  ("h04","planted_mistake",["de"],"Ich gehe in die Park.","de-DE-ConradNeural","Ich gehe in den Park.","die Park","article/case"),
@@ -261,7 +261,7 @@ async def main():
         async with sem: return await f(c)
     rows = await asyncio.gather(*[g(one,c) for c in C], *[g(two,c) for c in TWO], *[g(planted,c) for c in PLANTED], pause(), *[g(hard,c) for c in HARD], *[g(multipause,c) for c in PAUSES], *[g(one,c) for c in ENTITY])
     # Clips where the audio itself is ambiguous (homophones, or the voice really sounds
-    # like another word). score.py can exclude these from mistake preservation.
+    # like another word). kept as metadata from the audio check.
     AMBIGUOUS = {"pm17": "allée/allé are homophones", "pm20": "TTS audio sounds like 'go' (Whisper + AssemblyAI pre-recorded)", "pm18": "Whisper heard 'Ellas son' (would be correct)"}
     for r in rows:
         # Mark the harder round-1 cases as hard too.

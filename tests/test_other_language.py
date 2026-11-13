@@ -98,16 +98,20 @@ class OtherLanguageSessionTests(unittest.TestCase):
 
         _run(scenario())
 
-    def test_any_code_outside_native_and_target_counts(self):
-        """Any STT language outside native and target counts as other, at any confidence; non-Latin script always does.
+    def test_code_outside_native_and_target_counts_above_the_floor(self):
+        """A Latin-script STT language outside native and target counts as other at 0.5+; non-Latin script always does.
         """
         session, _llm, _tts, _sent = self._session([], [])
         session.target = "es"
         check = session._other_language
         self.assertEqual(check({"language_code": "nl", "language_confidence": 0.9}, "Ik wil graag water"), "nl")
-        # Live: "Goedemorgen" and "Wo ist der Bahnhof?" came back with low confidence.
-        self.assertEqual(check({"language_code": "nl", "language_confidence": 0.4}, "Goedemorgen"), "nl")
-        self.assertEqual(check({"language_code": "de", "language_confidence": 0.31}, "Wo ist der Bahnhof?"), "de")
+        self.assertEqual(check({"language_code": "nl", "language_confidence": 0.5}, "Ik wil graag water"), "nl")
+        # Below the floor, or with no score, there is no routing hint (the prompt still has the label and score).
+        self.assertEqual(check({"language_code": "nl", "language_confidence": 0.4}, "Goedemorgen"), "")
+        self.assertEqual(check({"language_code": "de", "language_confidence": 0.31}, "Wo ist der Bahnhof?"), "")
+        self.assertEqual(check({"language_code": "fr", "language_confidence": None}, "Je voudrais de l'eau"), "")
+        # Eval: "Yo es hambre." (Spanish) came back as French at 0.26.
+        self.assertEqual(check({"language_code": "fr", "language_confidence": 0.255}, "Yo es hambre."), "")
         # Another language Pingo teaches is still translated into the target.
         self.assertEqual(check({"language_code": "fr", "language_confidence": 0.9}, "Je voudrais de l'eau"), "fr")
         self.assertEqual(check({"language_code": "es", "language_confidence": 0.3}, "Quiero agua"), "")
@@ -119,8 +123,8 @@ class OtherLanguageSessionTests(unittest.TestCase):
     def test_foreign_sentence_close_to_the_phrase_is_not_an_attempt(self):
         """Live: French/Italian/Portuguese coffee orders were judged "Almost!" against the Spanish one.
 
-        Longer, confident French or Italian becomes the explanation language, so the
-        model sees it as the learner's own language, not as an attempt.
+        One confident French or Italian sentence is flagged as another language to
+        teach (not an attempt); two in a row make it the explanation language.
         """
         async def scenario():
             """Async body of this test (run with asyncio.run)."""
@@ -140,18 +144,20 @@ class OtherLanguageSessionTests(unittest.TestCase):
             for _ in range(4):
                 await session.stt.send_audio(b"\x00\x00")
                 await session.job
-            # Existing _note_native rule: 3+ words of French at 0.6+ makes French the
-            # explanation language, so it is taught as the learner's own language.
-            self.assertEqual(llm.calls[1]["native_name"], "french")
-            self.assertEqual(llm.calls[1]["other_language"], "")
-            self.assertEqual(llm.calls[2]["native_name"], "italian")
+            # One French turn does not change the learner's language; it is flagged as
+            # another language to translate and teach. Italian next is a different
+            # language, so the count restarts and English stays.
+            self.assertEqual(llm.calls[1]["native_name"], "english")
+            self.assertEqual(llm.calls[1]["other_language"], "fr")
+            self.assertEqual(llm.calls[2]["native_name"], "english")
+            self.assertEqual(llm.calls[2]["other_language"], "it")
             # A near-miss in Spanish goes to the model with no other-language hint;
             # the model grades it.
             self.assertEqual(llm.calls[3]["other_language"], "")
             lessons = [p for p in sent if isinstance(p, dict) and p.get("type") == "lesson"]
             self.assertEqual([l["intent"] for l in lessons], ["teach_phrase", "teach_phrase", "teach_phrase", "practice_attempt"])
             self.assertEqual(session.misses, 1)
-            self.assertEqual(session.native_language, "it")
+            self.assertEqual(session.native_language, "en")
 
         _run(scenario())
 
@@ -180,3 +186,54 @@ class OtherLanguageSessionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NativeLanguageSwitchTests(unittest.TestCase):
+    """_note_native: the learner's own language changes only on repeated, confident evidence."""
+
+    def _session(self):
+        session, _llm, _tts, _sent = test_tutor.PracticeStateTests._session(test_tutor.PracticeStateTests(), [], [])
+        session.target = "es"
+        return session
+
+    def test_one_confident_turn_is_not_enough(self):
+        """Eval: Hinglish hi01 came back as Italian at 0.81 with 5 words. One such turn must not switch."""
+        session = self._session()
+        session._note_native({"language_code": "it", "language_confidence": 0.81}, "mujhe ek coffee chahiye please")
+        self.assertEqual(session.native_language, "en")
+
+    def test_two_consecutive_confident_turns_switch(self):
+        session = self._session()
+        for _ in range(2):
+            session._note_native({"language_code": "fr", "language_confidence": 0.9}, "Je voudrais un café s'il vous plaît")
+        self.assertEqual(session.native_language, "fr")
+
+    def test_an_interrupting_turn_resets_the_count(self):
+        session = self._session()
+        note = session._note_native
+        note({"language_code": "fr", "language_confidence": 0.9}, "Je voudrais un café s'il vous plaît")
+        note({"language_code": "es", "language_confidence": 0.9}, "Hola")  # a practice attempt in between
+        note({"language_code": "fr", "language_confidence": 0.9}, "Comment dit-on merci")
+        self.assertEqual(session.native_language, "en")
+        note({"language_code": "fr", "language_confidence": 0.9}, "Et comment dit-on bonjour")
+        self.assertEqual(session.native_language, "fr")
+
+    def test_a_different_language_restarts_the_count(self):
+        session = self._session()
+        session._note_native({"language_code": "fr", "language_confidence": 0.9}, "Je voudrais un café")
+        session._note_native({"language_code": "it", "language_confidence": 0.9}, "Vorrei un caffè per favore")
+        self.assertEqual(session.native_language, "en")
+
+    def test_missing_or_low_confidence_short_target_and_unteachable_do_not_count(self):
+        session = self._session()
+        note = session._note_native
+        for turn, text in (
+            ({"language_code": "fr", "language_confidence": None}, "Je voudrais un café"),
+            ({"language_code": "fr", "language_confidence": 0.59}, "Je voudrais un café"),
+            ({"language_code": "fr", "language_confidence": 0.95}, "Merci beaucoup"),
+            ({"language_code": "es", "language_confidence": 0.95}, "Quiero un café por favor"),
+            ({"language_code": "ko", "language_confidence": 1.0}, "¿Dónde está el baño?"),
+        ):
+            note(turn, text)
+            note(turn, text)
+            self.assertEqual(session.native_language, "en", (turn, text))

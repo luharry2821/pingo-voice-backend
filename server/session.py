@@ -1,8 +1,7 @@
 """One learner session: the heart of the Pingo backend.
 
-The WebSocket server (server/app.py) and file mode (python -m server --input
-clip.wav, see server/__main__.py) both create one Session per learner and feed
-it the same two things: JSON control messages and raw 16 kHz PCM16 mic audio.
+The WebSocket server (server/app.py) creates one Session per learner and feeds
+it two things: JSON control messages and raw 16 kHz PCM16 mic audio.
 
 Where this file sits in the pipeline:
 
@@ -66,6 +65,13 @@ GAP_MS = 250
 REPLAY_MODES = ("phrase", "slow", "all")
 # A learner turn this long or longer, outside practice, sets the learner's own language.
 NATIVE_MIN_WORDS = 3
+# The native-language switch: this many consecutive qualifying turns, each at
+# least this confident (see Session._note_native).
+NATIVE_CONFIRM_TURNS = 2
+NATIVE_MIN_CONFIDENCE = 0.6
+# A Latin-script turn is flagged as a third language only at this confidence or
+# above (see Session._other_language).
+OTHER_LANGUAGE_MIN_CONFIDENCE = 0.5
 def now_ms():
     """Current wall-clock time in integer milliseconds (used for timings and playback_until)."""
     return int(time.time() * 1000)
@@ -179,6 +185,8 @@ class Session:
         # Learner's own language. Defaults to English; updated from `start` and from
         # longer confident turns (_note_native).
         self.native_language = "en"
+        # (code, count) of consecutive turns that could change native_language.
+        self._native_candidate = None
         # Turn ids: STT's turn_order restarts on every new STT stream, so we keep our
         # own climbing id. _order_ids maps the current stream's turn_order to it.
         self._order_ids = {}
@@ -223,8 +231,8 @@ class Session:
         """
         if self.closed or not pcm:
             return
-        # Live frames pass the time they were read off the socket. File mode
-        # omits it and stamps here, which matches real-time playback.
+        # Live frames pass the time they were read off the socket; callers that
+        # omit it are stamped here.
         if self.origin_wall_ms is None:
             self.origin_wall_ms = now_ms() if arrived_at is None else int(arrived_at)
         if not self._stt_ready or self.stt is None:
@@ -793,20 +801,41 @@ class Session:
         return TARGET_LANGUAGES.get(self.native_language, "english")
 
     def _note_native(self, turn, transcript):
-        """The learner's own language: what they speak when they are not practising."""
+        """The learner's own language: what they speak when they are not practising.
+
+        It changes only after NATIVE_CONFIRM_TURNS consecutive qualifying turns in
+        the same language: a teachable language that is neither the target nor the
+        current native language, NATIVE_MIN_WORDS or more words, and a numeric
+        language_confidence of at least NATIVE_MIN_CONFIDENCE. One turn is not
+        enough: on the eval set STT labelled 13.68% of turns wrongly with
+        confidence >= 0.6, often at 1.0, so a single confident turn would switch the
+        language every explanation is spoken in. Raising the cutoff does not fix
+        that (13 wrong labels at >= 0.7 and still 13 at >= 0.8); persistence does.
+        Any other turn resets the count.
+        """
         code = turn.get("language_code")
         confidence = turn.get("language_confidence")
-        # Only switch to a teachable language that is not the target itself.
-        if code not in TARGET_LANGUAGES or code == self.target:
+        qualifies = (
+            code in TARGET_LANGUAGES
+            and code not in (self.target, self.native_language)
+            # Short turns ("Hola", "merci") are usually practice, not the learner's
+            # own language.
+            and len(transcript.split()) >= NATIVE_MIN_WORDS
+            # A missing or low score is no evidence.
+            and isinstance(confidence, (int, float))
+            and confidence >= NATIVE_MIN_CONFIDENCE
+        )
+        if not qualifies:
+            self._native_candidate = None
             return
-        # Short turns ("Hola", "merci") are usually practice, not the learner's own
-        # language.
-        if len(transcript.split()) < NATIVE_MIN_WORDS:
-            return
-        # Low-confidence language detection is too noisy to change the native language.
-        if isinstance(confidence, (int, float)) and confidence < 0.6:
-            return
-        self.native_language = code
+        previous, count = self._native_candidate or (None, 0)
+        count = count + 1 if previous == code else 1
+        if count >= NATIVE_CONFIRM_TURNS:
+            logger.info("native language %s -> %s after %d turns", self.native_language, code, count)
+            self.native_language = code
+            self._native_candidate = None
+        else:
+            self._native_candidate = (code, count)
 
     def _other_language(self, turn, transcript):
         """A turn in some language other than the learner's own or the target.
@@ -814,16 +843,20 @@ class Session:
         Returns the STT language code (or "other") when the turn should be
         translated and taught, else "". Such a turn is never something Pingo
         "didn't catch". Non-Latin script decides on its own (all six languages
-        Pingo speaks are Latin script). Otherwise any STT code outside the
-        learner's language and the target counts, whatever the confidence:
-        live, short turns and French/Italian/Portuguese came back with low
-        confidence, and a wrong flag only adds a routing hint the model can
-        still overrule for meta talk.
+        Pingo speaks are Latin script). Otherwise the STT code must be outside the
+        learner's language and the target with a language_confidence of at least
+        OTHER_LANGUAGE_MIN_CONFIDENCE. Below that the turn gets no routing hint;
+        the tutor prompt still carries the label and score, so the model can
+        still teach a real third language. A wrong hint is the costlier mistake: it
+        steers a practice attempt or a question into "translate this language".
         """
         code = turn.get("language_code") or ""
         if is_other_script(transcript):
             return code if code and code not in TARGET_LANGUAGES else "other"
         if not code or code in (self.target, self.native_language):
+            return ""
+        confidence = turn.get("language_confidence")
+        if not isinstance(confidence, (int, float)) or confidence < OTHER_LANGUAGE_MIN_CONFIDENCE:
             return ""
         return code
 
@@ -863,16 +896,21 @@ class Session:
         """Attempts and breakdowns are about the stored phrase, not what the model echoes.
 
         Seen live: a correct attempt at "Hola" came back with target_phrase
-        "Hola. corticosteroids". An attempt or a pronunciation turn uses the
-        stored phrase when the model's phrase is empty, the same, or contains it
-        (or the other way round). A clearly different phrase is a new one.
+        "Hola. corticosteroids". A practice attempt is graded against the stored
+        phrase, so it keeps the stored phrase when the model's phrase is empty, the
+        same, or contains it or is contained in it. A pronunciation turn keeps it
+        only when the model's phrase is empty or the same: "How do I pronounce
+        hola, ¿cómo estás?" after "Hola" is a new, longer phrase and must not be
+        pinned back to "Hola".
         """
         if not self.practice_target or lesson.intent not in ("practice_attempt", "pronunciation"):
             return
         phrase = lesson.translation or ""
         model_words = f" {fold(phrase)} "
         stored_words = f" {fold(self.practice_target)} "
-        same = not phrase.strip() or stored_words in model_words or model_words in stored_words
+        same = not phrase.strip() or model_words == stored_words
+        if lesson.intent == "practice_attempt":
+            same = same or stored_words in model_words or model_words in stored_words
         if not same:
             return
         if phrase != self.practice_target:

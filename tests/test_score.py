@@ -123,26 +123,27 @@ class LanguageIdMetricsTests(unittest.TestCase):
         self.assertEqual(m["language_id_accuracy_by_language"]["en+es"]["n_correct"], 1)
         self.assertNotIn("en", m["language_id_accuracy_by_language"])
 
-    def test_render_run_regression(self):
-        """The committed 109-case Render run stays at the recorded language-ID numbers, so a definition change is visible."""
+    def test_committed_runs_regression(self):
+        """The committed AssemblyAI and Deepgram runs keep their recorded language-ID numbers, so a definition change is visible."""
         with open(ROOT / "test_cases" / "cases.jsonl") as fh:
             cases = {json.loads(l)["id"]: json.loads(l) for l in fh}
-        with open(ROOT / "test_cases" / "raw_outputs.jsonl") as fh:
-            raw = {json.loads(l)["id"]: json.loads(l) for l in fh}
-        m = _metrics(cases, raw)
-        self.assertEqual(m["language_id_accuracy"]["n_correct"], 94)
-        self.assertEqual(m["language_id_accuracy"]["n_turns"], 117)
-        self.assertEqual(m["language_id_accuracy"]["value_pct"], 80.34)
-        self.assertEqual(m["confident_wrong_rate"]["n_confident_wrong"], 16)
-        self.assertEqual(m["confident_wrong_rate"]["value_pct"], 13.68)
-        self.assertNotIn("n_wrong_at_practice_cutoff", m)
-        self.assertEqual(len(m["language_id_mislabeled"]), 23)
-        # The known confidently-wrong case: Spanish tagged Korean at 1.0.
-        es01 = [x for x in m["language_id_mislabeled"] if x["id"] == "es01"]
-        self.assertEqual(len(es01), 1)
-        self.assertEqual(es01[0]["got"], "ko")
-        self.assertEqual(es01[0]["confidence"], 1.0)
+        def load(name):
+            with open(ROOT / "test_cases" / "bench" / f"{name}_raw.jsonl") as fh:
+                return {json.loads(l)["id"]: json.loads(l) for l in fh}
+        aai = _metrics(cases, load("assemblyai"))
+        self.assertEqual((aai["language_id_accuracy"]["n_correct"], aai["language_id_accuracy"]["n_turns"]), (112, 118))
+        self.assertEqual(aai["confident_wrong_rate"]["n_confident_wrong"], 2)
+        dg = _metrics(cases, load("deepgram"))
+        self.assertEqual((dg["language_id_accuracy"]["n_correct"], dg["language_id_accuracy"]["n_turns"]), (111, 115))
+        # Deepgram streaming returns no language confidence: not comparable, not 0%.
+        self.assertTrue(dg["confident_wrong_rate"]["not_comparable"])
+        self.assertIsNone(dg["confident_wrong_rate"]["value_pct"])
 
+    def test_no_labels_is_not_comparable(self):
+        """A provider with no language labels at all is "not comparable", not 0% accurate."""
+        m = _metrics({"a": {"languages": ["en"]}}, {"a": {"turns": [{"text": "hi"}]}})
+        self.assertTrue(m["language_id_accuracy"]["not_comparable"])
+        self.assertIsNone(m["language_id_accuracy"]["value_pct"])
 
 if __name__ == "__main__":
     unittest.main()

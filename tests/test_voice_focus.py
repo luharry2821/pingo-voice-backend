@@ -123,22 +123,21 @@ class VoiceFocusParamsTests(unittest.TestCase):
 
 class ProfanityFilterTests(unittest.TestCase):
     """The streaming profanity filter flag."""
-    def test_on_by_default_and_sent(self):
-        """filter_profanity is on by default, sent to STT and logged."""
+    def test_off_by_default_and_not_sent(self):
+        """filter_profanity is off by default (it would rewrite the learner's words), not sent, and logged as off."""
         for path in (None, "configs/baseline.yaml"):
             settings = load_settings(path)
-            self.assertIs(settings["stt"]["filter_profanity"], True)
-            params = stt_query_params(settings["stt"])
-            self.assertIs(params["filter_profanity"], True)
-            self.assertIs(build_parameters(params).filter_profanity, True)
-            self.assertIs(log_config(settings)["filter_profanity"], True)
+            self.assertIs(settings["stt"]["filter_profanity"], False)
+            self.assertNotIn("filter_profanity", stt_query_params(settings["stt"]))
+            self.assertIs(log_config(settings)["filter_profanity"], False)
 
-    def test_off_is_omitted(self):
-        """When off, filter_profanity is not sent at all."""
-        settings = merge_session_config(load_settings("configs/baseline.yaml"), {"stt": {"filter_profanity": False}})
-        self.assertIs(settings["stt"]["filter_profanity"], False)
-        self.assertNotIn("filter_profanity", stt_query_params(settings["stt"]))
-        self.assertIs(log_config(settings)["filter_profanity"], False)
+    def test_on_is_sent(self):
+        """Turned on per session, it is sent to STT and logged."""
+        settings = merge_session_config(load_settings("configs/baseline.yaml"), {"stt": {"filter_profanity": True}})
+        params = stt_query_params(settings["stt"])
+        self.assertIs(params["filter_profanity"], True)
+        self.assertIs(build_parameters(params).filter_profanity, True)
+        self.assertIs(log_config(settings)["filter_profanity"], True)
 
     def test_env_override_is_coerced_to_bool(self):
         """String env values like "false" or "0" become real booleans."""

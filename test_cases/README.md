@@ -1,6 +1,6 @@
 # Pingo STT test set
 
-109 short learner-style clips for scoring streaming STT. Synthetic speech (edge-tts neural voices), 16 kHz mono PCM16 WAV in `audio/`. No Pingo production data.
+109 short learner-style clips, synthetic speech (edge-tts neural voices), 16 kHz mono PCM16 WAV in `audio/`. No production data.
 
 | Category | Cases | Scored with |
 |---|---|---|
@@ -9,37 +9,30 @@
 | japanese / chinese / korean | 5 / 4 / 4 | CER |
 | other (es 3, fr 2, it 1) | 6 | WER |
 | codeswitch_en_hi | 5 (Hindi in Devanagari, English in Latin) | code-switching WER |
-| codeswitch_en_es | 5 (multilingual voice) | code-switching WER |
-| formatting (time, money, numbers, date; 2 Spanish: veintiún euros, el 15 de julio) | 6 | FWER vs WER |
-| two_speaker (learner + tutor, 2 voices, 0.9 s gap) | 4 | cpWER |
-| planted_mistake (grammar, gender, one-sound-away, real-word verb forms, minimal pairs like pero/perro, ano/año) | 22 |
-| pause_filler (fillers, self-corrections, 1.2–1.5 s real silences) | 3 | turns + WER |
-| hard set round 2: real-word swaps (caro/carro, casa/caza), gender/article, JA particles, ZH measure words, KO honorifics, Hinglish wrong verb, EN–ES mid-word switches (textear, lunchear), fast speech (+40%), one-word turns, accented voices, 4-mistake run-on | 21 | all | mistake-preservation rate |
-| entity (names, places, dates, brands; es/en/de/fr/it/hi/ja/zh) | 10 | missed entity rate |
+| codeswitch_en_es | 5 | code-switching WER |
+| formatting (time, money, numbers, dates) | 6 | FWER vs WER |
+| two_speaker (2 voices, 0.9 s gap) | 4 | cpWER |
+| planted_mistake (grammar, gender, minimal pairs) | 22 | WER |
+| pause_filler | 1 (plus 2 in the hard set) | WER |
+| hard set h01–h21 (real-word swaps, particles, measure words, honorifics, mid-word switches, fast speech, one-word turns, accents, multi-pause, run-on) | 21 | all |
+| entity (names, places, dates, brands) | 10 | missed entity rate |
 
-`cases.jsonl`: id, category, languages, reference (exactly as spoken), speakers, audio, notes, entities (list of name/place/date/number/brand strings as spoken; empty when there are none); planted cases add intended_correct and planted_mistake (string or list); `hard: true` marks the 31-case hard set; `audio_ambiguous` / `audio_ambiguous_mistakes` mark planted mistakes the audio does not clearly contain (see AUDIO_CHECK.md).
+`cases.jsonl`: id, category, languages, reference (exactly as spoken), speakers, audio, entities; planted cases add `intended_correct` and `planted_mistake`; `hard: true` marks the 31-case hard set; `audio_ambiguous` marks planted mistakes the synthetic voice does not clearly say.
 
-## Run
-```
-.venv/bin/pip install jiwer whisper-normalizer edge-tts
-.venv/bin/python test_cases/make_cases.py        # rebuild audio (optional)
-.venv/bin/python test_cases/run_render.py         # live Pingo /ws -> raw_outputs.jsonl
-.venv/bin/python test_cases/score.py              # -> results.json + RESULTS.md
-```
-Any other STT: write `raw_outputs.jsonl` lines `{"id":..., "hypothesis":..., "turns":[{"text":...}]}` and run `score.py`.
+## Scripts
+- `make_cases.py` rebuilds the clips (edge-tts + ffmpeg).
+- `stt_bench.py assemblyai|deepgram` streams every clip in real time to one provider and writes `bench/<provider>_raw.jsonl` (final turns, language labels, TTFT / TTCT / end-of-turn latency).
+- `score.py bench/<provider>_raw.jsonl --out=bench/<provider>` writes `results.json` and `RESULTS.md`, with the same code and normalization for every provider.
+- `latency.py` plays clips through the deployed Pingo backend: end of speech → first reply audio, per stage.
 
 ## Metrics (AssemblyAI conventions)
-- **WER** = (S+D+I)/N after Whisper English normalizer (English) or Whisper basic normalizer (other languages). Pooled over cases.
-- **Semantic WER**: same alignment; one batched LLM-judge call (AssemblyAI LLM Gateway, gemma-4-31b, temp 0) counts only meaning-changing errors.
-- **FWER** (AssemblyAI "raw" WER): no normalization, case and punctuation stay on the words.
-- **cpWER**: Pingo streaming has no diarization, so each end-of-turn segment is a speaker segment; segments are assigned to reference speakers by the permutation with the fewest errors.
-- **CER** (ja/zh/ko): basic-normalized, spaces removed, per character.
-- **Mistake-preservation rate**: % of planted learner mistakes that appear verbatim (after normalization) in the transcript, i.e. not silently corrected. Higher is better. Counted per mistake; also reported with ambiguous-audio mistakes excluded.
-- **Sentence error rate**: % of cases not an exact match after normalization.
-- **MER** (match error rate, `jiwer.mer`): (S+D+I)/(S+D+I+H) after the same normalization and on the same clips as WER. Unlike WER, the denominator includes insertions, so the rate cannot exceed 100%. Reported overall, per language, and on the hard set.
-- **Missed entity rate**: % of marked entities (names, places, dates, numbers, brands) that do not appear in the hypothesis after the same normalization as WER (or CER for ja/zh/ko). Reported overall, on the entity set alone, and per category, with a list of missed entities.
-- **Code-switching WER**: WER on the EN-HI and EN-ES cases. Script is not transliterated, so Hindi words written in a different script count as errors in WER (the semantic judge treats them as harmless).
-- **Language-ID accuracy**: % of final turns whose `language_code` matches the case's expected language (higher is better). Scored per finished turn, so a two-speaker or pause-filler clip can contribute more than one. Code-switching cases (EN-HI, EN-ES) count either expected language as correct, because a mixed utterance has no single right label. Also reported per language. On the live Render run: 80.34% (94 / 117 turns).
-- **Confident-wrong rate**: % of turns whose label is wrong with `language_confidence` ≥ 0.6, the cutoff Pingo uses before changing the learner's own language. A wrong label this confident is the case those cutoffs cannot catch (e.g. es01, Spanish tagged Korean at 1.0). On the live Render run: 13.68% (16 / 117 turns). The count of wrong labels at confidence ≥ 0.5 (the practice-mode cutoff) is also reported (17 on this run).
-
-Runs: 2 parallel sessions max (more came back empty), 15 clips per session, 4 s silence after each clip; all end-of-turn transcripts during a clip and its silence are joined as the hypothesis.
+- **WER** = (S+D+I)/N after the Whisper English normalizer (English) or Whisper basic normalizer (other languages), pooled over cases.
+- **Semantic WER**: same alignment; one batched LLM-judge call (AssemblyAI LLM Gateway `gemma-4-31b`, temperature 0, same for every provider) counts only meaning-changing errors.
+- **FWER**: no normalization; case and punctuation count.
+- **cpWER**: each end-of-turn segment is a speaker segment, assigned to reference speakers by the permutation with the fewest errors.
+- **CER** (ja/zh/ko): normalized, spaces removed, per character.
+- **Sentence error rate**: % of cases that are not an exact match after normalization.
+- **Missed entity rate**: % of marked entities not found in the hypothesis after the same normalization.
+- **Code-switching WER**: WER on the EN-HI and EN-ES cases. Script is not transliterated, so an English word written in Devanagari counts as an error.
+- **Language-ID accuracy**: % of final turns whose language matches the case's language; either language counts on code-switching cases. A provider that returns no labels is "not comparable".
+- **Confident-wrong rate**: % of turns labelled wrong with confidence ≥ 0.6 (Pingo's native-language cutoff). "Not comparable" for a provider with no confidence.

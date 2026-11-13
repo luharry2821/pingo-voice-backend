@@ -299,8 +299,6 @@ class PracticeStateTests(unittest.TestCase):
             self.assertEqual(llm.calls[0]["practice_target"], "")
             self.assertEqual(llm.calls[1]["practice_target"], "Hola")
             self.assertEqual(llm.calls[2]["practice_target"], "Hola")
-            # No rule-based check is sent to the model any more.
-            self.assertNotIn("practice_check", llm.calls[2])
             self.assertEqual(llm.calls[2]["misses"], 0)
             self.assertEqual(llm.calls[2]["native_name"], "english")
             lessons = [p for p in sent if isinstance(p, dict) and p.get("type") == "lesson"]
@@ -358,14 +356,16 @@ class PracticeStateTests(unittest.TestCase):
         _run(scenario())
 
     def test_short_target_language_turn_does_not_change_native_language(self):
-        """A short target-language turn keeps the native language; a longer confident one changes it.
+        """A short target-language turn keeps the native language; two longer confident German turns change it.
         """
         async def scenario():
             """Async body of this test (run with asyncio.run)."""
             session, llm, tts, sent = self._session(
-                [("hola", "es", 0.9), ("Wie sagt man danke auf Spanisch", "de", 0.95)],
+                [("hola", "es", 0.9), ("Wie sagt man danke auf Spanisch", "de", 0.95),
+                 ("Und wie sagt man bitte", "de", 0.9)],
                 [dict(intent="chat", phrase="", reply="Hi!", next_prompt="Ask me a word."),
-                 dict(intent="teach_phrase", phrase="Gracias", reply="Danke heißt", next_prompt="Jetzt du.")],
+                 dict(intent="teach_phrase", phrase="Gracias", reply="Danke heißt", next_prompt="Jetzt du."),
+                 dict(intent="teach_phrase", phrase="Por favor", reply="Bitte heißt", next_prompt="Jetzt du.")],
             )
             await session.handle_text({"type": "start", "target_language": "es"})
             await session.stt.send_audio(b"\x00\x00")
@@ -373,8 +373,13 @@ class PracticeStateTests(unittest.TestCase):
             self.assertEqual(session.native_language, "en")
             await session.stt.send_audio(b"\x00\x00")
             await session.job
+            # One confident German turn is not enough.
+            self.assertEqual(session.native_language, "en")
+            self.assertEqual(llm.calls[1]["native_name"], "english")
+            await session.stt.send_audio(b"\x00\x00")
+            await session.job
             self.assertEqual(session.native_language, "de")
-            self.assertEqual(llm.calls[1]["native_name"], "german")
+            self.assertEqual(llm.calls[2]["native_name"], "german")
 
         _run(scenario())
 

@@ -192,7 +192,7 @@ DEFAULTS = {
         # Documented for universal-3-6-pro. Sent on the streaming connection.
         "mode": "balanced",
         # Learners pause mid-phrase: wait longer before ending a turn.
-        "min_turn_silence": 400,
+        "min_turn_silence": 600,
         "max_turn_silence": 2400,
         # Balanced preset is 500 ms; 250 so Pingo stops sooner when talked over.
         "interruption_delay": 250,
@@ -204,9 +204,10 @@ DEFAULTS = {
         # 0..1, higher suppresses more. None = the server default (0.5), not sent.
         "voice_focus_threshold": None,
         # AssemblyAI streaming profanity filter: masks profane words in partial and
-        # final turns, keeping the first letter ("s***"). Fixed AssemblyAI word list
-        # (e.g. "crap" and "damn" pass through). Sent only when True.
-        "filter_profanity": True,
+        # final turns, keeping the first letter ("s***"). Off by default: masking
+        # rewrites what the learner said, and the tutor must see the real words
+        # (Pingo never silently corrects the learner). Sent only when True.
+        "filter_profanity": False,
     },
     "llm": {
         # Tutor model on the LLM Gateway. Low temperature for consistent lessons;
@@ -405,7 +406,7 @@ def _coerce(settings):
         stt[key] = [str(item) for item in value]
     stt["language_detection"] = bool(stt.get("language_detection", True))
     stt["agent_context_enabled"] = bool(stt.get("agent_context_enabled", False))
-    stt["filter_profanity"] = _as_bool(stt.get("filter_profanity", True))
+    stt["filter_profanity"] = _as_bool(stt.get("filter_profanity", False))
     stt["voice_focus"] = normalize_voice_focus(stt.get("voice_focus"))
     stt["voice_focus_threshold"] = normalize_voice_focus_threshold(stt.get("voice_focus_threshold"))
     settings["llm"]["temperature"] = float(settings["llm"]["temperature"])

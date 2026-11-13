@@ -1,7 +1,7 @@
 # Baseline: keyterms off, agent_context off, balanced turn-taking.
 # mode and interruption_delay are sent. prompt is sent because it is non-empty.
 # Turn-taking is tuned for learners, who pause mid-phrase while thinking:
-# min_turn_silence 400 ms (preset 128) so a short pause does not end the turn,
+# min_turn_silence 600 ms (preset 128; the live app sends 600) so a short pause does not end the turn,
 # max_turn_silence 2400 ms (preset 1280) so a long hesitation is not cut off,
 # vad_threshold 0.2 (the documented default) sent explicitly so soft or trailing
 # speech still counts as speech. All four are editable live from Advanced settings.
@@ -20,7 +20,7 @@ stt:
   agent_context: ""
   agent_context_enabled: false
   mode: balanced
-  min_turn_silence: 400
+  min_turn_silence: 600
   max_turn_silence: 2400
   # 250 ms (preset 500) so Pingo stops sooner when the learner talks over it.
   interruption_delay: 250
@@ -29,8 +29,9 @@ stt:
   voice_focus: far-field
   # 0..1, higher suppresses more. null = server default (0.5), not sent.
   voice_focus_threshold: null
-  # Mask profane words (first letter kept) in partial and final turns.
-  filter_profanity: true
+  # Off: masking would change what the learner said, and Pingo never silently
+  # corrects the learner. true masks profane words (first letter kept).
+  filter_profanity: false
 
 llm:
   # Default is gemma-4-31b (response_format). Set PINGO_LLM_MODEL=qwen3.5-4b-32k-fast

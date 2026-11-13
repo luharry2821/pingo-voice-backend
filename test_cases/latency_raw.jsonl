@@ -1,0 +1,102 @@
+{"id": "en01", "category": "english", "final": 2754, "text": "How do I say I'm hungry in Spanish?", "turns": 1, "lesson": 3763, "first_audio": 3870}
+{"id": "en02", "category": "english", "final": 2837, "text": "Can you teach me how to order a coffee in French?", "turns": 1, "lesson": 3990, "first_audio": 4114}
+{"id": "en03", "category": "english", "final": 1104, "text": "What's the difference between ser and estar?", "turns": 1, "lesson": 2229, "first_audio": 2343}
+{"id": "en04", "category": "english", "final": 1056, "text": "I keep forgetting the word for library.", "turns": 1, "lesson": 2881, "first_audio": 2983}
+{"id": "en05", "category": "english", "final": 1056, "text": "Please say that one more time, but slower.", "turns": 1, "lesson": 2892, "first_audio": 2991}
+{"id": "en06", "category": "english", "final": 955, "text": "Let's practice greetings for a job interview.", "turns": 1, "lesson": 2029, "first_audio": 2137}
+{"id": "en07", "category": "english", "final": 1104, "text": "Was my pronunciation of croissant okay?", "turns": 1, "lesson": 2148, "first_audio": 2263}
+{"id": "en08", "category": "english", "final": 2774, "text": "I want to learn German before my trip to Berlin.", "turns": 1, "lesson": 4252, "first_audio": 4355}
+{"id": "en09", "category": "english", "final": 1107, "text": "Yes, I'm ready for the next lesson.", "turns": 1, "lesson": 8827, "first_audio": 8926}
+{"id": "en10", "category": "english", "final": 1155, "text": "Could you give me a harder sentence this time?", "turns": 1, "lesson": 2877, "first_audio": 2980}
+{"id": "de01", "category": "german", "final": 1355, "text": "Wie spät ist es?", "turns": 1, "lesson": 10380, "first_audio": 10484}
+{"id": "de02", "category": "german", "final": 2855, "text": "Ich lerne seit 3 Monaten Deutsch.", "turns": 1, "lesson": 4149, "first_audio": 4429}
+{"id": "de03", "category": "german", "final": 1106, "text": "Können Sie das bitte langsamer sagen?", "turns": 1, "lesson": 2999, "first_audio": 3091}
+{"id": "de04", "category": "german", "final": 1055, "text": "Wo ist die nächste U-Bahn-Station?", "turns": 1, "lesson": 2501, "first_audio": 2609}
+{"id": "de05", "category": "german", "final": 2785, "text": "Ich hätte gern ein Glas Wasser.", "turns": 1}
+{"id": "de06", "category": "german", "final": 1255, "text": "Das Wetter ist heute sehr schön.", "turns": 1, "lesson": 2847, "first_audio": 2928}
+{"id": "ja01", "category": "japanese", "final": 1058, "text": "お水をください。", "turns": 1, "lesson": 3941, "first_audio": 4013}
+{"id": "ja02", "category": "japanese", "final": 1208, "text": "駅はどこですか。", "turns": 1, "lesson": 4267, "first_audio": 4347}
+{"id": "ja03", "category": "japanese", "final": 1004, "text": "日本語を勉強しています。", "turns": 1, "lesson": 3067, "first_audio": 3148}
+{"id": "ja04", "category": "japanese", "final": 1305, "text": "もう一度言ってください。", "turns": 1, "lesson": 2646, "first_audio": 2726}
+{"id": "ja05", "category": "japanese", "final": 1042, "text": "これはいくらですか。", "turns": 1, "lesson": 1925, "first_audio": 2054}
+{"id": "zh01", "category": "chinese", "final": 1044, "text": "我想喝水。", "turns": 1, "lesson": 2599, "first_audio": 2720}
+{"id": "zh02", "category": "chinese", "final": 1094, "text": "请问洗手间在哪里？", "turns": 1, "lesson": 2087, "first_audio": 2207}
+{"id": "zh03", "category": "chinese", "final": 944, "text": "我在学习中文。", "turns": 1, "lesson": 2266, "first_audio": 2376}
+{"id": "zh04", "category": "chinese", "final": 1143, "text": "这个多少钱？", "turns": 1, "lesson": 5038, "first_audio": 5157}
+{"id": "ko01", "category": "korean", "final": 2735, "text": "물 주세요.", "turns": 1, "lesson": 6334, "first_audio": 6472}
+{"id": "ko02", "category": "korean", "final": 1042, "text": "화장실이 어디예요?", "turns": 1, "lesson": 3041, "first_audio": 3160}
+{"id": "ko03", "category": "korean", "final": 1142, "text": "한국어를 공부하고 있어요.", "turns": 1, "lesson": 2925, "first_audio": 3044}
+{"id": "ko04", "category": "korean", "final": 2724, "text": "다시 한번 말해 주세요", "turns": 1, "lesson": 3795, "first_audio": 3924}
+{"id": "es01", "category": "other", "final": 1243, "text": "¿Dónde está el baño?", "turns": 1, "lesson": 3625, "first_audio": 3735}
+{"id": "es02", "category": "other", "final": 1041, "text": "Quiero aprender a pedir comida en un restaurante.", "turns": 1, "lesson": 3267, "first_audio": 3388}
+{"id": "es03", "category": "other", "final": 1043, "text": "Mañana tengo una clase de inglés.", "turns": 1, "lesson": 3220, "first_audio": 3342}
+{"id": "fr01", "category": "other", "final": 1092, "text": "Je voudrais un croissant, s'il vous plaît.", "turns": 1, "lesson": 2659, "first_audio": 2958}
+{"id": "fr02", "category": "other", "final": 1047, "text": "Comment dit-on merci en allemand?", "turns": 1, "lesson": 2667, "first_audio": 2773}
+{"id": "it01", "category": "other", "final": 1195, "text": "Dov'è la stazione dei treni?", "turns": 1, "lesson": 3427, "first_audio": 3718}
+{"id": "hi01", "category": "codeswitch_en_hi", "final": 1097, "text": "मुझे एक कॉफ़ी चाहिए, प्लीज़।", "turns": 1, "lesson": 2880, "first_audio": 2977}
+{"id": "hi02", "category": "codeswitch_en_hi", "final": 1092, "text": "आज मेरी स्पेनिश क्लास है।", "turns": 1, "lesson": 2877, "first_audio": 2974}
+{"id": "hi03", "category": "codeswitch_en_hi", "final": 1147, "text": "मैं वीकेंड पर मूवी देखने जा रहा हूँ।", "turns": 1, "lesson": 2535, "first_audio": 2633}
+{"id": "hi04", "category": "codeswitch_en_hi", "final": 1091, "text": "यह सेंटेंस बहुत डिफिकल्ट है।", "turns": 1, "lesson": 3053, "first_audio": 3152}
+{"id": "hi05", "category": "codeswitch_en_hi", "final": 1341, "text": "प्लीज मुझे नेक्स्ट लेसन दिखाओ।", "turns": 1, "lesson": 2888, "first_audio": 2987}
+{"id": "cs01", "category": "codeswitch_en_es", "final": 1092, "text": "Quiero un café, please.", "turns": 1, "lesson": 7172, "first_audio": 7269}
+{"id": "cs02", "category": "codeswitch_en_es", "final": 2749, "text": "How do you say tango hambra in English?", "turns": 1, "lesson": 6315, "first_audio": 6431}
+{"id": "cs03", "category": "codeswitch_en_es", "final": 1041, "text": "Mi hermano is coming to visit next week.", "turns": 1, "lesson": 2806, "first_audio": 2918}
+{"id": "cs04", "category": "codeswitch_en_es", "final": 894, "text": "I think the answer is muy bien.", "turns": 1, "lesson": 3414, "first_audio": 3518}
+{"id": "cs05", "category": "codeswitch_en_es", "final": 1042, "text": "Vamos a la playa this weekend.", "turns": 1, "lesson": 2385, "first_audio": 2489}
+{"id": "fm01", "category": "formatting", "final": 2739, "text": "My class is at 7:30 on Monday.", "turns": 1, "lesson": 4157, "first_audio": 4265}
+{"id": "fm02", "category": "formatting", "final": 1092, "text": "The course costs $49.99 a month.", "turns": 1, "lesson": 2771, "first_audio": 2874}
+{"id": "fm03", "category": "formatting", "final": 942, "text": "I've learned 250 words in 3 weeks.", "turns": 1, "lesson": 2857, "first_audio": 2961}
+{"id": "fm05", "category": "formatting", "final": 1091, "text": "Son 21 euros.", "turns": 1, "lesson": 2408, "first_audio": 2507}
+{"id": "fm06", "category": "formatting", "final": 1090, "text": "Mi examen es el 15 de julio.", "turns": 1, "lesson": 7811, "first_audio": 7925}
+{"id": "fm04", "category": "formatting", "final": 2866, "text": "My lesson is on March 5th, 2027.", "turns": 1, "lesson": 4369, "first_audio": 4473}
+{"id": "pm01", "category": "planted_mistake", "final": 1091, "text": "Yo es hambre.", "turns": 1, "lesson": 2978, "first_audio": 3089}
+{"id": "pm02", "category": "planted_mistake", "final": 991, "text": "La problema es muy difícil.", "turns": 1, "lesson": 2453, "first_audio": 2556}
+{"id": "pm03", "category": "planted_mistake", "final": 1189, "text": "Ayer yo como pizza con mis amigos.", "turns": 1, "lesson": 2525, "first_audio": 2622}
+{"id": "pm04", "category": "planted_mistake", "final": 1047, "text": "Mi madre es muy cansada hoy.", "turns": 1, "lesson": 2654, "first_audio": 2753}
+{"id": "pm05", "category": "planted_mistake", "final": 1090, "text": "Ich habe Hunger nicht.", "turns": 1, "lesson": 2082, "first_audio": 2186}
+{"id": "pm06", "category": "planted_mistake", "final": 1091, "text": "Der Mädchen ist sehr nett.", "turns": 1, "lesson": 2053, "first_audio": 2373}
+{"id": "pm07", "category": "planted_mistake", "final": 1091, "text": "Gestern ich bin ins Kino gegangen.", "turns": 1, "lesson": 2922, "first_audio": 3005}
+{"id": "pm08", "category": "planted_mistake", "final": 1140, "text": "La garçon est très grand.", "turns": 1, "lesson": 2344, "first_audio": 2429}
+{"id": "pm09", "category": "planted_mistake", "final": 942, "text": "J'ai allé au marché ce matin.", "turns": 1, "lesson": 1969, "first_audio": 2284}
+{"id": "pm10", "category": "planted_mistake", "final": 999, "text": "Io sono fame.", "turns": 1, "lesson": 2282, "first_audio": 2380}
+{"id": "pm11", "category": "planted_mistake", "final": 1051, "text": "She don't like coffee.", "turns": 1, "lesson": 2072, "first_audio": 2170}
+{"id": "pm12", "category": "planted_mistake", "final": 1101, "text": "Yesterday I go to the library.", "turns": 1, "lesson": 2333, "first_audio": 2432}
+{"id": "pm13", "category": "planted_mistake", "final": 1049, "text": "私は学生用です。", "turns": 1, "lesson": 8143, "first_audio": 8242}
+{"id": "pm14", "category": "planted_mistake", "final": 952, "text": "मेरी ब्रदर बहुत स्मार्ट है।", "turns": 1, "lesson": 5193, "first_audio": 5289}
+{"id": "pm16", "category": "planted_mistake", "final": 1051, "text": "Yo tengo hambre.", "turns": 1, "lesson": 2720, "first_audio": 2823}
+{"id": "pm17", "category": "planted_mistake", "final": 1202, "text": "Je suis allé au cinéma.", "turns": 1, "lesson": 3181, "first_audio": 3491}
+{"id": "pm18", "category": "planted_mistake", "final": 1100, "text": "Ella son muy simpática.", "turns": 1, "lesson": 2225, "first_audio": 2330}
+{"id": "pm19", "category": "planted_mistake", "final": 1099, "text": "Nosotros va al parque.", "turns": 1, "lesson": 3532, "first_audio": 3637}
+{"id": "pm20", "category": "planted_mistake", "final": 952, "text": "I go to school yesterday.", "turns": 1, "lesson": 2389, "first_audio": 2502}
+{"id": "pm21", "category": "planted_mistake", "final": 1101, "text": "Tengo un perro en casa.", "turns": 1, "lesson": 2866, "first_audio": 2970}
+{"id": "pm22", "category": "planted_mistake", "final": 1053, "text": "Feliz año nuevo.", "turns": 1, "lesson": 3242, "first_audio": 3345}
+{"id": "pm15", "category": "planted_mistake", "final": 1000, "text": "Y buenos tacos, pero no quiero la frijoles.", "turns": 1, "lesson": 2663, "first_audio": 2768}
+{"id": "h01", "category": "planted_mistake", "final": 1151, "text": "Quiero un carro rojo.", "turns": 1, "lesson": 7367, "first_audio": 7471}
+{"id": "h02", "category": "planted_mistake", "final": 1003, "text": "Vamos a la casa de mi abuela.", "turns": 1, "lesson": 3089, "first_audio": 3184}
+{"id": "h03", "category": "planted_mistake", "final": 1150, "text": "Je voudrais une café.", "turns": 1, "lesson": 2371, "first_audio": 2480}
+{"id": "h04", "category": "planted_mistake", "final": 2730, "text": "Ich gehe in die Park.", "turns": 1, "lesson": 3523, "first_audio": 3629}
+{"id": "h05", "category": "planted_mistake", "final": 1003, "text": "私は日本へ行きます。", "turns": 1, "lesson": 2791, "first_audio": 2894}
+{"id": "h06", "category": "planted_mistake", "final": 953, "text": "私は寿司が食べます。", "turns": 1, "lesson": 2247, "first_audio": 2350}
+{"id": "h07", "category": "planted_mistake", "final": 1054, "text": "我有三个书。", "turns": 1, "lesson": 2384, "first_audio": 2490}
+{"id": "h08", "category": "planted_mistake", "final": 1193, "text": "我买了一只车。", "turns": 1, "lesson": 9959, "first_audio": 10060}
+{"id": "h09", "category": "planted_mistake", "final": 1042, "text": "할머니, 밥 먹어?", "turns": 1, "lesson": 4971, "first_audio": 5083}
+{"id": "h10", "category": "planted_mistake", "final": 992, "text": "मैं कल स्कूल जाएगा था।", "turns": 1, "lesson": 2244, "first_audio": 2342}
+{"id": "h11", "category": "codeswitch_en_es", "final": 994, "text": "Te voy a testear la ter, ¿ok?", "turns": 1, "lesson": 2178, "first_audio": 2279}
+{"id": "h12", "category": "codeswitch_en_es", "final": 1093, "text": "Voy a lunchear con mi friend.", "turns": 1, "lesson": 2987, "first_audio": 3089}
+{"id": "h15", "category": "fast_speech", "final": 1296, "text": "Can you repeat the last sentence and then give me a new one?", "turns": 1, "lesson": 5493, "first_audio": 5591}
+{"id": "h16", "category": "fast_speech", "final": 2003, "text": "No entiendo lo que dijiste, ¿puedes repetirlo más despacio?", "turns": 1, "lesson": 6103, "first_audio": 6205}
+{"id": "h17", "category": "one_word", "final": 1093, "text": "Sí.", "turns": 1, "lesson": 2827, "first_audio": 2930}
+{"id": "h18", "category": "one_word", "final": 1042, "text": "Danke.", "turns": 1, "lesson": 1968, "first_audio": 2077}
+{"id": "h19", "category": "accented", "final": 1143, "text": "I am very hungry, I want to eat now.", "turns": 1, "lesson": 2972, "first_audio": 3072}
+{"id": "h20", "category": "accented", "final": 1094, "text": "Quiero un café, por favor.", "turns": 1, "lesson": 5326, "first_audio": 5429}
+{"id": "h21", "category": "planted_mistake", "final": 1142, "text": "Ayer yo va al mercado y compré una manzana si la tomates porque mi madre es muy hambre.", "turns": 1, "lesson": 3187, "first_audio": 3289}
+{"id": "ent01", "category": "entity", "final": 1093, "text": "Vivo en Guadalajara desde el 3 de marzo.", "turns": 1, "lesson": 2373, "first_audio": 2480}
+{"id": "ent02", "category": "entity", "final": 2773, "text": "Mi profesora se llama Siobhan.", "turns": 1, "lesson": 4034, "first_audio": 4133}
+{"id": "ent03", "category": "entity", "final": 2691, "text": "I'm meeting Priya at Starbucks on June 14th.", "turns": 1, "lesson": 6280, "first_audio": 6381}
+{"id": "ent04", "category": "entity", "final": 2741, "text": "Ich wohne in München seit dem 21. April.", "turns": 1, "lesson": 9167, "first_audio": 9488}
+{"id": "ent05", "category": "entity", "final": 2851, "text": "Je m'appelle François et j'habite à Lyon depuis 2019.", "turns": 1, "lesson": 4197, "first_audio": 4498}
+{"id": "ent06", "category": "entity", "final": 2740, "text": "Il mio amico Giorgio lavora da Fiat a Torino.", "turns": 1, "lesson": 4313, "first_audio": 4633}
+{"id": "ent07", "category": "entity", "final": 1192, "text": "मेरी सहेली का नाम अनुष्का है और वह दिल्ली में रहती है।", "turns": 1}
+{"id": "ent08", "category": "entity", "final": 992, "text": "田中さんは東京に住んでいます。", "turns": 1, "lesson": 2826, "first_audio": 2932}
+{"id": "ent09", "category": "entity", "final": 2794, "text": "Dr. Nguyen booked a flight to São Paulo on November 3rd.", "turns": 1, "lesson": 4432, "first_audio": 4560}
+{"id": "ent10", "category": "entity", "final": 1102, "text": "王芳在北京的华为公司工作。", "turns": 1, "lesson": 4265, "first_audio": 4375}
