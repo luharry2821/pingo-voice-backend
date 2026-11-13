@@ -177,14 +177,6 @@ Protocol: the client sends `start` (`target_language`, optional `native_language
 
 Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026: streaming is $0.45/hr of open session time, idle included. `gemma-4-31b` costs $0.14 / 1M input tokens and $0.40 / 1M output tokens. TTS costs $15 / 1M characters. Each turn's log line records its usage.
 
-## Limitations
-
-- Synthetic audio only, small per-language samples, and one run per provider.
-- The tutor LLM call isn't streamed, so it dominates end-to-end latency.
-- Concurrency hasn't been load-tested. On the free plan, 5 new TTS sessions a minute limit the account to about 2 new learners a minute; the per-IP limits live in one process's memory. Render's free plan is demo-only.
-- TTS speaks six languages, and nothing checks the accuracy of the LLM's grading. There's no phoneme-level pronunciation score and no TTS speed control.
-- Browser echo can trigger a false barge-in. Headphones or a higher `vad_threshold` help.
-
 ## Repository files
 
 | Path | What it is |
