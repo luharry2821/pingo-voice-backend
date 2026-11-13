@@ -90,7 +90,7 @@ Protocol: the client sends `start` (`target_language`, optional `native_language
 
 Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026: streaming is $0.45/hr of open session time, idle included. `gemma-4-31b` costs $0.14 / 1M input tokens and $0.40 / 1M output tokens. TTS costs $15 / 1M characters. Each turn's log line records its usage.
 
-## Evaluation: AssemblyAI vs Deepgram on the same audio
+## Evaluation and benchmarking Deepgram (assumed competitor in this deal)
 
 **Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English, Spanish and English + Spanish code-switching).**
 
