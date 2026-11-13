@@ -171,7 +171,7 @@ These come from the runs above.
 | `ent09` entities | Dr. Nguyen booked a flight to São Paulo on November 3rd. | Dr. Nguyen booked a flight to São Paulo on November 3rd. (0 errors) | Dr. Ngwin booked a flight to Sao Paulo on November 3. (2 errors) | Doctor. Nguyen booked a flight to Sao Paulo on November third. (0 errors after normalization) |
 | `h20` accented es | Quiero un café, por favor. | Quiero un café, por favor. (es, 0 errors) | Quero Uncafé or favor. (labelled en, 4 errors) | Quero un cafe or favor. (labelled en, 3 errors) |
 | `cs04` en+es | I think the answer is muy bien. | I think the answer is muy bien. (0 errors) | I think the answer is Muibian. (2 errors) | I think the answer is Muibian. (2 errors) |
-| `hi02` en+hi (AssemblyAI loses) | Aaj मेरी Spanish class है। | आज मेरी स्पैनिश क्लास है। (3 errors: English words written in Devanagari) | आज मेरी Spanish class है. (1 error) | आज मेरी Spanish class है. (1 error) |
+| `hi02` en+hi (AssemblyAI loses) | Aaj मेरी Spanish class है। | आज मेरी स्पैनिश क्लास है। (3 errors: English words written in Hindi script) | आज मेरी Spanish class है. (1 error) | आज मेरी Spanish class है. (1 error) |
 | `h13` hesitation | Yo... eh... yo fui, no, yo voy al mercado. | 就。 / 哎。 / Yo fui, no, yo voy al mercado. (3 turns; fillers labelled zh at confidence 1.0) | Jo E. Yo fui, no, yo voy al mercado. (1 turn) | Yo. / Yo fui, no, yo voy al mercado. (2 turns) |
 | `zh02` Chinese | 请问洗手间在哪里？ | 请问洗手间在哪里？ (0 errors) | 请问洗手间在哪里 (0 errors) | not supported |
 
