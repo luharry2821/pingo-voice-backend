@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%233923C7%22/%3E%3C/svg%3E" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Apply the saved or system theme before first paint, so there is no flash.
+      (function () {
+        try {
+          var saved = localStorage.getItem("yc-theme");
+          var dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>I'm a solo YC founder building a company.</title>
+    <meta name="description" content="Three calls today. My AssemblyAI voice clone is taking them." />
+    <meta property="og:title" content="I'm a solo YC founder building a company." />
+    <meta property="og:description" content="Three calls today. My AssemblyAI voice clone is taking them." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400&display=swap" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
