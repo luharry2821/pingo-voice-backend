@@ -92,7 +92,10 @@ Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 
 
 ## Evaluation and benchmarking Deepgram (assumed competitor in this deal)
 
-**Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English, Spanish and English + Spanish code-switching).**
+**Verdict: AssemblyAI is clearly more accurate than both Deepgram models and matches them on time to first token.**
+
+- **Accuracy:** WER 6.33% vs 9.76% (Nova-3) and 9.22% (Flux). Missed entity rate 5.88% vs 20.59% and 19.35%. Semantic WER 2.71% vs 4.52%. English + Spanish code-switching WER 14.81% vs 27.78%.
+- **Latency:** TTFT p50 / p90 368 / 462 ms vs 378 / 473 ms (Nova-3) and 356 / 577 ms (Flux).
 
 The same 105 clips were streamed live to each provider from one machine and scored with the same `score.py`. Results: [`assemblyai`](archive/test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](archive/test_cases/bench/deepgram/RESULTS.md), [`flux`](archive/test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `archive/test_cases/bench/*_raw.jsonl`.
 
