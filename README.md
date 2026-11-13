@@ -229,3 +229,30 @@ Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 
 | `archive/test_cases/latency_raw.jsonl` | Raw output of `latency.py` |
 | `archive/test_cases/bench/*_raw.jsonl` | Raw benchmark output per provider, with session/request ids |
 | `archive/test_cases/bench/assemblyai/`, `deepgram/`, `flux/` | Scored results per provider (`results.json`, `RESULTS.md`) |
+
+## Extra credit: YC demo
+
+Live: [yc-clone-scrib-ai.vercel.app](https://yc-clone-scrib-ai.vercel.app)
+
+"I'm a solo YC founder building a company." Harry, the founder of Pingo AI, has three calls today: Mom, a new engineer and an upset customer. His **AssemblyAI voice clone** takes them. Two AI voices talk turn by turn, and each side really listens: every spoken line is transcribed by AssemblyAI streaming STT, and the other side only ever sees what STT heard. The customer call code-switches in Hinglish.
+
+How a turn works:
+
+1. **LLM Gateway** (`gemma-4-31b`, falls back to `qwen3.5-4b-32k-fast`) writes the speaker's next line. Harry gets no script, only a brief (goal, intent, what to get across, optional attached doc).
+2. **TTS** speaks it: Harry with your cloned `voice_id`, the counterparts with stock voices (`aai-kyla`, `aai-titus`, `aai-audrey`).
+3. **Streaming STT** (`universal-3-6-pro`, temporary token minted server-side) transcribes the line as it plays, with live partials. Pre-recorded STT is the fallback.
+4. The other side's LLM gets only that transcript and replies.
+
+Stack: React + Vite + Tailwind front end, Vercel Functions in `api/` for chat, TTS, the STT token and the STT fallback. The API key is read only by those functions.
+
+Run it locally:
+
+```bash
+cp .env.example .env     # set ASSEMBLYAI_API_KEY=...
+npm install
+npm run dev              # http://localhost:5173
+```
+
+Open the gear icon (top right), paste your cloned voice ID (from the AssemblyAI dashboard, Voices), and press **Test my clone**. With no voice ID it uses the stock voice `aai-ewald`. Pick a call and press play.
+
+Deploy: import the project in Vercel (framework: Vite) and set `ASSEMBLYAI_API_KEY`. If the key is missing, every API route returns `500 {"error":"missing_server_secret"}`.
