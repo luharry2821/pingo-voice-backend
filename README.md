@@ -181,7 +181,7 @@ Rerun everything with `python archive/test_cases/stt_bench.py assemblyai|deepgra
 
 This is the general playbook for evaluating AssemblyAI against a customer's current STT vendor, and the Deepgram benchmark above is one run of it.
 
-Deck: [Google Slides](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/edit) · [PPTX](docs/customer-evaluation-flow.pptx) · [PDF](docs/customer-evaluation-flow.pdf) · [Customer Evaluation page](https://pingo-ai.lovable.app/evals/customer)
+Deck: [Download PPTX](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/export/pptx) · [Download PDF](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/export/pdf) · [View in Google Slides](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCLz57Dc7efuQG7tZYXsZ4r15Kc/edit) · [Customer Evaluation page](https://pingo-ai.lovable.app/evals/customer)
 
 ### 1. Understand
 
@@ -249,7 +249,6 @@ Deck: [Google Slides](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CC
 | `archive/test_cases/latency_raw.jsonl` | Raw output of `latency.py` |
 | `archive/test_cases/bench/*_raw.jsonl` | Raw benchmark output per provider, with session/request ids |
 | `archive/test_cases/bench/assemblyai/`, `deepgram/`, `flux/` | Scored results per provider (`results.json`, `RESULTS.md`) |
-| `docs/customer-evaluation-flow.pptx`, `.pdf` | The customer evaluation approach deck |
 | **`yc-demo/`** | **YC extra credit: the voice-clone demo (React + Vite, Vercel Functions in `api/`, shared server code in `server/`)** |
 
 ## Extra credit: YC demo
