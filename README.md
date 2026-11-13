@@ -87,6 +87,11 @@ Protocol: the client sends `start` (`target_language`, optional `native_language
 - **The LLM grades practice attempts** (`correct` / `close` / `try_again`). The server pins the stored phrase on attempts, so the lesson card shows the phrase being practised. A longer phrase that contains the stored one ("Hola, ¿cómo estás?" after "Hola") counts as a new phrase. After two misses, Pingo reads the phrase slowly, syllable by syllable.
 - **Who may connect.** CORS and a WebSocket Origin check allow only the Lovable app, its previews and localhost. Each IP gets at most 3 open sockets and 10 new ones a minute. There are no accounts; this is a demo endpoint.
 - **TTS sessions are reused.** On the free plan the account can open 5 new TTS sessions a minute (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)), so each connection warms one session per voice on `start`.
+- **Patience and conversation feel.** Each setting is tuned for how learners actually speak:
+  - **Turn detection, 600 to 2,400 ms** (`min_turn_silence` / `max_turn_silence`). Learners pause to search for the next word. Too low and Pingo cuts them off; too high and it sits in awkward silence. This range keeps it patient without feeling slow.
+  - **VAD threshold, 0.2** (`vad_threshold`). Beginners speak softly when unsure. A low threshold means a quiet "sí" still counts.
+  - **Interruption delay, 250 ms** (`interruption_delay`). When a learner cuts in, Pingo stops almost instantly, so it feels like a conversation, not a lecture.
+  - **Voice Focus, far-field** (`voice_focus`). TV on, roommate on a call, and Pingo still hears only the learner.
 
 Pricing, from [AssemblyAI pricing](https://www.assemblyai.com/pricing) as of 12 November 2026: streaming is $0.45/hr of open session time, idle included. `gemma-4-31b` costs $0.14 / 1M input tokens and $0.40 / 1M output tokens. TTS costs $15 / 1M characters. Each turn's log line records its usage.
 
