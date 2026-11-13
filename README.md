@@ -121,7 +121,6 @@ Error rates and latency: lower is better. The winner of each pair is in bold; no
    | `universal-3-6-pro`, `language_detection` | `nova-3`, `language=multi` | `flux-general-multi` |
    | `min_turn_silence` 600 | `endpointing=600` | no equivalent (`eot_threshold` 0.7, default) |
    | `max_turn_silence` 2400 | `utterance_end_ms=2400` | `eot_timeout_ms=2400` |
-   | semantic end-of-turn check | no equivalent; ends on silence | semantic end of turn |
    | learner-context `prompt` | no equivalent | no equivalent |
    | `voice_focus` far-field, `vad_threshold` 0.2 | no equivalent (`vad_events` on) | no equivalent |
    | keyterms: none | keyterms: none | keyterms: none |
@@ -160,7 +159,6 @@ All numbers come from `archive/test_cases/score.py`, the same code for every pro
 | it | 3 |
 | hi | 1 |
 | en+es mixed | 8 |
-| en+hi mixed | 7 |
 
 ### Worked examples
 
@@ -171,7 +169,6 @@ These come from the runs above.
 | `ent09` entities | Dr. Nguyen booked a flight to São Paulo on November 3rd. | Dr. Nguyen booked a flight to São Paulo on November 3rd. (0 errors) | Dr. Ngwin booked a flight to Sao Paulo on November 3. (2 errors) | Doctor. Nguyen booked a flight to Sao Paulo on November third. (0 errors after normalization) |
 | `h20` accented es | Quiero un café, por favor. | Quiero un café, por favor. (es, 0 errors) | Quero Uncafé or favor. (labelled en, 4 errors) | Quero un cafe or favor. (labelled en, 3 errors) |
 | `cs04` en+es | I think the answer is muy bien. | I think the answer is muy bien. (0 errors) | I think the answer is Muibian. (2 errors) | I think the answer is Muibian. (2 errors) |
-| `hi02` en+hi (AssemblyAI loses) | Aaj मेरी Spanish class है। | आज मेरी स्पैनिश क्लास है। (3 errors: English words written in Devanagari) | आज मेरी Spanish class है. (1 error) | आज मेरी Spanish class है. (1 error) |
 | `h13` hesitation | Yo... eh... yo fui, no, yo voy al mercado. | 就。 / 哎。 / Yo fui, no, yo voy al mercado. (3 turns; fillers labelled zh at confidence 1.0) | Jo E. Yo fui, no, yo voy al mercado. (1 turn) | Yo. / Yo fui, no, yo voy al mercado. (2 turns) |
 | `zh02` Chinese | 请问洗手间在哪里？ | 请问洗手间在哪里？ (0 errors) | 请问洗手间在哪里 (0 errors) | not supported |
 
@@ -198,7 +195,7 @@ Deck: [Download PDF](https://docs.google.com/presentation/d/19ONortiO_VXuuLI4CCL
 - **Run, score and validate.** Stream every clip live to Universal-3.6 Pro at real-time pace, then re-run the current vendor on the same audio with the closest matching endpointing. Vendors get audio and settings only; the answer key stays with us. Score from raw output saved with session IDs. *Goal: same audio, same scoring, nothing hidden.*
 - **What we measure.**
   - *Accuracy:* WER, FWER, sentence error rate, semantic WER, missed entity rate and code-switching WER.
-  - *Latency:* TTFT, TTCT, end-of-turn latency and turns that never end, all at p50 and p90.
+  - *Latency:* TTFT and TTCT, at p50 and p90.
   - *Pricing:* cost per learner hour, session time with pauses included, and add-ons in use.
 
 ### 4. Improve and decide
@@ -257,7 +254,7 @@ Live: [yc-clone-scrib-ai.vercel.app](https://yc-clone-scrib-ai.vercel.app)
 
 Code: [`yc-demo/`](yc-demo/) in this repo. It's a standalone app with its own front end and Vercel Functions backend (`yc-demo/api/`, `yc-demo/server/`), separate from Pingo's Python backend. Its own [README](yc-demo/README.md) has the full details.
 
-"I'm a solo YC founder building a company." Harry, the founder of Pingo AI, has three calls today: Mom, a new engineer and an upset customer. His **AssemblyAI voice clone** takes them. Two AI voices talk turn by turn, and each side really listens: every spoken line is transcribed by AssemblyAI streaming STT, and the other side only ever sees what STT heard. The customer call code-switches in Hinglish.
+"I'm a solo YC founder building a company." Harry, the founder of Pingo AI, has three calls today: Mom, a new engineer and an upset customer. His **AssemblyAI voice clone** takes them. Two AI voices talk turn by turn, and each side really listens: every spoken line is transcribed by AssemblyAI streaming STT, and the other side only ever sees what STT heard.
 
 How a turn works:
 
