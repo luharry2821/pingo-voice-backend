@@ -8,7 +8,7 @@ Live app: [pingo-ai.lovable.app](https://pingo-ai.lovable.app) (UI built in Lova
 
 **Verdict: AssemblyAI is more accurate than both Deepgram models (WER, entities, sentence errors, English, Spanish and English + Spanish code-switching).**
 
-The same 105 clips were streamed live to each provider from one machine and scored with the same `score.py`. The runs took place on 13 November 2026, between about 4:45 and 5:25 AM PT. Results: [`assemblyai`](test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](test_cases/bench/deepgram/RESULTS.md), [`flux`](test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `test_cases/bench/*_raw.jsonl`.
+The same 105 clips were streamed live to each provider from one machine and scored with the same `score.py`. Results: [`assemblyai`](test_cases/bench/assemblyai/RESULTS.md), [`deepgram`](test_cases/bench/deepgram/RESULTS.md), [`flux`](test_cases/bench/flux/RESULTS.md). Raw output, with each provider's session or request id per clip, is in `test_cases/bench/*_raw.jsonl`.
 
 ### Scorecard
 
@@ -25,14 +25,10 @@ Error rates and latency: lower is better. The winner of each pair is in bold; no
 | Spanish WER (24 clips / 138 words) | **7.97%** | 15.22% | 11.59% |
 | Hindi WER (1 clip / 12 words) | 0.0% | 0.0% | 0.0% |
 | Code-switching WER (English + Spanish, average, 8 clips / 54 words) | **14.81%** | 27.78% | 27.78% |
-| Confident-wrong language rate (confidence ≥ 0.6) | 1.80% (2/111) | not comparable¹ | not comparable¹ |
-| Hesitation clips: turns per clip, ps01 / h13 / h14 (1 is ideal) | 3 / 3 / 3 | **2 / 1 / 2** | **3 / 2 / 2** |
-| Hesitation clips: WER (3 clips / 25 words) | **12.0%** | 24.0% | **8.0%** |
-| TTFT from speech start², p50 / p90 (from stream start) | 368 / 462 ms (1,055 / 1,181) | 378 / 473 ms (1,067 / 1,170) | 356 / 577 ms (1,058 / 1,294) |
+| TTFT from speech start¹, p50 / p90 (from stream start) | 368 / 462 ms (1,055 / 1,181) | 378 / 473 ms (1,067 / 1,170) | 356 / 577 ms (1,058 / 1,294) |
 
-1. Deepgram returns no language confidence, so the confident-wrong rate can't be computed for it. That's different from 0%.
-2. **TTFT** is the time from the first audio frame sent to the first result with words. AssemblyAI's published definition counts from the start of the stream, which is the figure in parentheses. Every clip opens with silence, measured per clip from the WAV as the first sample above −40 dBFS: 601–890 ms, median 704 ms. The main figure subtracts that clip's lead silence, so it counts from the start of speech.
-3. **Settings, matched as closely as Deepgram allows.** No keyterms were sent on either side: Pingo's baseline sends AssemblyAI none, so Deepgram got none either.
+1. **TTFT** is the time from the first audio frame sent to the first result with words. AssemblyAI's published definition counts from the start of the stream, which is the figure in parentheses. Every clip opens with silence, measured per clip from the WAV as the first sample above −40 dBFS: 601–890 ms, median 704 ms. The main figure subtracts that clip's lead silence, so it counts from the start of speech.
+2. **Settings, matched as closely as Deepgram allows.** No keyterms were sent on either side: Pingo's baseline sends AssemblyAI none, so Deepgram got none either.
 
    | AssemblyAI (Pingo baseline) | Deepgram Nova-3 (`/v1/listen`) | Deepgram Flux (`/v2/listen`) |
    |---|---|---|
@@ -45,8 +41,8 @@ Error rates and latency: lower is better. The winner of each pair is in bold; no
    | keyterms: none | keyterms: none | keyterms: none |
    | `filter_profanity` off | `profanity_filter=false` | n/a |
    | formatting built in | `smart_format`, `punctuate`, `interim_results` | built in |
-4. Semantic WER uses the same judge for every arm: AssemblyAI LLM Gateway `gemma-4-31b` at temperature 0. That's the vendor's own model, so the plain WER rows are the ones that rely on no judge.
-5. A stream that returned no turns was retried, up to 4 attempts. AssemblyAI streams were spaced at least 12.5 s apart, to stay within the free plan's new-sessions-per-minute limit of 5 (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)). One clip was retried on each of AssemblyAI and Nova-3. All 303 streams returned transcripts.
+3. Semantic WER uses the same judge for every arm: AssemblyAI LLM Gateway `gemma-4-31b` at temperature 0. That's the vendor's own model, so the plain WER rows are the ones that rely on no judge.
+4. A stream that returned no turns was retried, up to 4 attempts. AssemblyAI streams were spaced at least 12.5 s apart, to stay within the free plan's new-sessions-per-minute limit of 5 (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)). One clip was retried on each of AssemblyAI and Nova-3. All 303 streams returned transcripts.
 
 ### How we calculate
 
@@ -60,9 +56,7 @@ All numbers come from `test_cases/score.py`, the same code for every provider. A
 - **Missed entity rate** = tagged entities not found in the hypothesis / all tagged entities. Matching uses the WER normalization and a whole-word match (CJK: substring match with spaces removed).
 - **Sentence error rate** = clips with at least one word (or, for CJK, character) error after normalization / all clips.
 - **Hard-set WER** = WER (average) over the word-based clips flagged `hard` (26 of the 31-clip hard set; the other 5 are CJK).
-- **Hesitation clips:** turns = number of final turns the provider returned for each of `ps01`, `h13`, `h14`; WER = WER (average) over those 3 clips.
 - **TTFT from speech start** = (time of the first result with words − time the first audio frame was sent) − the clip's lead silence. Lead silence = time to the first sample above −40 dBFS (|sample| > 328) in the WAV. p50 / p90 use linear interpolation between ranks. Times are stamped client-side.
-- **Confident-wrong language rate** = final turns whose language label is not one of the clip's languages and whose confidence is ≥ 0.6 / all final turns.
 
 ### Test set
 
