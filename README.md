@@ -55,7 +55,6 @@ Error rates and latency: lower is better. The winner of each pair is in bold; no
 5. Semantic WER uses the same judge for every arm: AssemblyAI LLM Gateway `gemma-4-31b` at temperature 0. That's the vendor's own model, so the plain WER rows are the ones that rely on no judge.
 6. A stream that returned no turns was retried, up to 4 attempts. AssemblyAI streams were spaced at least 12.5 s apart, to stay within the free plan's new-sessions-per-minute limit of 5 (paid plans start at 200, per AssemblyAI's [rate limits](https://www.assemblyai.com/docs/streaming/rate-limits)). One clip was retried on each of AssemblyAI and Nova-3. All 315 streams returned transcripts.
 7. Language ID is now 94.92% accurate, with a 1.69% confident-wrong rate. The earlier 80.34% (13.68% confident-wrong) came from playing clips through the deployed app at `min_turn_silence` 400, where turns end sooner and carry less audio. This run calls the API directly at 600.
-8. The pipeline fix for end-to-end latency is to stream the LLM response and start TTS on the first complete field. It isn't implemented yet.
 
 ### Test set
 
